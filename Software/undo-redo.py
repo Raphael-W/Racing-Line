@@ -4,4 +4,4 @@ class Action:
 
 class History:
     def __init__(self):
-        pass
+        self.actions = []

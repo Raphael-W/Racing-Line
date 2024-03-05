@@ -21,7 +21,12 @@ programColours = {"background": (20, 20, 20),
                   "mainGrid": (30, 30, 30),
                   "innerGrid": (25, 25, 25)}
 
-ft_font = pygame.freetype.Font("KodeMono-VariableFont_wght.ttf", 24)
+ft_font = pygame.freetype.Font("KodeMono-VariableFont_wght.ttf", 18)
+
+def testButtonPress():
+    print("Pressed")
+
+testButton = Button(screen, pygame, (1050, 600), (100, 0, 0), (100, 50), "Test", ft_font, testButtonPress)
 
 def drawGrid(frequency, lineWidth, lineColor):
     columns = math.ceil(screenWidth / frequency)
@@ -70,6 +75,9 @@ while running:
 
     track.update(mousePosX, mousePosY, screenWidth, screenHeight, screenBorder, pygame)
     track.draw(programColours, screen, pygame)
+
+    testButton.display()
+
 
     pygame.display.flip()
     clock.tick(120) #Refresh Rate
