@@ -1,3 +1,4 @@
+#Make UI Element class, and make others inherit from it
 class Button:
     def __init__(self, screen, pygame, font, pos, dimensions, text, fontSize, colour, action):
         self.screen = screen
@@ -11,6 +12,7 @@ class Button:
 
         self.width = dimensions[0]
         self.height = dimensions[1]
+        self.rectangleBox = self.pygame.Rect(self.posX, self.posY, self.width, self.height)
 
         self.text = text
         self.colour = colour
@@ -43,14 +45,15 @@ class Button:
 
     def display(self):
         self.update()
-
-        rectangle = self.pygame.Rect(self.posX, self.posY, self.width, self.height)
-        self.pygame.draw.rect(self.screen, self.colour, rectangle, 0, 10)
+        self.pygame.draw.rect(self.screen, self.colour, self.rectangleBox, 0, 10)
 
         text_rect = self.font.get_rect(self.text)
-        text_rect.center = rectangle.center
+        text_rect.center = self.rectangleBox.center
 
         self.font.render_to(self.screen, text_rect, self.text, (250, 250, 250))
+
+    def returnBoundingBox(self):
+        return self.rectangleBox.topleft, self.rectangleBox.topright, self.rectangleBox.bottomleft, self.rectangleBox.bottomright
 
 class Label:
     def __init__(self, screen, pygame, pos, size, text):
@@ -82,3 +85,22 @@ class CheckBox: #Use label class for label
 
         self.value = value
         self.action = action
+
+class Layer:
+    def __init__(self, name, number):
+        self.name = name
+        self.number = number
+        self.elements = []
+
+    def add(self, UIElement):
+        self.elements.append(UIElement)
+
+    def mouseOnLayer(self, mousePos):
+        boundingBoxes = [element.returnBoundingBox() for element in self.elements]
+        hovering = False
+        mouseX, mouseY = mousePos
+
+        for i in boundingBoxes:
+            hovering = hovering or ((i[0][0] < mouseX < i[1][0]) and (i[0][1] < mouseY < i[2][1]))
+
+        return hovering

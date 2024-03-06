@@ -21,12 +21,14 @@ programColours = {"background": (20, 20, 20),
                   "mainGrid": (30, 30, 30),
                   "innerGrid": (25, 25, 25)}
 
-ft_font = pygame.freetype.Font("MonoFont.ttf", 18)
+UIFont = pygame.freetype.Font("MonoFont.ttf", 18)
 
 def testButtonPress():
     print("Pressed")
 
-testButton = Button(screen, pygame, ft_font, (1050, 600), (100, 50), "Test",18, (100, 0, 0), testButtonPress)
+UILayer = Layer("UI", 0)
+testButton = Button(screen, pygame, UIFont, (1050, 600), (100, 50), "Test",18, (100, 0, 0), testButtonPress)
+UILayer.add(testButton)
 
 def drawGrid(frequency, lineWidth, lineColor):
     columns = math.ceil(screenWidth / frequency)
@@ -56,14 +58,14 @@ while running:
         if event.type == pygame.QUIT:
             running = False
 
-        if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (track.mouseHovering is None):
+        if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (track.mouseHovering is None) and (not UILayer.mouseOnLayer((mousePosX, mousePosY))):
             index = -1
             if len(track.points) >= 2:
                 onLine, nearPointIndex = track.mouseOnCurve(mousePosX, mousePosY, 20)
                 if onLine: index = nearPointIndex
             track.add(ControlPoint(mousePosX, mousePosY), index = index)
 
-        if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[2] and (track.mouseHovering is not None):
+        if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[2] and (track.mouseHovering is not None) and (not UILayer.mouseOnLayer((mousePosX, mousePosY))):
             track.remove(index = track.mouseHovering)
 
         if event.type == pygame.KEYDOWN:
