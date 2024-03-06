@@ -1,15 +1,20 @@
 class Button:
-    def __init__(self, screen, pygame, pos, colour, dimensions, text, font, action):
+    def __init__(self, screen, pygame, font, pos, dimensions, text, fontSize, colour, action):
         self.screen = screen
         self.pygame = pygame
         self.font = font
+        self.fontSize = fontSize
+        self.font.size = fontSize
 
         self.posX = pos[0]
         self.posY = pos[1]
-        self.colour = colour
+
         self.width = dimensions[0]
         self.height = dimensions[1]
+
         self.text = text
+        self.colour = colour
+
         self.action = action
 
         self.mouseHovering = False
@@ -42,7 +47,7 @@ class Button:
         rectangle = self.pygame.Rect(self.posX, self.posY, self.width, self.height)
         self.pygame.draw.rect(self.screen, self.colour, rectangle, 0, 10)
 
-        text_rect = self.font.get_rect(self.text, size = 18)
+        text_rect = self.font.get_rect(self.text)
         text_rect.center = rectangle.center
 
         self.font.render_to(self.screen, text_rect, self.text, (250, 250, 250))
