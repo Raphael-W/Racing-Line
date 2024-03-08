@@ -82,8 +82,8 @@ class ControlPoint:
         self.mouseDownLast = pygame.mouse.get_pressed()[0]
 
     #Draws point to screen
-    def draw(self, colour, screen, pygame):
-        pygame.draw.circle(screen, colour, self.getPos(), self.size)
+    def draw(self, colour, screen, pygame, offset):
+        pygame.draw.circle(screen, colour, (self.posX + offset[0], self.posY + offset[1]), self.size)
 
 class Curve:
     def __init__(self, points = []):
@@ -169,9 +169,10 @@ class Curve:
         if len(self.pointsSelected) > 0:
             self.computeSpline(updatePoints = [self.points.index(point) for point in self.pointsSelected])
 
-    def draw(self, programColours, screen, pygame):
+    def draw(self, programColours, screen, pygame, offset):
         for point in self.points:
-            point.draw(programColours["controlPoint"], screen, pygame)
+            point.draw(programColours["controlPoint"], screen, pygame, offset)
 
         if len(self.points) >= 2:
-            pygame.draw.lines(screen, programColours["curve"], False, self.splinePoints, 5)
+            offsetCurve = [(point[0] + offset[0], point[1] + offset[1]) for point in self.splinePoints]
+            pygame.draw.lines(screen, programColours["curve"], False, offsetCurve, 5)
