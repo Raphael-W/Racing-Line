@@ -57,7 +57,7 @@ class ControlPoint:
         return self.posX, self.posY
 
     #Calculates whether mouse is hovering, and whether user has selected point
-    def update(self, mousePosX, mousePosY, screenWidth, screenHeight, screenBorder, pygame):
+    def update(self, mousePosX, mousePosY, screenWidth, screenHeight, screenBorder, pygame, offset):
         self.mouseHovering = ((self.posX + (self.size + 2) > mousePosX > self.posX - (self.size + 2)) and
                                (self.posY + (self.size + 2) > mousePosY > self.posY - (self.size + 2)))
 
@@ -70,10 +70,10 @@ class ControlPoint:
             self.pointSelected = False
 
         if self.pointSelected:
-            if screenBorder < mousePosX < screenWidth - screenBorder:
+            if screenBorder - offset[0] < mousePosX < screenWidth - screenBorder - offset[0]:
                 self.posX = mousePosX
 
-            if screenBorder < mousePosY < screenHeight - screenBorder:
+            if screenBorder - offset[1] < mousePosY < screenHeight - screenBorder - offset[1]:
                 self.posY = mousePosY
 
         if not self.pointSelected:
@@ -156,7 +156,7 @@ class Curve:
                 t = tInt / resolution
                 self.splinePoints[tInt] = (calculateSpline(self.returnPointCoords(), t))
 
-    def update(self, mousePosX, mousePosY, screenWidth, screenHeight, screenBorder, pygame):
+    def update(self, mousePosX, mousePosY, screenWidth, screenHeight, screenBorder, pygame, offset):
         self.pointsSelected = [point for point in self.points if point.pointSelected]
 
         self.mouseHovering = None
@@ -164,7 +164,7 @@ class Curve:
             if point.mouseHovering: self.mouseHovering = self.points.index(point)
 
         for point in self.points:
-            point.update(mousePosX, mousePosY, screenWidth, screenHeight, screenBorder, pygame)
+            point.update(mousePosX, mousePosY, screenWidth, screenHeight, screenBorder, pygame, offset)
 
         if len(self.pointsSelected) > 0:
             self.computeSpline(updatePoints = [self.points.index(point) for point in self.pointsSelected])

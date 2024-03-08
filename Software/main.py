@@ -49,14 +49,6 @@ def drawGrid(offset, frequency, lineWidth, lineColor):
         y = line * frequency + offset[1]
         pygame.draw.line(screen, lineColor, (0, y), (screenWidth, y), lineWidth)
 
-def offset(pos, reverse):
-    global offsetPosition
-    multiplier = 1
-    if reverse:
-        multiplier = -1
-
-    return (pos[0] + offsetPosition[0]) * multiplier, (pos[1] + offsetPosition[1]) * multiplier
-
 
 while running:
     screenWidth, screenHeight = screen.get_size()
@@ -99,7 +91,7 @@ while running:
             if event.key == pygame.K_z and pygame.key.get_mods() & pygame.KMOD_LCTRL and pygame.key.get_mods() & pygame.KMOD_LSHIFT:
                 track.redo()
 
-    track.update(mousePosX - offsetPosition[0], mousePosY - offsetPosition[1], screenWidth, screenHeight, screenBorder, pygame)
+    track.update(mousePosX - offsetPosition[0], mousePosY - offsetPosition[1], screenWidth , screenHeight, screenBorder, pygame, offsetPosition)
     track.draw(programColours, screen, pygame, offsetPosition)
 
     testLabel.text = str(testSlider.value)
