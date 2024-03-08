@@ -1,21 +1,34 @@
-#Make UI Element class, and make others inherit from it
-class Button:
-    def __init__(self, screen, pygame, font, pos, dimensions, text, fontSize, colour, action):
+class UIElement:
+    def __init__(self, layer, screen, pygame, font, fontSize, text, colour, pos):
         self.screen = screen
         self.pygame = pygame
-        self.font = font
-        self.fontSize = fontSize
-        self.font.size = fontSize
 
         self.posX = pos[0]
         self.posY = pos[1]
 
+        self.text = str(text)
+        self.font = pygame.freetype.Font(font, fontSize)
+        self.colour = colour
+
+        self.boundingBox = pygame.Rect(0, 0, 0, 0)
+        layer.add(self)
+
+    def update(self, mouseX, mouseY):
+        pass
+
+    def display(self):
+        pass
+
+    def returnBoundingBox(self):
+        return self.boundingBox.topleft, self.boundingBox.topright, self.boundingBox.bottomleft, self.boundingBox.bottomright
+
+class Button (UIElement):
+    def __init__(self, layer, screen, pygame, font, pos, dimensions, text, fontSize, colour, action):
+        super().__init__(layer, screen, pygame, font, fontSize, text, colour, pos)
+
         self.width = dimensions[0]
         self.height = dimensions[1]
-        self.rectangleBox = self.pygame.Rect(self.posX, self.posY, self.width, self.height)
-
-        self.text = text
-        self.colour = colour
+        self.boundingBox = self.pygame.Rect(self.posX, self.posY, self.width, self.height)
 
         self.action = action
 
@@ -26,7 +39,7 @@ class Button:
         self.baseColour = colour
         self.hoverColour = (colour[0] - 15, colour[1], colour[2])
 
-    def update(self):
+    def update(self, mouseX, mouseY):
         mousePos = self.pygame.mouse.get_pos()
         self.mouseHovering = (((self.posX + self.width / 2) + ((self.width / 2) + 2) > mousePos[0] > (self.posX + self.width / 2) - ((self.width / 2) + 2)) and
                               ((self.posY + self.height / 2) + ((self.height / 2) + 2) > mousePos[1] > (self.posY + self.height / 2) - ((self.height / 2) + 2)))
@@ -44,36 +57,71 @@ class Button:
         self.mouseDownLast = self.pygame.mouse.get_pressed()[0]
 
     def display(self):
-        self.update()
-        self.pygame.draw.rect(self.screen, self.colour, self.rectangleBox, 0, 10)
+        self.pygame.draw.rect(self.screen, self.colour, self.boundingBox, 0, 10)
 
         text_rect = self.font.get_rect(self.text)
-        text_rect.center = self.rectangleBox.center
+        text_rect.center = self.boundingBox.center
 
         self.font.render_to(self.screen, text_rect, self.text, (250, 250, 250))
 
-    def returnBoundingBox(self):
-        return self.rectangleBox.topleft, self.rectangleBox.topright, self.rectangleBox.bottomleft, self.rectangleBox.bottomright
+class Label (UIElement):
+    def __init__(self, layer, screen, pygame, font, fontSize, pos, text, colour):
+        super().__init__(layer, screen, pygame, font, fontSize, text, colour, pos)
+        self.textSize = self.font.get_rect(self.text).size
+        self.boundingBox = pygame.Rect(self.posX, self.posY, self.textSize[0], self.textSize[1])
 
-class Label:
-    def __init__(self, screen, pygame, pos, size, text):
-        self.screen = screen
-        self.pos = pos
-        self.size = size
-        self.text = text
+    def display(self):
+        self.font.render_to(self.screen, (self.posX, self.posY), self.text, self.colour)
 
-class Slider: #Use label class for label
-    def __init__(self, screen, pygame, pos, size, length, valueRange, text, localLabelPos, value = 0, action = None):
-        self.screen = screen
-        self.pos = pos
+class Slider (UIElement): #Use label class for label
+    def __init__(self, layer, screen, pygame, font, fontSize, text, barColour, handleColour, pos, size, length, valueRange, localLabelPos, value = 0, action = None):
+        super().__init__(layer, screen, pygame, font, fontSize, text, barColour, pos)
+
+        self.barColour = barColour
+        self.handleColour = handleColour
         self.size = size
         self.length = length
         self.valueRange = valueRange
-        self.text = text
         self.localLabelPos = localLabelPos
+
+        self.mouseHovering = False
+        self.handleX = (self.length / (self.valueRange[1] - self.valueRange[0])) * value
+        self.handleSelected = False
+        self.mouseDownLast = False
+        self.handleSize = 0
 
         self.value = value
         self.action = action
+
+    def update(self, mouseX, mouseY):
+        self.handleSize = 12 * self.size
+        self.boundingBox = self.pygame.Rect(self.posX + self.handleX - self.handleSize, self.posY - (self.handleSize * 0.75), self.handleSize * 2, self.handleSize * 2)
+        self.mouseHovering = (((self.posX + self.handleX) + (self.handleSize + 2) > mouseX > (self.posX + self.handleX) - (self.handleSize + 2)) and
+                              (self.posY + (self.handleSize + 2) > mouseY > self.posY - (self.handleSize + 2)))
+
+        if self.mouseHovering or self.handleSelected:
+            self.handleColour = (0, 200, 0)
+        else:
+            self.handleColour = (200, 0, 0)
+
+        if not self.pygame.mouse.get_pressed()[0]:
+            self.handleSelected = False
+
+        if self.handleSelected:
+            if self.posX < mouseX < (self.posX + self.length):
+                self.handleX = mouseX - self.posX
+                self.value = self.handleX / (self.length / (self.valueRange[1] - self.valueRange[0]))
+
+        if not self.handleSelected:
+            self.handleSelected = self.mouseHovering and self.pygame.mouse.get_pressed()[0] and not self.mouseDownLast
+
+        self.mouseDownLast = self.pygame.mouse.get_pressed()[0]
+
+    def display(self):
+        bar = self.pygame.Rect(self.posX, self.posY, self.length, 7 * self.size)
+        self.pygame.draw.rect(self.screen, self.barColour, bar, 0, 100)
+
+        self.pygame.draw.circle(self.screen, self.handleColour, (self.posX + self.handleX, self.posY + (7 * self.size) / 2), self.handleSize)
 
 class CheckBox: #Use label class for label
     def __init__(self, screen, pygame, pos, size, text, localLabelPos, value = False, action = None):
@@ -94,6 +142,11 @@ class Layer:
 
     def add(self, UIElement):
         self.elements.append(UIElement)
+
+    def display(self, mouseX, mouseY):
+        for element in self.elements:
+            element.update(mouseX, mouseY)
+            element.display()
 
     def mouseOnLayer(self, mousePos):
         boundingBoxes = [element.returnBoundingBox() for element in self.elements]

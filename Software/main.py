@@ -21,14 +21,13 @@ programColours = {"background": (20, 20, 20),
                   "mainGrid": (30, 30, 30),
                   "innerGrid": (25, 25, 25)}
 
-UIFont = pygame.freetype.Font("MonoFont.ttf", 18)
-
 def testButtonPress():
-    print("Pressed")
+    track.points = []
 
 UILayer = Layer("UI", 0)
-testButton = Button(screen, pygame, UIFont, (1050, 600), (100, 50), "Test",18, (100, 0, 0), testButtonPress)
-UILayer.add(testButton)
+testButton = Button(UILayer, screen, pygame, "MonoFont.ttf", (1050, 600), (100, 50), "Clear",18, (100, 0, 0), testButtonPress)
+testLabel = Label(UILayer, screen, pygame, "MonoFont.ttf", 50, (30, 30), "Racing Line Finder", (40, 174, 191))
+testSlider = Slider(UILayer, screen, pygame, "MonoFont.ttf", 18, "Size", (200, 200, 200), (200, 0, 0), (100, 200), 1, 200, (0, 100), (0, 0), 50)
 
 def drawGrid(frequency, lineWidth, lineColor):
     columns = math.ceil(screenWidth / frequency)
@@ -78,7 +77,8 @@ while running:
     track.update(mousePosX, mousePosY, screenWidth, screenHeight, screenBorder, pygame)
     track.draw(programColours, screen, pygame)
 
-    testButton.display()
+    testLabel.text = str(testSlider.value)
+    UILayer.display(mousePosX, mousePosY)
 
     pygame.display.flip()
     clock.tick(120) #Refresh Rate
