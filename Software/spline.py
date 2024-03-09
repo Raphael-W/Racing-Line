@@ -57,7 +57,7 @@ class ControlPoint:
         return self.posX, self.posY
 
     #Calculates whether mouse is hovering, and whether user has selected point
-    def update(self, mousePosX, mousePosY, screenWidth, screenHeight, screenBorder, pygame, offset):
+    def update(self, mousePosX, mousePosY, screenWidth, screenHeight, screenBorder, pygame, offset, snap):
         self.mouseHovering = ((self.posX + (self.size + 2) > mousePosX > self.posX - (self.size + 2)) and
                                (self.posY + (self.size + 2) > mousePosY > self.posY - (self.size + 2)))
 
@@ -69,12 +69,15 @@ class ControlPoint:
         if not pygame.mouse.get_pressed()[0]:
             self.pointSelected = False
 
+        if snap: roundValue = -1
+        else: roundValue = 0
+
         if self.pointSelected:
             if screenBorder - offset[0] < mousePosX < screenWidth - screenBorder - offset[0]:
-                self.posX = mousePosX
+                self.posX = round(mousePosX, roundValue)
 
             if screenBorder - offset[1] < mousePosY < screenHeight - screenBorder - offset[1]:
-                self.posY = mousePosY
+                self.posY = round(mousePosY, roundValue)
 
         if not self.pointSelected:
             self.pointSelected = self.mouseHovering and pygame.mouse.get_pressed()[0] and not self.mouseDownLast
@@ -156,7 +159,7 @@ class Curve:
                 t = tInt / resolution
                 self.splinePoints[tInt] = (calculateSpline(self.returnPointCoords(), t))
 
-    def update(self, mousePosX, mousePosY, screenWidth, screenHeight, screenBorder, pygame, offset):
+    def update(self, mousePosX, mousePosY, screenWidth, screenHeight, screenBorder, pygame, offset, snap):
         self.pointsSelected = [point for point in self.points if point.pointSelected]
 
         self.mouseHovering = None
@@ -164,7 +167,7 @@ class Curve:
             if point.mouseHovering: self.mouseHovering = self.points.index(point)
 
         for point in self.points:
-            point.update(mousePosX, mousePosY, screenWidth, screenHeight, screenBorder, pygame, offset)
+            point.update(mousePosX, mousePosY, screenWidth, screenHeight, screenBorder, pygame, offset, snap)
 
         if len(self.pointsSelected) > 0:
             self.computeSpline(updatePoints = [self.points.index(point) for point in self.pointsSelected])

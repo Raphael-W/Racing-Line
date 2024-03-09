@@ -28,9 +28,11 @@ def testButtonPress():
     track.points = []
 
 UILayer = Layer("UI", 0)
-testButton = Button(UILayer, screen, pygame, "MonoFont.ttf", (1050, 600), (100, 50), "Clear",18, (100, 0, 0), testButtonPress)
-testLabel = Label(UILayer, screen, pygame, "MonoFont.ttf", 50, (30, 30), "Racing Line Finder", (40, 174, 191))
-testSlider = Slider(UILayer, screen, pygame, "MonoFont.ttf", 18, "Size", (200, 200, 200), (200, 0, 0), (100, 200), 1, 200, (0, 100), (0, 0), 50)
+mouseCoordsX = Label(UILayer, screen, pygame, "MonoFont.ttf", 15, (1150, 650), "", (200, 200, 200))
+mouseCoordsY = Label(UILayer, screen, pygame, "MonoFont.ttf", 15, (1150, 670), "", (200, 200, 200))
+
+magneticSwitch = Switch(UILayer, screen, pygame, "MonoFont.ttf", (200, 200, 200), (1180, 600), 0.8, value = False)
+magneticLabel = Label(UILayer, screen, pygame, "MonoFont.ttf", 15, (1120, 604), "Snap:", (200, 200, 200))
 
 def drawGrid(offset, frequency, lineWidth, lineColor):
     columns = math.ceil(screenWidth/ frequency)
@@ -91,11 +93,12 @@ while running:
             if event.key == pygame.K_z and pygame.key.get_mods() & pygame.KMOD_LCTRL and pygame.key.get_mods() & pygame.KMOD_LSHIFT:
                 track.redo()
 
-    track.update(mousePosX - offsetPosition[0], mousePosY - offsetPosition[1], screenWidth , screenHeight, screenBorder, pygame, offsetPosition)
+    track.update(mousePosX - offsetPosition[0], mousePosY - offsetPosition[1], screenWidth , screenHeight, screenBorder, pygame, offsetPosition, magneticSwitch.value)
     track.draw(programColours, screen, pygame, offsetPosition)
 
-    testLabel.text = str(testSlider.value)
-    UILayer.display(mousePosX, mousePosY)
+    mouseCoordsX.text = ("x: " + str(mousePosX - offsetPosition[0]))
+    mouseCoordsY.text = ("y: " + str(mousePosY - offsetPosition[1]))
+    UILayer.display()
 
     pygame.display.flip()
     clock.tick(120) #Refresh Rate
