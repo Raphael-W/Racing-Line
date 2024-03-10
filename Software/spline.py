@@ -15,6 +15,13 @@ def intersect(point1, point2, point3, point4):
     return (counterClockwise(point1, point2, point3) != counterClockwise(point2, point3, point4) and
             counterClockwise(point1, point2, point3) != counterClockwise(point1, point2, point4))
 
+def findKink(point, linePoints, width):
+    kinkFound = False
+    for pointIndex in range(len(linePoints)):
+        kinkFound = kinkFound or (pointDistance(point, linePoints[pointIndex]) < width)
+    return kinkFound
+
+
 #Returns a position on the curve given t and the control points
 def calculateSpline(control_points, t, calcGrad = False):
     control_points = [control_points[1]] + control_points + [control_points[-2]]
@@ -126,6 +133,7 @@ class Track:
 
         self.points.insert(index, anchorObject)
         self.computeSpline()
+        self.computeTrackEdges()
 
     def remove(self, index = -1):
         if index == -1:
@@ -134,6 +142,7 @@ class Track:
         if len(self.points) - 1 >= index:
             self.points.pop(index)
             self.computeSpline()
+            self.computeTrackEdges()
 
     def undo(self):
         print("Undo")
@@ -170,12 +179,8 @@ class Track:
                 t = tInt / resolution
                 self.splinePoints[tInt] = (calculateSpline(self.returnPointCoords(), t))
 
-            self.computeTrackEdges(updatePoints = updatePoints, width = 50)
-
-    def computeTrackEdges(self, updatePoints = [], width = 50):
-        perSegRes = len(self.splinePoints) // len(self.points) - 1
-
-        if len(self.points) >= 2:
+    def computeTrackEdges(self, perSegRes = 20, updatePoints = [], width = 50):
+        if len(self.splinePoints) >= 2:
             if len(updatePoints) > 0:
                 self.leftTrackEdge += [''] * (len(self.splinePoints) - len(self.leftTrackEdge) - 1)
                 self.rightTrackEdge += [''] * (len(self.splinePoints) - len(self.rightTrackEdge) - 1)
@@ -201,6 +206,20 @@ class Track:
                 self.leftTrackEdge[seg] = (newXLeft, newYLeft)
                 self.rightTrackEdge[seg] = (newXRight, newYRight)
 
+            nonKinkIndex = 0
+            for point in range(len(self.rightTrackEdge) - 1):
+                if findKink(self.rightTrackEdge[point], self.splinePoints, width - 3):
+                    self.rightTrackEdge[point] = self.rightTrackEdge[nonKinkIndex]
+                else:
+                    nonKinkIndex = point
+
+            nonKinkIndex = 0
+            for point in range(len(self.leftTrackEdge) - 1):
+                if findKink(self.leftTrackEdge[point], self.splinePoints, width - 3):
+                    self.leftTrackEdge[point] = self.leftTrackEdge[nonKinkIndex]
+                else:
+                    nonKinkIndex = point
+
     def update(self, mousePosX, mousePosY, screenWidth, screenHeight, screenBorder, pygame, offset, snap):
         self.pointsSelected = [point for point in self.points if point.pointSelected]
 
@@ -212,7 +231,9 @@ class Track:
             point.update(mousePosX, mousePosY, screenWidth, screenHeight, screenBorder, pygame, offset, snap)
 
         if len(self.pointsSelected) > 0:
-            self.computeSpline(updatePoints = [self.points.index(point) for point in self.pointsSelected])
+            updatePoints = [self.points.index(point) for point in self.pointsSelected]
+            self.computeSpline(updatePoints = updatePoints)
+            self.computeTrackEdges(updatePoints = updatePoints, width = 50)
 
 
     def draw(self, programColours, screen, pygame, offset):
