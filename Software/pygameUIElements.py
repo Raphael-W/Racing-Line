@@ -181,8 +181,8 @@ class Layer:
         self.number = number
         self.elements = []
 
-    def add(self, UIElement):
-        self.elements.append(UIElement)
+    def add(self, element):
+        self.elements.append(element)
 
     def display(self):
         for element in self.elements:

@@ -8,6 +8,13 @@ def pointDistance(point1, point2):
 
     return math.sqrt(((y2 - y1) ** 2) + ((x1 - x2) ** 2))
 
+def intersect(point1, point2, point3, point4):
+    def counterClockwise(point1, point2, point3):
+        return (point3[1] - point1[1]) * (point2[0] - point1[0]) > (point3[0] - point1[0]) * (point2[1] - point1[1])
+
+    return (counterClockwise(point1, point2, point3) != counterClockwise(point2, point3, point4) and
+            counterClockwise(point1, point2, point3) != counterClockwise(point1, point2, point4))
+
 #Returns a position on the curve given t and the control points
 def calculateSpline(control_points, t, calcGrad = False):
     control_points = [control_points[1]] + control_points + [control_points[-2]]
@@ -88,10 +95,14 @@ class ControlPoint:
     def draw(self, colour, screen, pygame, offset):
         pygame.draw.circle(screen, colour, (self.posX + offset[0], self.posY + offset[1]), self.size)
 
-class Curve:
+class Track:
     def __init__(self, points = []):
         self.points = []
         self.splinePoints = []
+
+        self.leftTrackEdge = []
+        self.rightTrackEdge = []
+
         self.history = []
         self.pointsSelected = []
         self.mouseHovering = None
@@ -159,6 +170,37 @@ class Curve:
                 t = tInt / resolution
                 self.splinePoints[tInt] = (calculateSpline(self.returnPointCoords(), t))
 
+            self.computeTrackEdges(updatePoints = updatePoints, width = 50)
+
+    def computeTrackEdges(self, updatePoints = [], width = 50):
+        perSegRes = len(self.splinePoints) // len(self.points) - 1
+
+        if len(self.points) >= 2:
+            if len(updatePoints) > 0:
+                self.leftTrackEdge += [''] * (len(self.splinePoints) - len(self.leftTrackEdge) - 1)
+                self.rightTrackEdge += [''] * (len(self.splinePoints) - len(self.rightTrackEdge) - 1)
+            else:
+                self.leftTrackEdge = [''] * (len(self.splinePoints) - 1)
+                self.rightTrackEdge = [''] * (len(self.splinePoints) - 1)
+
+            updateRange = (0, len(self.splinePoints) - 1)
+            if len(updatePoints) > 0:
+                lowerBound = max((min(updatePoints) - 2) * perSegRes, 0)
+                upperBound = min((max(updatePoints) + 2) * perSegRes, len(self.splinePoints) - 1)
+                updateRange = (lowerBound, upperBound)
+
+            for seg in range(*updateRange):
+                distance = pointDistance(self.splinePoints[seg], self.splinePoints[seg + 1])
+
+                newXLeft = ((width * (self.splinePoints[seg][1] - self.splinePoints[seg + 1][1])) / distance) + self.splinePoints[seg][0]
+                newYLeft = ((width * (self.splinePoints[seg + 1][0] - self.splinePoints[seg][0])) / distance) + self.splinePoints[seg][1]
+
+                newXRight = ((-width * (self.splinePoints[seg][1] - self.splinePoints[seg + 1][1])) / distance) + self.splinePoints[seg][0]
+                newYRight = ((-width * (self.splinePoints[seg + 1][0] - self.splinePoints[seg][0])) / distance) + self.splinePoints[seg][1]
+
+                self.leftTrackEdge[seg] = (newXLeft, newYLeft)
+                self.rightTrackEdge[seg] = (newXRight, newYRight)
+
     def update(self, mousePosX, mousePosY, screenWidth, screenHeight, screenBorder, pygame, offset, snap):
         self.pointsSelected = [point for point in self.points if point.pointSelected]
 
@@ -172,10 +214,19 @@ class Curve:
         if len(self.pointsSelected) > 0:
             self.computeSpline(updatePoints = [self.points.index(point) for point in self.pointsSelected])
 
+
     def draw(self, programColours, screen, pygame, offset):
+        if len(self.points) >= 2:
+            offsetMainCurve = [(point[0] + offset[0], point[1] + offset[1]) for point in self.splinePoints]
+            offsetLeftTrackEdge = [(point[0] + offset[0], point[1] + offset[1]) for point in self.leftTrackEdge]
+            offsetRightTrackEdge = [(point[0] + offset[0], point[1] + offset[1]) for point in self.rightTrackEdge]
+
+            combinedTrackEdges = offsetLeftTrackEdge + list(reversed(offsetRightTrackEdge))
+
+            pygame.draw.polygon(screen, (100, 100, 100), combinedTrackEdges)
+            pygame.draw.lines(screen, programColours["curve"], False, offsetMainCurve, 5)
+            pygame.draw.lines(screen, (200, 200, 200), False, offsetLeftTrackEdge, 10)
+            pygame.draw.lines(screen, (200, 200, 200), False, offsetRightTrackEdge, 10)
+
         for point in self.points:
             point.draw(programColours["controlPoint"], screen, pygame, offset)
-
-        if len(self.points) >= 2:
-            offsetCurve = [(point[0] + offset[0], point[1] + offset[1]) for point in self.splinePoints]
-            pygame.draw.lines(screen, programColours["curve"], False, offsetCurve, 5)

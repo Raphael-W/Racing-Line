@@ -4,7 +4,7 @@ from spline import *
 from pygameUIElements import *
 
 pygame.init()
-pygame.display.set_caption("Bézier Curve")
+pygame.display.set_caption("Racing Line Finder")
 screen = pygame.display.set_mode((1280, 720))#, pygame.RESIZABLE)
 clock = pygame.time.Clock()
 screenWidth, screenHeight = screen.get_size()
@@ -16,7 +16,7 @@ offsetPosition = (0, 0)
 trackWidth = 50
 screenBorder = 5
 
-track = Curve()
+mainTrack = Track()
 
 programColours = {"background": (20, 20, 20),
                   "curve": (128, 128, 128),
@@ -25,7 +25,7 @@ programColours = {"background": (20, 20, 20),
                   "innerGrid": (25, 25, 25)}
 
 def testButtonPress():
-    track.points = []
+    mainTrack.points = []
 
 UILayer = Layer("UI", 0)
 mouseCoordsX = Label(UILayer, screen, pygame, "MonoFont.ttf", 15, (1150, 650), "", (200, 200, 200))
@@ -73,34 +73,35 @@ while running:
         if event.type == pygame.QUIT:
             running = False
 
-        if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (track.mouseHovering is None) and (not UILayer.mouseOnLayer((mousePosX, mousePosY))):
+        if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (mainTrack.mouseHovering is None) and (not UILayer.mouseOnLayer((mousePosX, mousePosY))):
             index = -1
-            if len(track.points) >= 2:
-                onLine, nearPointIndex = track.mouseOnCurve(mousePosX - offsetPosition[0], mousePosY - offsetPosition[1], 20)
+            if len(mainTrack.points) >= 2:
+                onLine, nearPointIndex = mainTrack.mouseOnCurve(mousePosX - offsetPosition[0], mousePosY - offsetPosition[1], 20)
                 if onLine: index = nearPointIndex
-            track.add(ControlPoint(mousePosX - offsetPosition[0], mousePosY - offsetPosition[1]), index = index)
+            mainTrack.add(ControlPoint(mousePosX - offsetPosition[0], mousePosY - offsetPosition[1]), index = index)
 
-        if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[2] and (track.mouseHovering is not None) and (not UILayer.mouseOnLayer((mousePosX, mousePosY))):
-            track.remove(index = track.mouseHovering)
+        if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[2] and (mainTrack.mouseHovering is not None) and (not UILayer.mouseOnLayer((mousePosX, mousePosY))):
+            mainTrack.remove(index = mainTrack.mouseHovering)
 
         if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[1]:
             pivotPos = (mousePosX - offsetPosition[0], mousePosY - offsetPosition[1])
 
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_z and pygame.key.get_mods() & pygame.KMOD_LCTRL and not(pygame.key.get_mods() & pygame.KMOD_LSHIFT):
-                track.undo()
+                mainTrack.undo()
 
             if event.key == pygame.K_z and pygame.key.get_mods() & pygame.KMOD_LCTRL and pygame.key.get_mods() & pygame.KMOD_LSHIFT:
-                track.redo()
+                mainTrack.redo()
 
-    track.update(mousePosX - offsetPosition[0], mousePosY - offsetPosition[1], screenWidth , screenHeight, screenBorder, pygame, offsetPosition, magneticSwitch.value)
-    track.draw(programColours, screen, pygame, offsetPosition)
+    mainTrack.update(mousePosX - offsetPosition[0], mousePosY - offsetPosition[1], screenWidth, screenHeight, screenBorder, pygame, offsetPosition, magneticSwitch.value)
+    mainTrack.draw(programColours, screen, pygame, offsetPosition)
 
     mouseCoordsX.text = ("x: " + str(mousePosX - offsetPosition[0]))
     mouseCoordsY.text = ("y: " + str(mousePosY - offsetPosition[1]))
     UILayer.display()
 
+
     pygame.display.flip()
-    clock.tick(120) #Refresh Rate
+    clock.tick(60) #Refresh Rate
 
 pygame.quit()
