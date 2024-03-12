@@ -176,7 +176,7 @@ class Track:
             updateRange = (0, resolution)
 
             if len(updatePoints) > 0:
-                lowerBound = max((min(updatePoints) - 2), 0)
+                lowerBound = max((min(updatePoints) - 2, 0))
                 upperBound = min(max(updatePoints) + 2, numOfSegments)
                 updateRange = (lowerBound * perSegRes, upperBound * perSegRes)
 
@@ -216,13 +216,13 @@ class Track:
                 upperBound = min((max(updatePoints) + 2) * perSegRes, len(self.splinePoints))
                 updateRange = (lowerBound, upperBound)
 
-            nonKinkCoordLeft = (0, 0)
-            nonKinkCoordRight = (0, 0)
-
             xExt = (self.splinePoints[-1][0] - self.splinePoints[-2][0])
             yExt = (self.splinePoints[-1][1] - self.splinePoints[-2][1])
             pointExt = (self.splinePoints[-1][0] + xExt, self.splinePoints[-1][1] + yExt)
             extendedSplinePoints = self.splinePoints + [pointExt]
+
+            nonKinkCoordLeft = self.leftTrackEdge[updateRange[0]]
+            nonKinkCoordRight = self.rightTrackEdge[updateRange[0]]
 
             for seg in range(*updateRange):
                 distance = pointDistance(extendedSplinePoints[seg], extendedSplinePoints[seg + 1])
