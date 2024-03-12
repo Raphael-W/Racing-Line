@@ -161,7 +161,10 @@ class Track:
 
                 elif (numOfSegments * perSegRes) < len(self.splinePoints):
                     for point in updatePoints:
-                        self.splinePoints = self.splinePoints[:((point - 1) * perSegRes):] + self.splinePoints[(point * perSegRes):]
+                        if point > 0:
+                            self.splinePoints = self.splinePoints[:((point - 1) * perSegRes):] + self.splinePoints[(point * perSegRes):]
+                        else:
+                            self.splinePoints = self.splinePoints[((point + 1) * perSegRes):]
 
             else:
                 self.splinePoints = [''] * (numOfSegments * perSegRes)
@@ -173,6 +176,8 @@ class Track:
                 lowerBound = max((min(updatePoints) - 2), 0)
                 upperBound = min(max(updatePoints) + 2, numOfSegments)
                 updateRange = (lowerBound * perSegRes, upperBound * perSegRes)
+
+            print(updateRange)
 
             for tInt in range(*updateRange):
                 t = tInt / resolution
@@ -188,8 +193,12 @@ class Track:
 
                 elif len(self.splinePoints) < len(self.leftTrackEdge):
                     for point in updatePoints:
-                        self.leftTrackEdge = self.leftTrackEdge[:((point - 1) * perSegRes)] + self.leftTrackEdge[(point * perSegRes):]
-                        self.rightTrackEdge = self.rightTrackEdge[:((point - 1) * perSegRes)] + self.rightTrackEdge[(point * perSegRes):]
+                        if point > 0:
+                            self.leftTrackEdge = self.leftTrackEdge[:((point - 1) * perSegRes)] + self.leftTrackEdge[(point * perSegRes):]
+                            self.rightTrackEdge = self.rightTrackEdge[:((point - 1) * perSegRes)] + self.rightTrackEdge[(point * perSegRes):]
+                        else:
+                            self.leftTrackEdge = self.leftTrackEdge[((point + 1) * perSegRes):]
+                            self.rightTrackEdge = self.rightTrackEdge[((point + 1) * perSegRes):]
 
             else:
                 self.leftTrackEdge = [''] * (len(self.splinePoints))
@@ -218,19 +227,22 @@ class Track:
                 newXRight = ((-width * (extendedSplinePoints[seg][1] - extendedSplinePoints[seg + 1][1])) / distance) + extendedSplinePoints[seg][0]
                 newYRight = ((-width * (extendedSplinePoints[seg + 1][0] - extendedSplinePoints[seg][0])) / distance) + extendedSplinePoints[seg][1]
 
-                if findKink((newXLeft, newYLeft), extendedSplinePoints[updateRange[0]: updateRange[1]], width - 3):
+                lowerBound = max((min(updatePoints) - 3) * perSegRes, 0)
+                upperBound = min((max(updatePoints) + 3) * perSegRes, len(self.splinePoints))
+                updateRange = (lowerBound, upperBound)
+
+                if findKink((newXLeft, newYLeft), extendedSplinePoints[updateRange[0]: updateRange[1]], width - 1):
                     newXLeft, newYLeft = nonKinkCoordLeft
                 else:
                     nonKinkCoordLeft = (newXLeft, newYLeft)
 
-                if findKink((newXRight, newYRight), extendedSplinePoints[updateRange[0]: updateRange[1]], width - 3):
+                if findKink((newXRight, newYRight), extendedSplinePoints[updateRange[0]: updateRange[1]], width - 1):
                     newXRight, newYRight = nonKinkCoordRight
                 else:
                     nonKinkCoordRight = (newXRight, newYRight)
 
                 self.leftTrackEdge[seg] = (newXLeft, newYLeft)
                 self.rightTrackEdge[seg] = (newXRight, newYRight)
-            print(self.leftTrackEdge)
 
     def update(self, mousePosX, mousePosY, screenWidth, screenHeight, screenBorder, pygame, offset, snap):
         self.pointsSelected = [point for point in self.points if point.pointSelected]
@@ -248,7 +260,6 @@ class Track:
             updatePoints = [self.points.index(point) for point in self.pointsSelected]
             self.computeSpline(updatePoints = updatePoints)
             self.computeTrackEdges(updatePoints = updatePoints, width = 50)
-
 
     def draw(self, programColours, screen, pygame, offset):
         if len(self.points) >= 2:

@@ -22,17 +22,15 @@ programColours = {"background": (20, 20, 20),
                   "curve": (128, 128, 128),
                   "controlPoint": (24, 150, 204),
                   "mainGrid": (30, 30, 30),
-                  "innerGrid": (25, 25, 25)}
-
-def testButtonPress():
-    mainTrack.points = []
+                  "innerGrid": (25, 25, 25),
+                  "white": (200, 200, 200),}
 
 UILayer = Layer("UI", 0)
-mouseCoordsX = Label(UILayer, screen, pygame, "MonoFont.ttf", 15, (1150, 650), "", (200, 200, 200))
-mouseCoordsY = Label(UILayer, screen, pygame, "MonoFont.ttf", 15, (1150, 670), "", (200, 200, 200))
+mouseCoordsX = Label(UILayer, screen, pygame, "MonoFont.ttf", 15, (1150, 650), "", programColours["white"])
+mouseCoordsY = Label(UILayer, screen, pygame, "MonoFont.ttf", 15, (1150, 670), "", programColours["white"])
 
-magneticSwitch = Switch(UILayer, screen, pygame, "MonoFont.ttf", (200, 200, 200), (1180, 600), 0.8, value = False)
-magneticLabel = Label(UILayer, screen, pygame, "MonoFont.ttf", 15, (1120, 604), "Snap:", (200, 200, 200))
+magneticSwitch = Switch(UILayer, screen, pygame, "MonoFont.ttf", programColours["white"], (1180, 600), 0.8, value = False)
+magneticLabel = Label(UILayer, screen, pygame, "MonoFont.ttf", 15, (1120, 604), "Snap:", programColours["white"])
 
 def drawGrid(offset, frequency, lineWidth, lineColor):
     columns = math.ceil(screenWidth/ frequency)
@@ -99,7 +97,6 @@ while running:
     mouseCoordsX.text = ("x: " + str(mousePosX - offsetPosition[0]))
     mouseCoordsY.text = ("y: " + str(mousePosY - offsetPosition[1]))
     UILayer.display()
-
 
     pygame.display.flip()
     clock.tick(60) #Refresh Rate
