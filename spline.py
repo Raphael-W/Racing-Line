@@ -157,7 +157,10 @@ class Track:
             if len(updatePoints) > 0:
                 if (numOfSegments * perSegRes) > len(self.splinePoints):
                     for point in updatePoints:
-                        self.splinePoints = self.splinePoints[:((point - 1) * perSegRes):] + ([''] * perSegRes) + self.splinePoints[((point - 1) * perSegRes):]
+                        if point > 0:
+                            self.splinePoints = self.splinePoints[:((point - 1) * perSegRes):] + ([''] * perSegRes) + self.splinePoints[((point - 1) * perSegRes):]
+                        else:
+                            self.splinePoints = ([''] * perSegRes) + self.splinePoints
 
                 elif (numOfSegments * perSegRes) < len(self.splinePoints):
                     for point in updatePoints:
@@ -177,7 +180,6 @@ class Track:
                 upperBound = min(max(updatePoints) + 2, numOfSegments)
                 updateRange = (lowerBound * perSegRes, upperBound * perSegRes)
 
-            print(updateRange)
 
             for tInt in range(*updateRange):
                 t = tInt / resolution
@@ -188,8 +190,12 @@ class Track:
             if len(updatePoints) > 0:
                 if len(self.splinePoints) > len(self.leftTrackEdge):
                     for point in updatePoints:
-                        self.leftTrackEdge = self.leftTrackEdge[:((point - 1) * perSegRes)] + ([''] * perSegRes) + self.leftTrackEdge[((point - 1) * perSegRes):]
-                        self.rightTrackEdge = self.rightTrackEdge[:((point - 1) * perSegRes)] + ([''] * perSegRes) + self.rightTrackEdge[((point - 1) * perSegRes):]
+                        if point > 0:
+                            self.leftTrackEdge = self.leftTrackEdge[:((point - 1) * perSegRes)] + ([''] * perSegRes) + self.leftTrackEdge[((point - 1) * perSegRes):]
+                            self.rightTrackEdge = self.rightTrackEdge[:((point - 1) * perSegRes)] + ([''] * perSegRes) + self.rightTrackEdge[((point - 1) * perSegRes):]
+                        else:
+                            self.leftTrackEdge = ([''] * perSegRes) + self.leftTrackEdge
+                            self.rightTrackEdge = ([''] * perSegRes) + self.rightTrackEdge
 
                 elif len(self.splinePoints) < len(self.leftTrackEdge):
                     for point in updatePoints:
@@ -261,7 +267,7 @@ class Track:
             self.computeSpline(updatePoints = updatePoints)
             self.computeTrackEdges(updatePoints = updatePoints, width = 50)
 
-    def draw(self, programColours, screen, pygame, offset):
+    def draw(self, programColours, screen, pygame, offset, switchFront):
         if len(self.points) >= 2:
             offsetMainCurve = [(point[0] + offset[0], point[1] + offset[1]) for point in self.splinePoints]
             offsetLeftTrackEdge = [(point[0] + offset[0], point[1] + offset[1]) for point in self.leftTrackEdge]
@@ -274,5 +280,9 @@ class Track:
             pygame.draw.lines(screen, (200, 200, 200), False, offsetLeftTrackEdge, 10)
             pygame.draw.lines(screen, (200, 200, 200), False, offsetRightTrackEdge, 10)
 
-        for point in self.points:
-            point.draw(programColours["controlPoint"], screen, pygame, offset)
+        for point in range(len(self.points)):
+            colour = programColours["controlPoint"]
+            if (not switchFront and point == len(self.points) - 1) or (switchFront and point == 0):
+                colour = programColours["frontControlPoint"]
+
+            self.points[point].draw(colour, screen, pygame, offset)
