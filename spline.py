@@ -8,13 +8,6 @@ def pointDistance(point1, point2):
 
     return math.sqrt(((y2 - y1) ** 2) + ((x1 - x2) ** 2))
 
-def intersect(point1, point2, point3, point4):
-    def counterClockwise(point1, point2, point3):
-        return (point3[1] - point1[1]) * (point2[0] - point1[0]) > (point3[0] - point1[0]) * (point2[1] - point1[1])
-
-    return (counterClockwise(point1, point2, point3) != counterClockwise(point2, point3, point4) and
-            counterClockwise(point1, point2, point3) != counterClockwise(point1, point2, point4))
-
 def findKink(point, linePoints, width):
     kinkFound = False
     for pointIndex in range(len(linePoints)):
@@ -132,8 +125,8 @@ class Track:
             index = len(self.points)
 
         self.points.insert(index, anchorObject)
-        self.computeSpline()
-        self.computeTrackEdges()
+        self.computeSpline(updatePoints = [index])
+        self.computeTrackEdges(updatePoints = [index])
 
     def remove(self, index = -1):
         if index == -1:
@@ -141,8 +134,8 @@ class Track:
 
         if len(self.points) - 1 >= index:
             self.points.pop(index)
-            self.computeSpline()
-            self.computeTrackEdges()
+            self.computeSpline(updatePoints = [index])
+            self.computeTrackEdges(updatePoints = [index])
 
     def undo(self):
         print("Undo")
@@ -162,10 +155,16 @@ class Track:
 
         if len(self.points) >= 2:
             if len(updatePoints) > 0:
-                self.splinePoints += [''] * ((numOfSegments * perSegRes) - len(self.splinePoints))
+                if (numOfSegments * perSegRes) > len(self.splinePoints):
+                    for point in updatePoints:
+                        self.splinePoints = self.splinePoints[:((point - 1) * perSegRes):] + ([''] * perSegRes) + self.splinePoints[((point - 1) * perSegRes):]
+
+                elif (numOfSegments * perSegRes) < len(self.splinePoints):
+                    for point in updatePoints:
+                        self.splinePoints = self.splinePoints[:((point - 1) * perSegRes):] + self.splinePoints[(point * perSegRes):]
+
             else:
                 self.splinePoints = [''] * (numOfSegments * perSegRes)
-
 
             resolution = numOfSegments * perSegRes
             updateRange = (0, resolution)
@@ -182,46 +181,61 @@ class Track:
     def computeTrackEdges(self, perSegRes = 20, updatePoints = [], width = 50):
         if len(self.splinePoints) >= 2:
             if len(updatePoints) > 0:
-                self.leftTrackEdge += [''] * (len(self.splinePoints) - len(self.leftTrackEdge) - 1)
-                self.rightTrackEdge += [''] * (len(self.splinePoints) - len(self.rightTrackEdge) - 1)
-            else:
-                self.leftTrackEdge = [''] * (len(self.splinePoints) - 1)
-                self.rightTrackEdge = [''] * (len(self.splinePoints) - 1)
+                if len(self.splinePoints) > len(self.leftTrackEdge):
+                    for point in updatePoints:
+                        self.leftTrackEdge = self.leftTrackEdge[:((point - 1) * perSegRes)] + ([''] * perSegRes) + self.leftTrackEdge[((point - 1) * perSegRes):]
+                        self.rightTrackEdge = self.rightTrackEdge[:((point - 1) * perSegRes)] + ([''] * perSegRes) + self.rightTrackEdge[((point - 1) * perSegRes):]
 
-            updateRange = (0, len(self.splinePoints) - 1)
+                elif len(self.splinePoints) < len(self.leftTrackEdge):
+                    for point in updatePoints:
+                        self.leftTrackEdge = self.leftTrackEdge[:((point - 1) * perSegRes)] + self.leftTrackEdge[(point * perSegRes):]
+                        self.rightTrackEdge = self.rightTrackEdge[:((point - 1) * perSegRes)] + self.rightTrackEdge[(point * perSegRes):]
+
+            else:
+                self.leftTrackEdge = [''] * (len(self.splinePoints))
+                self.rightTrackEdge = [''] * (len(self.splinePoints))
+
+            updateRange = (0, len(self.splinePoints))
             if len(updatePoints) > 0:
                 lowerBound = max((min(updatePoints) - 2) * perSegRes, 0)
-                upperBound = min((max(updatePoints) + 2) * perSegRes, len(self.splinePoints) - 1)
+                upperBound = min((max(updatePoints) + 2) * perSegRes, len(self.splinePoints))
                 updateRange = (lowerBound, upperBound)
 
+            nonKinkCoordLeft = (0, 0)
+            nonKinkCoordRight = (0, 0)
+
+            xExt = (self.splinePoints[-1][0] - self.splinePoints[-2][0])
+            yExt = (self.splinePoints[-1][1] - self.splinePoints[-2][1])
+            pointExt = (self.splinePoints[-1][0] + xExt, self.splinePoints[-1][1] + yExt)
+            extendedSplinePoints = self.splinePoints + [pointExt]
+
             for seg in range(*updateRange):
-                distance = pointDistance(self.splinePoints[seg], self.splinePoints[seg + 1])
+                distance = pointDistance(extendedSplinePoints[seg], extendedSplinePoints[seg + 1])
 
-                newXLeft = ((width * (self.splinePoints[seg][1] - self.splinePoints[seg + 1][1])) / distance) + self.splinePoints[seg][0]
-                newYLeft = ((width * (self.splinePoints[seg + 1][0] - self.splinePoints[seg][0])) / distance) + self.splinePoints[seg][1]
+                newXLeft = ((width * (extendedSplinePoints[seg][1] - extendedSplinePoints[seg + 1][1])) / distance) + extendedSplinePoints[seg][0]
+                newYLeft = ((width * (extendedSplinePoints[seg + 1][0] - extendedSplinePoints[seg][0])) / distance) + extendedSplinePoints[seg][1]
 
-                newXRight = ((-width * (self.splinePoints[seg][1] - self.splinePoints[seg + 1][1])) / distance) + self.splinePoints[seg][0]
-                newYRight = ((-width * (self.splinePoints[seg + 1][0] - self.splinePoints[seg][0])) / distance) + self.splinePoints[seg][1]
+                newXRight = ((-width * (extendedSplinePoints[seg][1] - extendedSplinePoints[seg + 1][1])) / distance) + extendedSplinePoints[seg][0]
+                newYRight = ((-width * (extendedSplinePoints[seg + 1][0] - extendedSplinePoints[seg][0])) / distance) + extendedSplinePoints[seg][1]
+
+                if findKink((newXLeft, newYLeft), extendedSplinePoints[updateRange[0]: updateRange[1]], width - 3):
+                    newXLeft, newYLeft = nonKinkCoordLeft
+                else:
+                    nonKinkCoordLeft = (newXLeft, newYLeft)
+
+                if findKink((newXRight, newYRight), extendedSplinePoints[updateRange[0]: updateRange[1]], width - 3):
+                    newXRight, newYRight = nonKinkCoordRight
+                else:
+                    nonKinkCoordRight = (newXRight, newYRight)
 
                 self.leftTrackEdge[seg] = (newXLeft, newYLeft)
                 self.rightTrackEdge[seg] = (newXRight, newYRight)
-
-            nonKinkIndex = 0
-            for point in range(len(self.rightTrackEdge) - 1):
-                if findKink(self.rightTrackEdge[point], self.splinePoints, width - 3):
-                    self.rightTrackEdge[point] = self.rightTrackEdge[nonKinkIndex]
-                else:
-                    nonKinkIndex = point
-
-            nonKinkIndex = 0
-            for point in range(len(self.leftTrackEdge) - 1):
-                if findKink(self.leftTrackEdge[point], self.splinePoints, width - 3):
-                    self.leftTrackEdge[point] = self.leftTrackEdge[nonKinkIndex]
-                else:
-                    nonKinkIndex = point
+            print(self.leftTrackEdge)
 
     def update(self, mousePosX, mousePosY, screenWidth, screenHeight, screenBorder, pygame, offset, snap):
         self.pointsSelected = [point for point in self.points if point.pointSelected]
+        for point in self.pointsSelected[1:]:
+            point.pointSelected = False
 
         self.mouseHovering = None
         for point in self.points:

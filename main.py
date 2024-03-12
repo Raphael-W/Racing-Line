@@ -5,7 +5,7 @@ from pygameUIElements import *
 
 pygame.init()
 pygame.display.set_caption("Racing Line Finder")
-screen = pygame.display.set_mode((1280, 720))#, pygame.RESIZABLE)
+screen = pygame.display.set_mode((1280, 720), pygame.RESIZABLE)
 clock = pygame.time.Clock()
 screenWidth, screenHeight = screen.get_size()
 running = True
