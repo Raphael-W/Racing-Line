@@ -8,6 +8,14 @@ def pointDistance(point1, point2):
 
     return math.sqrt(((y2 - y1) ** 2) + ((x1 - x2) ** 2))
 
+def lineToPointDistance(point1, point2, point3):
+    point1 = np.array(point1)
+    point2 = np.array(point2)
+    point3 = np.array(point3)
+
+    return np.linalg.norm(np.cross(point2-point1, point1-point3))/np.linalg.norm(point2-point1)
+
+
 def findKink(point, linePoints, width):
     kinkFound = False
     for pointIndex in range(len(linePoints)):
@@ -41,10 +49,6 @@ def calculateSpline(control_points, t, calcGrad = False):
     p0, p1, p2, p3 = control_points[segment:segment+4]
 
     return interpolate(p0, p1, p2, p3, t)
-
-#Calculates the gradient of two coordinates in format [x, y]
-def gradient(coords1, coords2):
-    return (coords2[1] - coords1[1]) / (coords2[0] - coords1[0])
 
 #The class for a control point
 class ControlPoint:
@@ -112,8 +116,8 @@ class Track:
 
     #Checks if current mouse pos crosses the spline (for inserting points)
     def mouseOnCurve(self, mousePosX, mousePosY, margin):
-        for pointIndex in range(len(self.splinePoints)):
-            if pointDistance((mousePosX, mousePosY), self.splinePoints[pointIndex]) <= margin:
+        for pointIndex in range(len(self.splinePoints) - 1):
+            if lineToPointDistance(self.splinePoints[pointIndex], self.splinePoints[pointIndex + 1], (mousePosX, mousePosY)) <= margin:
                 reconstructedT = (pointIndex / len(self.splinePoints))
                 segment = int(reconstructedT * (len(self.points) - 1)) + 1
                 return True, segment

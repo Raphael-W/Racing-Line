@@ -1,7 +1,8 @@
 import pygame
 import pygame.freetype
-from spline import *
+
 from pygameUIElements import *
+from spline import *
 
 pygame.init()
 pygame.display.set_caption("Racing Line Finder")
@@ -78,7 +79,7 @@ while running:
         if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (mainTrack.mouseHovering is None) and (not UILayer.mouseOnLayer((mousePosX, mousePosY))):
             index = -1
             if len(mainTrack.points) >= 2:
-                onLine, nearPointIndex = mainTrack.mouseOnCurve(mousePosX - offsetPosition[0], mousePosY - offsetPosition[1], 20)
+                onLine, nearPointIndex = mainTrack.mouseOnCurve(mousePosX - offsetPosition[0], mousePosY - offsetPosition[1], 10)
                 if onLine: index = nearPointIndex
                 if switchFront.value: index = 0
             mainTrack.add(ControlPoint(mousePosX - offsetPosition[0], mousePosY - offsetPosition[1]), index = index)
