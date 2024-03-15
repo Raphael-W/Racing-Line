@@ -8,12 +8,18 @@ def pointDistance(point1, point2):
 
     return math.sqrt(((y2 - y1) ** 2) + ((x1 - x2) ** 2))
 
-def lineToPointDistance(point1, point2, point3):
-    point1 = np.array(point1)
-    point2 = np.array(point2)
-    point3 = np.array(point3)
+def lineToPointDistance(lineA, lineB, point):
+    lineA = np.array(lineA)
+    lineB = np.array(lineB)
+    point = np.array(point)
 
-    return np.abs(np.cross(point2-point1, point1-point3)) / np.linalg.norm(point2-point1)
+    l2 = pointDistance(lineA, lineB) ** 2
+    if l2 == 0:
+        return pointDistance(point, lineA)
+
+    t = max(0, min(1, np.dot(point - lineA, lineB - lineA) / l2))
+    projection = lineA + t * (lineB - lineA)
+    return pointDistance(point, projection)
 
 def findKink(point, linePoints, width):
     kinkFound = False
