@@ -29,7 +29,7 @@ def findKink(point, linePoints, width):
 
 
 #Returns a position on the curve given t and the control points
-def calculateSpline(control_points, t, calcGrad = False):
+def calculateSpline(control_points, t, closed = False):
     control_points = [control_points[1]] + control_points + [control_points[-2]]
 
     #Interpolate curve using Catmull Rom
@@ -40,14 +40,11 @@ def calculateSpline(control_points, t, calcGrad = False):
         P2 = np.array(P2)
         P3 = np.array(P3)
 
-        if calcGrad:
-            return 0.5 * (((T * T) * ((3 * P3[0]) - (18 * P2[0]) + (18 * P1[0]) - (6 * P0[0]))) + (T * ((-2 * P3[0]) + (16 * P2[0]) - (20 * P1[0]) + (8 * P0[0]))) + (2 * P2[0]) - (2 * P0[0])) + T
-        else:
-            return (
-                T * ((2 - T) * T - 1) * P0
-                + (T * T * (3 * T - 5) + 2) * P1
-                + T * ((4 - 3 * T) * T + 1) * P2
-                + (T - 1) * T * T * P3) / 2
+        return (
+            T * ((2 - T) * T - 1) * P0
+            + (T * T * (3 * T - 5) + 2) * P1
+            + T * ((4 - 3 * T) * T + 1) * P2
+            + (T - 1) * T * T * P3) / 2
 
     segment = int(t * (len(control_points) - 3))
     t = (t * (len(control_points) - 3)) - segment
@@ -115,12 +112,19 @@ class Track:
         self.history = []
         self.pointsSelected = []
         self.mouseHovering = None
+        self.closed = False
 
         self.perSegRes = 20
         self.width = 50
 
         for point in points:
             self.points.append(ControlPoint(point[0], point[1]))
+
+    def closeTrack(self, newValue):
+        self.closed = newValue
+
+        self.computeSpline(updatePoints = [])
+        self.computeTrackEdges(updatePoints = [])
 
     #Checks if current mouse pos crosses the spline (for inserting points)
     def mouseOnCurve(self, mousePosX, mousePosY, margin):
@@ -163,9 +167,9 @@ class Track:
         return pointCoords
 
     def computeSpline(self, updatePoints = []):
-        numOfSegments = len(self.points) - 1
-
         if len(self.points) >= 2:
+            numOfSegments = len(self.points) - 1
+
             if len(updatePoints) > 0:
                 if (numOfSegments * self.perSegRes) > len(self.splinePoints):
                     for point in updatePoints:
@@ -186,16 +190,14 @@ class Track:
 
             resolution = numOfSegments * self.perSegRes
             updateRange = (0, resolution)
-
             if len(updatePoints) > 0:
                 lowerBound = max((min(updatePoints) - 2, 0))
                 upperBound = min(max(updatePoints) + 2, numOfSegments)
                 updateRange = (lowerBound * self.perSegRes, upperBound * self.perSegRes)
 
-
             for tInt in range(*updateRange):
                 t = tInt / resolution
-                self.splinePoints[tInt] = (calculateSpline(self.returnPointCoords(), t))
+                self.splinePoints[tInt] = (calculateSpline(self.returnPointCoords(), t, self.closed))
 
     def computeTrackEdges(self, updatePoints = []):
         if len(self.splinePoints) >= 2:
@@ -269,8 +271,10 @@ class Track:
 
     def update(self, mousePosX, mousePosY, screenWidth, screenHeight, screenBorder, pygame, offset, snap):
         self.pointsSelected = [point for point in self.points if point.pointSelected]
-        for point in self.pointsSelected[1:]:
-            point.pointSelected = False
+
+        for point in range(len(self.pointsSelected)):
+            if not(point == 0):
+                self.pointsSelected[point].pointSelected = False
 
         self.mouseHovering = None
         for point in self.points:
@@ -281,6 +285,7 @@ class Track:
 
         if len(self.pointsSelected) > 0:
             updatePoints = [self.points.index(point) for point in self.pointsSelected]
+
             self.computeSpline(updatePoints = updatePoints)
             self.computeTrackEdges(updatePoints = updatePoints)
 

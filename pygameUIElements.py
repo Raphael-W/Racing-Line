@@ -47,8 +47,6 @@ class UIElement:
 
         return newX, newY
 
-
-
 class Button (UIElement):
     def __init__(self, layer, font, pos, stick, dimensions, text, fontSize, colour, action):
         super().__init__(layer, font, fontSize, text, colour, pos, stick)
@@ -135,6 +133,9 @@ class Slider (UIElement): #Use label class for label
             self.handleSelected = False
 
         if self.handleSelected:
+            if self.action is not None:
+                self.action()
+
             if self.posX < mouseX < (self.posX + self.length):
                 self.handleX = mouseX - self.posX
                 self.value = self.handleX / (self.length / (self.valueRange[1] - self.valueRange[0]))
@@ -182,6 +183,9 @@ class Switch (UIElement): #Use label class for label
         if self.pointSelected:
             self.value = not self.value
             self.pointSelected = False
+
+            if self.action is not None:
+                self.action()
 
         if self.value:
             self.colour = (41, 66, 43)

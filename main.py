@@ -13,8 +13,6 @@ running = True
 
 pivotPos = None
 offsetPosition = (0, 0)
-
-trackWidth = 50
 screenBorder = 5
 
 mainTrack = Track()
@@ -28,14 +26,17 @@ programColours = {"background": (20, 20, 20),
                   "white": (200, 200, 200),}
 
 UILayer = Layer("UI", 0, screen, pygame)
-mouseCoordsX = Label(UILayer, "MonoFont.ttf", 15, (150, 100), "SE", "", programColours["white"])
-mouseCoordsY = Label(UILayer, "MonoFont.ttf", 15, (150, 80), "SE", "", programColours["white"])
+mouseCoordsX = Label(UILayer, "MonoFont.ttf", 15, (100, 50), "NE", "", programColours["white"])
+mouseCoordsY = Label(UILayer, "MonoFont.ttf", 15, (100, 30), "NE", "", programColours["white"])
 
-magneticSwitch = Switch(UILayer, "MonoFont.ttf", programColours["white"], (120, 150), "SE", 0.8, value = False)
-magneticLabel = Label(UILayer, "MonoFont.ttf", 15, (170, 146), "SE", "Snap:", programColours["white"])
+magneticSwitch = Switch(UILayer, "MonoFont.ttf", programColours["white"], (120, 100), "SE", 0.8, value = False)
+magneticLabel = Label(UILayer, "MonoFont.ttf", 15, (170, 98), "SE", "Snap:", programColours["white"])
 
-switchFront = Switch(UILayer, "MonoFont.ttf", programColours["white"], (120, 190), "SE", 0.8, value = False)
-switchFrontLabel = Label(UILayer, "MonoFont.ttf", 15, (240, 186), "SE", "Switch front", programColours["white"])
+switchFront = Switch(UILayer, "MonoFont.ttf", programColours["white"], (120, 130), "SE", 0.8, value = False)
+switchFrontLabel = Label(UILayer, "MonoFont.ttf", 15, (235, 128), "SE", "Switch front", programColours["white"])
+
+closeTrack = Switch(UILayer, "MonoFont.ttf", programColours["white"], (120, 160), "SE", 0.8, value = False, action = lambda: mainTrack.closeTrack(closeTrack.value))
+closeTrackLabel = Label(UILayer, "MonoFont.ttf", 15, (173, 158), "SE", "Close", programColours["white"])
 
 def drawGrid(offset, frequency, lineWidth, lineColor):
     columns = math.ceil(screenWidth/ frequency)
@@ -78,11 +79,15 @@ while running:
 
         if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (mainTrack.mouseHovering is None) and (not UILayer.mouseOnLayer((mousePosX, mousePosY))):
             index = -1
+            validPlacement = True
+            onLine = False
             if len(mainTrack.points) >= 2:
                 onLine, nearPointIndex = mainTrack.mouseOnCurve(mousePosX - offsetPosition[0], mousePosY - offsetPosition[1], 20)
                 if onLine: index = nearPointIndex
                 if switchFront.value: index = 0
-            mainTrack.add(ControlPoint(mousePosX - offsetPosition[0], mousePosY - offsetPosition[1]), index = index)
+
+            validPlacement = not mainTrack.closed or onLine
+            if validPlacement: mainTrack.add(ControlPoint(mousePosX - offsetPosition[0], mousePosY - offsetPosition[1]), index = index)
 
         if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[2] and (mainTrack.mouseHovering is not None) and (not UILayer.mouseOnLayer((mousePosX, mousePosY))):
             mainTrack.remove(index = mainTrack.mouseHovering)
