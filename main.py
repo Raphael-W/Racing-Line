@@ -35,9 +35,6 @@ magneticLabel = Label(UILayer, "MonoFont.ttf", 15, (170, 98), "SE", "Snap:", pro
 switchFront = Switch(UILayer, "MonoFont.ttf", programColours["white"], (120, 130), "SE", 0.8, value = False)
 switchFrontLabel = Label(UILayer, "MonoFont.ttf", 15, (235, 128), "SE", "Switch front", programColours["white"])
 
-closeTrack = Switch(UILayer, "MonoFont.ttf", programColours["white"], (120, 160), "SE", 0.8, value = False, action = lambda: mainTrack.closeTrack(closeTrack.value))
-closeTrackLabel = Label(UILayer, "MonoFont.ttf", 15, (173, 158), "SE", "Close", programColours["white"])
-
 def drawGrid(offset, frequency, lineWidth, lineColor):
     columns = math.ceil(screenWidth/ frequency)
     rows = math.ceil(screenHeight/ frequency)

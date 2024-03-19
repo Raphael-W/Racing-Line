@@ -119,10 +119,6 @@ class Track:
         for point in points:
             self.points.append(ControlPoint(point[0], point[1]))
 
-    def closeTrack(self, newValue):
-        self.closed = newValue
-        pass
-
     #Checks if current mouse pos crosses the spline (for inserting points)
     def mouseOnCurve(self, mousePosX, mousePosY, margin):
         for pointIndex in range(len(self.splinePoints) - 1):
@@ -255,11 +251,11 @@ class Track:
                 nonKinkCoordRight = self.rightTrackEdge[seg]
 
     def update(self, mousePosX, mousePosY, screenWidth, screenHeight, screenBorder, pygame, offset, snap):
-        self.pointsSelected = [point for point in self.points if point.pointSelected]
+        self.pointsSelected = [[self.points[point], point] for point in range(len(self.points)) if self.points[point].pointSelected]
 
         for point in range(len(self.pointsSelected)):
-            if not(point == 0):
-                self.pointsSelected[point].pointSelected = False
+            if not(point == 0 or (((self.pointsSelected[point][1] == 0) or (self.pointsSelected[point][1] == len(self.points) - 1)) and self.closed)):
+                self.pointsSelected[point][0].pointSelected = False
 
         self.mouseHovering = None
         for point in self.points:
@@ -268,8 +264,21 @@ class Track:
         for point in self.points:
             point.update(mousePosX, mousePosY, screenWidth, screenHeight, screenBorder, pygame, offset, snap)
 
+        if len(self.points) >= 3:
+            snapThreshold = 50
+            if self.points[0].pointSelected and (-snapThreshold <= self.points[0].posX - self.points[-1].posX <= snapThreshold) and (-snapThreshold <= self.points[0].posY - self.points[-1].posY <= snapThreshold) and not(pygame.key.get_mods() & pygame.KMOD_LSHIFT):
+                self.points[0].posX, self.points[0].posY = self.points[-1].posX, self.points[-1].posY
+                self.closed = True
+
+            elif self.points[-1].pointSelected and (-snapThreshold <= self.points[-1].posX - self.points[0].posX <= snapThreshold) and (-snapThreshold <= self.points[-1].posY - self.points[0].posY <= snapThreshold) and not(pygame.key.get_mods() & pygame.KMOD_LSHIFT):
+                self.points[-1].posX, self.points[-1].posY = self.points[0].posX, self.points[0].posY
+                self.closed = True
+
+            if (self.points[0].pointSelected or self.points[-1].pointSelected) and (pygame.key.get_mods() & pygame.KMOD_LSHIFT):
+                self.closed = False
+
         if len(self.pointsSelected) > 0:
-            updatePoints = [self.points.index(point) for point in self.pointsSelected]
+            updatePoints = [point[1] for point in self.pointsSelected]
 
             self.computeSpline(updatePoints = updatePoints)
             self.computeTrackEdges(updatePoints = updatePoints)
