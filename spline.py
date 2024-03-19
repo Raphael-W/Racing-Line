@@ -31,7 +31,6 @@ def findKink(point, linePoints, width):
 #Returns a position on the curve given t and the control points
 def calculateSpline(control_points, t, closed = False):
     control_points = [control_points[1]] + control_points + [control_points[-2]]
-
     #Interpolate curve using Catmull Rom
     def interpolate(P0, P1, P2, P3, T):
 
@@ -122,18 +121,18 @@ class Track:
 
     def closeTrack(self, newValue):
         self.closed = newValue
-
-        self.computeSpline(updatePoints = [])
-        self.computeTrackEdges(updatePoints = [])
+        pass
 
     #Checks if current mouse pos crosses the spline (for inserting points)
     def mouseOnCurve(self, mousePosX, mousePosY, margin):
         for pointIndex in range(len(self.splinePoints) - 1):
             if lineToPointDistance(self.splinePoints[pointIndex], self.splinePoints[pointIndex + 1], (mousePosX, mousePosY)) <= margin:
                 reconstructedT = (pointIndex / len(self.splinePoints))
-                segment = int(reconstructedT * (len(self.points) - 1)) + 1
-                return True, segment
 
+                numOfPoints = len(self.points) - 1
+                segment = int(reconstructedT * numOfPoints) + 1
+
+                return True, segment
         return False, None
 
     def add(self, anchorObject, index = -1):
@@ -141,6 +140,16 @@ class Track:
             index = len(self.points)
 
         self.points.insert(index, anchorObject)
+        if len(self.points) > 1:
+            if index > 0:
+                self.splinePoints = self.splinePoints[:((index - 1) * self.perSegRes):] + ([''] * self.perSegRes) + self.splinePoints[((index - 1) * self.perSegRes):]
+                self.leftTrackEdge = self.leftTrackEdge[:((index - 1) * self.perSegRes)] + ([''] * self.perSegRes) + self.leftTrackEdge[((index - 1) * self.perSegRes):]
+                self.rightTrackEdge = self.rightTrackEdge[:((index - 1) * self.perSegRes)] + ([''] * self.perSegRes) + self.rightTrackEdge[((index - 1) * self.perSegRes):]
+            else:
+                self.splinePoints = ([''] * self.perSegRes) + self.splinePoints
+                self.leftTrackEdge = ([''] * self.perSegRes) + self.leftTrackEdge
+                self.rightTrackEdge = ([''] * self.perSegRes) + self.rightTrackEdge
+
         self.computeSpline(updatePoints = [index])
         self.computeTrackEdges(updatePoints = [index])
 
@@ -150,6 +159,16 @@ class Track:
 
         if len(self.points) - 1 >= index:
             self.points.pop(index)
+
+            if index > 0:
+                self.splinePoints = self.splinePoints[:((index - 1) * self.perSegRes):] + self.splinePoints[(index * self.perSegRes):]
+                self.leftTrackEdge = self.leftTrackEdge[:((index - 1) * self.perSegRes)] + self.leftTrackEdge[(index * self.perSegRes):]
+                self.rightTrackEdge = self.rightTrackEdge[:((index - 1) * self.perSegRes)] + self.rightTrackEdge[(index * self.perSegRes):]
+            else:
+                self.splinePoints = self.splinePoints[((index + 1) * self.perSegRes):]
+                self.leftTrackEdge = self.leftTrackEdge[((index + 1) * self.perSegRes):]
+                self.rightTrackEdge = self.rightTrackEdge[((index + 1) * self.perSegRes):]
+
             self.computeSpline(updatePoints = [index])
             self.computeTrackEdges(updatePoints = [index])
 
@@ -170,22 +189,7 @@ class Track:
         if len(self.points) >= 2:
             numOfSegments = len(self.points) - 1
 
-            if len(updatePoints) > 0:
-                if (numOfSegments * self.perSegRes) > len(self.splinePoints):
-                    for point in updatePoints:
-                        if point > 0:
-                            self.splinePoints = self.splinePoints[:((point - 1) * self.perSegRes):] + ([''] * self.perSegRes) + self.splinePoints[((point - 1) * self.perSegRes):]
-                        else:
-                            self.splinePoints = ([''] * self.perSegRes) + self.splinePoints
-
-                elif (numOfSegments * self.perSegRes) < len(self.splinePoints):
-                    for point in updatePoints:
-                        if point > 0:
-                            self.splinePoints = self.splinePoints[:((point - 1) * self.perSegRes):] + self.splinePoints[(point * self.perSegRes):]
-                        else:
-                            self.splinePoints = self.splinePoints[((point + 1) * self.perSegRes):]
-
-            else:
+            if len(updatePoints) == 0:
                 self.splinePoints = [''] * (numOfSegments * self.perSegRes)
 
             resolution = numOfSegments * self.perSegRes
@@ -201,26 +205,7 @@ class Track:
 
     def computeTrackEdges(self, updatePoints = []):
         if len(self.splinePoints) >= 2:
-            if len(updatePoints) > 0:
-                if len(self.splinePoints) > len(self.leftTrackEdge):
-                    for point in updatePoints:
-                        if point > 0:
-                            self.leftTrackEdge = self.leftTrackEdge[:((point - 1) * self.perSegRes)] + ([''] * self.perSegRes) + self.leftTrackEdge[((point - 1) * self.perSegRes):]
-                            self.rightTrackEdge = self.rightTrackEdge[:((point - 1) * self.perSegRes)] + ([''] * self.perSegRes) + self.rightTrackEdge[((point - 1) * self.perSegRes):]
-                        else:
-                            self.leftTrackEdge = ([''] * self.perSegRes) + self.leftTrackEdge
-                            self.rightTrackEdge = ([''] * self.perSegRes) + self.rightTrackEdge
-
-                elif len(self.splinePoints) < len(self.leftTrackEdge):
-                    for point in updatePoints:
-                        if point > 0:
-                            self.leftTrackEdge = self.leftTrackEdge[:((point - 1) * self.perSegRes)] + self.leftTrackEdge[(point * self.perSegRes):]
-                            self.rightTrackEdge = self.rightTrackEdge[:((point - 1) * self.perSegRes)] + self.rightTrackEdge[(point * self.perSegRes):]
-                        else:
-                            self.leftTrackEdge = self.leftTrackEdge[((point + 1) * self.perSegRes):]
-                            self.rightTrackEdge = self.rightTrackEdge[((point + 1) * self.perSegRes):]
-
-            else:
+            if len(updatePoints) == 0:
                 self.leftTrackEdge = [''] * (len(self.splinePoints))
                 self.rightTrackEdge = [''] * (len(self.splinePoints))
 
