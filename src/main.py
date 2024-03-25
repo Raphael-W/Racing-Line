@@ -78,12 +78,15 @@ while running:
 
         if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (mainTrack.mouseHovering is None) and (not UILayer.mouseOnLayer((mousePosX, mousePosY))):
             index = -1
+            if switchFront.value:
+                index = 0
+
             validPlacement = True
             onLine = False
             if len(mainTrack.points) >= 2:
                 onLine, nearPointIndex = mainTrack.mouseOnCurve(mousePosX - offsetPosition[0], mousePosY - offsetPosition[1], 20)
                 if onLine: index = nearPointIndex
-                if switchFront.value: index = 0
+
 
             validPlacement = not mainTrack.closed or onLine
             if validPlacement: mainTrack.add(ControlPoint(mousePosX - offsetPosition[0], mousePosY - offsetPosition[1]), index = index)
