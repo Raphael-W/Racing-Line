@@ -357,8 +357,10 @@ class Track:
             #     pygame.draw.circle(screen, programColours["curve"], i, 5)
 
         for point in range(len(self.points)):
-            colour = programColours["controlPoint"]
-            if (not switchFront and point == len(self.points) - 1) or (switchFront and point == 0):
+
+            if (not switchFront and point == len(self.points) - 1) or (switchFront and point == 0) or (self.closed and ((point == 0) or (point == len(self.points) - 1))):
                 colour = programColours["frontControlPoint"]
+            else:
+                colour = programColours["controlPoint"]
 
             self.points[point].draw(colour, screen, pygame, offset)
