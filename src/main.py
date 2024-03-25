@@ -25,15 +25,17 @@ programColours = {"background": (20, 20, 20),
                   "innerGrid": (25, 25, 25),
                   "white": (200, 200, 200),}
 
-UILayer = Layer("UI", 0, screen, pygame)
-mouseCoordsX = Label(UILayer, "MonoFont.ttf", 15, (100, 50), "NE", "", programColours["white"])
-mouseCoordsY = Label(UILayer, "MonoFont.ttf", 15, (100, 30), "NE", "", programColours["white"])
+mainFont = "../assets/MonoFont.ttf"
 
-magneticSwitch = Switch(UILayer, "MonoFont.ttf", programColours["white"], (120, 100), "SE", 0.8, value = False)
-magneticLabel = Label(UILayer, "MonoFont.ttf", 15, (170, 98), "SE", "Snap:", programColours["white"])
+UILayer = Layer("UI", 0, screen, pygame, mainFont)
+mouseCoordsX = Label(UILayer, 15, (100, 50), "NE", "", programColours["white"])
+mouseCoordsY = Label(UILayer, 15, (100, 30), "NE", "", programColours["white"])
 
-switchFront = Switch(UILayer, "MonoFont.ttf", programColours["white"], (120, 130), "SE", 0.8, value = False)
-switchFrontLabel = Label(UILayer, "MonoFont.ttf", 15, (235, 128), "SE", "Switch front", programColours["white"])
+magneticSwitch = Switch(UILayer, programColours["white"], (120, 100), "SE", 0.8, value = False)
+magneticLabel = Label(UILayer, 15, (170, 98), "SE", "Snap:", programColours["white"])
+
+switchFront = Switch(UILayer, programColours["white"], (120, 130), "SE", 0.8, value = False)
+switchFrontLabel = Label(UILayer, 15, (235, 128), "SE", "Switch front", programColours["white"])
 
 def drawGrid(offset, frequency, lineWidth, lineColor):
     columns = math.ceil(screenWidth/ frequency)

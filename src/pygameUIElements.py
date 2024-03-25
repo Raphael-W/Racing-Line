@@ -1,5 +1,5 @@
 class UIElement:
-    def __init__(self, layer, font, fontSize, text, colour, pos, stick):
+    def __init__(self, layer, fontSize, text, colour, pos, stick):
         self.nonStickPosX = pos[0]
         self.nonStickPosY = pos[1]
 
@@ -8,7 +8,7 @@ class UIElement:
         self.stick = stick.lower()
 
         self.text = str(text)
-        self.font = layer.pygame.freetype.Font(font, fontSize)
+        self.font = layer.pygame.freetype.Font(layer.fontName, fontSize)
         self.colour = colour
 
         self.boundingBox = layer.pygame.Rect(0, 0, 0, 0)
@@ -48,8 +48,8 @@ class UIElement:
         return newX, newY
 
 class Button (UIElement):
-    def __init__(self, layer, font, pos, stick, dimensions, text, fontSize, colour, action):
-        super().__init__(layer, font, fontSize, text, colour, pos, stick)
+    def __init__(self, layer, pos, stick, dimensions, text, fontSize, colour, action):
+        super().__init__(layer, fontSize, text, colour, pos, stick)
         self.width = dimensions[0]
         self.height = dimensions[1]
         self.boundingBox = layer.pygame.Rect(self.posX, self.posY, self.width, self.height)
@@ -90,8 +90,8 @@ class Button (UIElement):
         self.font.render_to(self.layer.screen, text_rect, self.text, (250, 250, 250))
 
 class Label (UIElement):
-    def __init__(self, layer, font, fontSize, pos, stick, text, colour):
-        super().__init__(layer, font, fontSize, text, colour, pos, stick)
+    def __init__(self, layer, fontSize, pos, stick, text, colour):
+        super().__init__(layer, fontSize, text, colour, pos, stick)
         self.textSize = self.font.get_rect(self.text).size
         self.boundingBox = layer.pygame.Rect(self.posX, self.posY, self.textSize[0], self.textSize[1])
 
@@ -99,8 +99,8 @@ class Label (UIElement):
         self.font.render_to(self.layer.screen, (self.posX, self.posY), self.text, self.colour)
 
 class Slider (UIElement): #Use label class for label
-    def __init__(self, layer, font, fontSize, text, barColour, handleColour, pos, size, length, valueRange, value = 0, action = None):
-        super().__init__(layer, font, fontSize, text, barColour, pos)
+    def __init__(self, layer, fontSize, text, barColour, handleColour, pos, size, length, valueRange, value = 0, action = None):
+        super().__init__(layer, fontSize, text, barColour, pos)
 
         self.barColour = barColour
         self.handleColour = handleColour
@@ -152,8 +152,8 @@ class Slider (UIElement): #Use label class for label
         self.layer.pygame.draw.circle(self.layer.screen, self.handleColour, (self.posX + self.handleX, self.posY + (7 * self.size) / 2), self.handleSize)
 
 class Switch (UIElement): #Use label class for label
-    def __init__(self, layer, font, colour, pos, stick, size, value = True, action = None):
-        super().__init__(layer, font, 0, "", colour, pos, stick)
+    def __init__(self, layer, colour, pos, stick, size, value = True, action = None):
+        super().__init__(layer, 0, "", colour, pos, stick)
 
         self.size = size
         self.value = value
@@ -207,13 +207,14 @@ class Switch (UIElement): #Use label class for label
 
 
 class Layer:
-    def __init__(self, name, number, screen, pygame):
+    def __init__(self, name, number, screen, pygame, fontName):
         self.name = name
         self.number = number
         self.elements = []
 
         self.screen = screen
         self.pygame = pygame
+        self.fontName = fontName
 
         self.screenWidth = 0
         self.screenHeight = 0
