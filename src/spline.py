@@ -119,6 +119,15 @@ class Track:
         for point in points:
             self.points.append(ControlPoint(point[0], point[1]))
 
+    def changeWidth(self, value):
+        self.width = value
+        self.computeTrackEdges()
+
+    def changeRes(self, value):
+        self.perSegRes = int(value)
+        self.computeSpline()
+        self.computeTrackEdges()
+
     def closeTrack(self, value):
         self.closed = value
         joinRange = [0, len(self.points) - 1]
@@ -341,12 +350,8 @@ class Track:
             pygame.draw.lines(screen, (200, 200, 200), False, offsetRightTrackEdge, 20)
 
             for point in range(len(self.points) - 1):
-                overlapIndex = 1
-                if point == 0:
-                    overlapIndex = 0
-
-                leftTrackSegment = offsetLeftTrackEdge[(point * self.perSegRes) - overlapIndex:((point + 1) * self.perSegRes) + 1]
-                rightTrackSegment = offsetRightTrackEdge[(point * self.perSegRes) - overlapIndex:((point + 1) * self.perSegRes) + 1]
+                leftTrackSegment = offsetLeftTrackEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1]
+                rightTrackSegment = offsetRightTrackEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1]
                 combinedTrackEdges = leftTrackSegment + list(reversed(rightTrackSegment))
 
                 pygame.draw.polygon(screen, (100, 100, 100), combinedTrackEdges)

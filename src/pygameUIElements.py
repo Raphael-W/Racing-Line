@@ -1,5 +1,5 @@
 class UIElement:
-    def __init__(self, layer, fontSize, text, colour, pos, stick):
+    def __init__(self, layer, fontSize, colour, pos, stick):
         self.nonStickPosX = pos[0]
         self.nonStickPosY = pos[1]
 
@@ -7,7 +7,6 @@ class UIElement:
         self.posY = pos[1]
         self.stick = stick.lower()
 
-        self.text = str(text)
         self.font = layer.pygame.freetype.Font(layer.fontName, fontSize)
         self.colour = colour
 
@@ -49,10 +48,12 @@ class UIElement:
 
 class Button (UIElement):
     def __init__(self, layer, pos, stick, dimensions, text, fontSize, colour, action):
-        super().__init__(layer, fontSize, text, colour, pos, stick)
+        super().__init__(layer, fontSize, colour, pos, stick)
         self.width = dimensions[0]
         self.height = dimensions[1]
         self.boundingBox = layer.pygame.Rect(self.posX, self.posY, self.width, self.height)
+
+        self.text = text
 
         self.action = action
 
@@ -91,7 +92,8 @@ class Button (UIElement):
 
 class Label (UIElement):
     def __init__(self, layer, fontSize, pos, stick, text, colour):
-        super().__init__(layer, fontSize, text, colour, pos, stick)
+        super().__init__(layer, fontSize, colour, pos, stick)
+        self.text = text
         self.textSize = self.font.get_rect(self.text).size
         self.boundingBox = layer.pygame.Rect(self.posX, self.posY, self.textSize[0], self.textSize[1])
 
@@ -99,17 +101,23 @@ class Label (UIElement):
         self.font.render_to(self.layer.screen, (self.posX, self.posY), self.text, self.colour)
 
 class Slider (UIElement): #Use label class for label
-    def __init__(self, layer, fontSize, text, barColour, handleColour, pos, size, length, valueRange, value = 0, action = None):
-        super().__init__(layer, fontSize, text, barColour, pos)
+    def __init__(self, layer, fontSize, barColour, handleColour, pos, stick, size, length, valueRange, value = 0, action = None):
+        super().__init__(layer, fontSize, barColour, pos, stick)
 
         self.barColour = barColour
+
         self.handleColour = handleColour
+        self.selectedHandleColour = (handleColour[0] - (handleColour[0] * 0.4),
+                                     handleColour[1] - (handleColour[1] * 0.4),
+                                     handleColour[2] - (handleColour[2] * 0.4))
+        self.displayColour = handleColour
+
         self.size = size
         self.length = length
         self.valueRange = valueRange
 
         self.mouseHovering = False
-        self.handleX = (self.length / (self.valueRange[1] - self.valueRange[0])) * value
+        self.handleX = ((self.length / (self.valueRange[1] - self.valueRange[0])) * value) - valueRange[0]
         self.handleSelected = False
         self.mouseDownLast = False
         self.handleSize = 0
@@ -125,9 +133,9 @@ class Slider (UIElement): #Use label class for label
                               (self.posY + (self.handleSize + 2) > mouseY > self.posY - (self.handleSize + 2)))
 
         if self.mouseHovering or self.handleSelected:
-            self.handleColour = (0, 200, 0)
+            self.displayColour = self.selectedHandleColour
         else:
-            self.handleColour = (200, 0, 0)
+            self.displayColour = self.handleColour
 
         if not self.layer.pygame.mouse.get_pressed()[0]:
             self.handleSelected = False
@@ -138,7 +146,7 @@ class Slider (UIElement): #Use label class for label
 
             if self.posX < mouseX < (self.posX + self.length):
                 self.handleX = mouseX - self.posX
-                self.value = self.handleX / (self.length / (self.valueRange[1] - self.valueRange[0]))
+                self.value = (self.handleX / (self.length / (self.valueRange[1] - self.valueRange[0]))) + self.valueRange[0]
 
         if not self.handleSelected:
             self.handleSelected = self.mouseHovering and self.layer.pygame.mouse.get_pressed()[0] and not self.mouseDownLast
@@ -148,12 +156,12 @@ class Slider (UIElement): #Use label class for label
     def display(self):
         bar = self.layer.pygame.Rect(self.posX, self.posY, self.length, 7 * self.size)
         self.layer.pygame.draw.rect(self.layer.screen, self.barColour, bar, 0, 100)
-
-        self.layer.pygame.draw.circle(self.layer.screen, self.handleColour, (self.posX + self.handleX, self.posY + (7 * self.size) / 2), self.handleSize)
+        self.font.render_to(self.layer.screen, (self.posX + self.length + 10, self.posY - 3), str(int(self.value)), self.barColour)
+        self.layer.pygame.draw.circle(self.layer.screen, self.displayColour, (self.posX + self.handleX, self.posY + (7 * self.size) / 2), self.handleSize)
 
 class Switch (UIElement): #Use label class for label
     def __init__(self, layer, colour, pos, stick, size, value = True, action = None):
-        super().__init__(layer, 0, "", colour, pos, stick)
+        super().__init__(layer, 0, colour, pos, stick)
 
         self.size = size
         self.value = value

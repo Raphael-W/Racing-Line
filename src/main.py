@@ -32,10 +32,16 @@ mouseCoordsX = Label(UILayer, 15, (100, 50), "NE", "", programColours["white"])
 mouseCoordsY = Label(UILayer, 15, (100, 30), "NE", "", programColours["white"])
 
 magneticSwitch = Switch(UILayer, programColours["white"], (120, 100), "SE", 0.8, value = False)
-magneticLabel = Label(UILayer, 15, (170, 98), "SE", "Snap:", programColours["white"])
+magneticLabel = Label(UILayer, 15, (163, 98), "SE", "Snap", programColours["white"])
 
 switchFront = Switch(UILayer, programColours["white"], (120, 130), "SE", 0.8, value = False)
 switchFrontLabel = Label(UILayer, 15, (235, 128), "SE", "Switch front", programColours["white"])
+
+trackWidth = Slider(UILayer, 15, programColours["white"], programColours["controlPoint"], (180, 153), "SE", 1, 100, (20, 100), action = lambda: mainTrack.changeWidth(trackWidth.value), value = mainTrack.width)
+trackWidthLabel = Label(UILayer, 15, (240, 158), "SE", "Width", programColours["white"])
+
+trackRes = Slider(UILayer, 15, programColours["white"], programColours["controlPoint"], (180, 188), "SE", 1, 100, (10, 100), action = lambda: mainTrack.changeRes(trackRes.value), value = mainTrack.perSegRes)
+changeTrackRes = Label(UILayer, 15, (275, 193), "SE", "Track Res", programColours["white"])
 
 def drawGrid(offset, frequency, lineWidth, lineColor):
     columns = math.ceil(screenWidth/ frequency)
