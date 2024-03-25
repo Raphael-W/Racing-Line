@@ -28,9 +28,9 @@ def findKink(point, linePoints, width):
     return kinkFound
 
 
-#Returns a position on the curve given t and the control points
-def calculateSpline(control_points, t, closed = False):
+def calculateSpline(control_points, t):
     control_points = [control_points[1]] + control_points + [control_points[-2]]
+
     #Interpolate curve using Catmull Rom
     def interpolate(P0, P1, P2, P3, T):
 
@@ -119,6 +119,13 @@ class Track:
         for point in points:
             self.points.append(ControlPoint(point[0], point[1]))
 
+    def closeTrack(self, value):
+        self.closed = value
+        joinRange = [0, len(self.points) - 1]
+
+        self.computeSpline(joinRange)
+        self.computeTrackEdges(joinRange)
+
     #Checks if current mouse pos crosses the spline (for inserting points)
     def mouseOnCurve(self, mousePosX, mousePosY, margin):
         for pointIndex in range(len(self.splinePoints) - 1):
@@ -131,7 +138,7 @@ class Track:
                 return True, segment
         return False, None
 
-    def add(self, anchorObject, index = -1):
+    def add(self, anchorObject, index = -1, update = True):
         if index == -1:
             index = len(self.points)
 
@@ -146,10 +153,11 @@ class Track:
                 self.leftTrackEdge = ([''] * self.perSegRes) + self.leftTrackEdge
                 self.rightTrackEdge = ([''] * self.perSegRes) + self.rightTrackEdge
 
-        self.computeSpline(updatePoints = [index])
-        self.computeTrackEdges(updatePoints = [index])
+        if update:
+            self.computeSpline(updatePoints = [index])
+            self.computeTrackEdges(updatePoints = [index])
 
-    def remove(self, index = -1):
+    def remove(self, index = -1, update = True):
         if index == -1:
             index = len(self.points) - 1
 
@@ -165,8 +173,9 @@ class Track:
                 self.leftTrackEdge = self.leftTrackEdge[((index + 1) * self.perSegRes):]
                 self.rightTrackEdge = self.rightTrackEdge[((index + 1) * self.perSegRes):]
 
-            self.computeSpline(updatePoints = [index])
-            self.computeTrackEdges(updatePoints = [index])
+            if update:
+                self.computeSpline(updatePoints = [index])
+                self.computeTrackEdges(updatePoints = [index])
 
     def undo(self):
         print("Undo")
@@ -183,21 +192,46 @@ class Track:
 
     def computeSpline(self, updatePoints = []):
         if len(self.points) >= 2:
+            if self.closed:
+                first1 = self.points[1]
+                first2 = self.points[2]
+                last1 = self.points[-2]
+                last2 = self.points[-3]
+
+                self.add(last1, 0, False)
+                self.add(last2, 0, False)
+                self.add(first1, -1, False)
+                self.add(first2, -1, False)
+
             numOfSegments = len(self.points) - 1
-
-            if len(updatePoints) == 0:
-                self.splinePoints = [''] * (numOfSegments * self.perSegRes)
-
             resolution = numOfSegments * self.perSegRes
-            updateRange = (0, resolution)
-            if len(updatePoints) > 0:
-                lowerBound = max((min(updatePoints) - 2, 0))
-                upperBound = min(max(updatePoints) + 2, numOfSegments)
-                updateRange = (lowerBound * self.perSegRes, upperBound * self.perSegRes)
 
-            for tInt in range(*updateRange):
-                t = tInt / resolution
-                self.splinePoints[tInt] = (calculateSpline(self.returnPointCoords(), t, self.closed))
+            updateRanges = []
+            for point in updatePoints:
+                updateRange = (0, resolution)
+                if len(updatePoints) > 0:
+                    lowerBound = max(point - 2, 0)
+                    upperBound = min(point + 2, numOfSegments)
+
+                    if self.closed:
+                        lowerBound += 2
+                        upperBound += 2
+
+                    updateRange = (lowerBound * self.perSegRes, upperBound * self.perSegRes)
+                updateRanges.append(updateRange)
+
+            if len(updateRanges) == 0: updateRanges = [(0, resolution)]
+
+            for updateRange in updateRanges:
+                for tInt in range(*updateRange):
+                    t = tInt / resolution
+                    self.splinePoints[tInt] = (calculateSpline(self.returnPointCoords(), t))
+
+            if self.closed:
+                self.remove(0, False)
+                self.remove(0, False)
+                self.remove(-1, False)
+                self.remove(-1, False)
 
     def computeTrackEdges(self, updatePoints = []):
         if len(self.splinePoints) >= 2:
@@ -257,6 +291,12 @@ class Track:
             if not(point == 0 or (((self.pointsSelected[point][1] == 0) or (self.pointsSelected[point][1] == len(self.points) - 1)) and self.closed)):
                 self.pointsSelected[point][0].pointSelected = False
 
+        if self.closed and self.points[0].pointSelected:
+            self.points[-1].pointSelected = True
+
+        elif self.closed and self.points[-1].pointSelected:
+            self.points[0].pointSelected = True
+
         self.mouseHovering = None
         for point in self.points:
             if point.mouseHovering: self.mouseHovering = self.points.index(point)
@@ -264,18 +304,21 @@ class Track:
         for point in self.points:
             point.update(mousePosX, mousePosY, screenWidth, screenHeight, screenBorder, pygame, offset, snap)
 
-        if len(self.points) >= 3:
+        if len(self.points) >= 4:
             snapThreshold = 50
             if self.points[0].pointSelected and (-snapThreshold <= self.points[0].posX - self.points[-1].posX <= snapThreshold) and (-snapThreshold <= self.points[0].posY - self.points[-1].posY <= snapThreshold) and not(pygame.key.get_mods() & pygame.KMOD_LSHIFT):
                 self.points[0].posX, self.points[0].posY = self.points[-1].posX, self.points[-1].posY
-                self.closed = True
+                self.closeTrack(value = True)
 
             elif self.points[-1].pointSelected and (-snapThreshold <= self.points[-1].posX - self.points[0].posX <= snapThreshold) and (-snapThreshold <= self.points[-1].posY - self.points[0].posY <= snapThreshold) and not(pygame.key.get_mods() & pygame.KMOD_LSHIFT):
                 self.points[-1].posX, self.points[-1].posY = self.points[0].posX, self.points[0].posY
-                self.closed = True
+                self.closeTrack(value = True)
 
             if (self.points[0].pointSelected or self.points[-1].pointSelected) and (pygame.key.get_mods() & pygame.KMOD_LSHIFT):
-                self.closed = False
+                self.closeTrack(value = False)
+
+        else:
+            self.closeTrack(value = False)
 
         if len(self.pointsSelected) > 0:
             updatePoints = [point[1] for point in self.pointsSelected]
@@ -286,9 +329,14 @@ class Track:
     def draw(self, programColours, screen, pygame, offset, switchFront):
         if len(self.points) >= 2:
             offsetMainCurve = [(point[0] + offset[0], point[1] + offset[1]) for point in self.splinePoints]
+
             offsetLeftTrackEdge = [(point[0] + offset[0], point[1] + offset[1]) for point in self.leftTrackEdge]
             offsetRightTrackEdge = [(point[0] + offset[0], point[1] + offset[1]) for point in self.rightTrackEdge]
 
+            if self.closed:
+                offsetMainCurve.append(offsetMainCurve[0])
+                offsetLeftTrackEdge.append(offsetLeftTrackEdge[0])
+                offsetRightTrackEdge.append(offsetRightTrackEdge[0])
             pygame.draw.lines(screen, (200, 200, 200), False, offsetLeftTrackEdge, 20)
             pygame.draw.lines(screen, (200, 200, 200), False, offsetRightTrackEdge, 20)
 
@@ -297,13 +345,16 @@ class Track:
                 if point == 0:
                     overlapIndex = 0
 
-                leftTrackSegment = offsetLeftTrackEdge[(point * self.perSegRes) - overlapIndex:((point + 1) * self.perSegRes)]
-                rightTrackSegment = offsetRightTrackEdge[(point * self.perSegRes) - overlapIndex:((point + 1) * self.perSegRes)]
+                leftTrackSegment = offsetLeftTrackEdge[(point * self.perSegRes) - overlapIndex:((point + 1) * self.perSegRes) + 1]
+                rightTrackSegment = offsetRightTrackEdge[(point * self.perSegRes) - overlapIndex:((point + 1) * self.perSegRes) + 1]
                 combinedTrackEdges = leftTrackSegment + list(reversed(rightTrackSegment))
 
                 pygame.draw.polygon(screen, (100, 100, 100), combinedTrackEdges)
 
             pygame.draw.lines(screen, programColours["curve"], False, offsetMainCurve, 5)
+
+            # for i in offsetMainCurve:
+            #     pygame.draw.circle(screen, programColours["curve"], i, 5)
 
         for point in range(len(self.points)):
             colour = programColours["controlPoint"]
