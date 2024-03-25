@@ -4,6 +4,11 @@ import pygame.freetype
 from pygameUIElements import *
 from spline import *
 
+import ctypes
+
+appID = 'Raphael Wreford, Racing-Line-Finder' # Arbitrary string
+ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(appID) #Makes taskbar icon same as window icon (Sets app as "individual app" not linked to python)
+
 pygame.init()
 pygame.display.set_caption("Racing Line Finder")
 screen = pygame.display.set_mode((1280, 720), pygame.RESIZABLE)
@@ -37,11 +42,11 @@ magneticLabel = Label(UILayer, 15, (163, 98), "SE", "Snap", programColours["whit
 switchFront = Switch(UILayer, programColours["white"], (120, 130), "SE", 0.8, value = False)
 switchFrontLabel = Label(UILayer, 15, (235, 128), "SE", "Switch front", programColours["white"])
 
-trackWidth = Slider(UILayer, 15, programColours["white"], programColours["controlPoint"], (180, 153), "SE", 1, 100, (20, 100), action = lambda: mainTrack.changeWidth(trackWidth.value), value = mainTrack.width)
-trackWidthLabel = Label(UILayer, 15, (240, 158), "SE", "Width", programColours["white"])
+trackWidth = Slider(UILayer, 15, programColours["white"], programColours["controlPoint"], (180, 173), "SE", 1, 100, (20, 100), action = lambda: mainTrack.changeWidth(trackWidth.value), value = mainTrack.width)
+trackWidthLabel = Label(UILayer, 15, (240, 178), "SE", "Width", programColours["white"])
 
-trackRes = Slider(UILayer, 15, programColours["white"], programColours["controlPoint"], (180, 188), "SE", 1, 100, (10, 100), action = lambda: mainTrack.changeRes(trackRes.value), value = mainTrack.perSegRes)
-changeTrackRes = Label(UILayer, 15, (275, 193), "SE", "Track Res", programColours["white"])
+trackRes = Slider(UILayer, 15, programColours["white"], programColours["controlPoint"], (180, 208), "SE", 1, 100, (10, 100), action = lambda: mainTrack.changeRes(trackRes.value), value = mainTrack.perSegRes)
+changeTrackRes = Label(UILayer, 15, (275, 213), "SE", "Track Res", programColours["white"])
 
 def drawGrid(offset, frequency, lineWidth, lineColor):
     columns = math.ceil(screenWidth/ frequency)
