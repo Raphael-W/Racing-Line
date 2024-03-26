@@ -128,12 +128,8 @@ class Track:
         self.computeSpline()
         self.computeTrackEdges()
 
-    def closeTrack(self, value):
+    def updateCloseStatus(self, value):
         self.closed = value
-        joinRange = [0, len(self.points) - 1]
-
-        self.computeSpline(joinRange)
-        self.computeTrackEdges(joinRange)
 
     #Checks if current mouse pos crosses the spline (for inserting points)
     def mouseOnCurve(self, mousePosX, mousePosY, margin):
@@ -216,6 +212,9 @@ class Track:
             resolution = numOfSegments * self.perSegRes
 
             updateRanges = []
+            if self.closed and (0 in updatePoints) and (((len(self.points) - 1) - 4) in updatePoints):
+                updatePoints.remove(0)
+
             for point in updatePoints:
                 if len(updatePoints) > 0:
                     if self.closed:
@@ -362,17 +361,17 @@ class Track:
             snapThreshold = 50
             if self.points[0].pointSelected and (-snapThreshold <= self.points[0].posX - self.points[-1].posX <= snapThreshold) and (-snapThreshold <= self.points[0].posY - self.points[-1].posY <= snapThreshold) and not(pygame.key.get_mods() & pygame.KMOD_LSHIFT):
                 self.points[0].posX, self.points[0].posY = self.points[-1].posX, self.points[-1].posY
-                self.closeTrack(value = True)
+                self.updateCloseStatus(value = True)
 
             elif self.points[-1].pointSelected and (-snapThreshold <= self.points[-1].posX - self.points[0].posX <= snapThreshold) and (-snapThreshold <= self.points[-1].posY - self.points[0].posY <= snapThreshold) and not(pygame.key.get_mods() & pygame.KMOD_LSHIFT):
                 self.points[-1].posX, self.points[-1].posY = self.points[0].posX, self.points[0].posY
-                self.closeTrack(value = True)
+                self.updateCloseStatus(value = True)
 
             if (self.points[0].pointSelected or self.points[-1].pointSelected) and (pygame.key.get_mods() & pygame.KMOD_LSHIFT):
-                self.closeTrack(value = False)
+                self.updateCloseStatus(value = False)
 
         else:
-            self.closeTrack(value = False)
+            self.updateCloseStatus(value = False)
 
         if len(self.pointsSelected) > 0:
             updatePoints = [point[1] for point in self.pointsSelected]
