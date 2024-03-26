@@ -293,27 +293,28 @@ class Track:
 
                         updateRanges.append(updateRange)
 
-                if len(updatePoints) == 0:
-                    self.leftTrackEdge = [''] * (len(self.splinePoints))
-                    self.rightTrackEdge = [''] * (len(self.splinePoints))
+            if len(updatePoints) == 0:
+                updateRanges = [(0, resolution)]
+                self.leftTrackEdge = [''] * (len(self.splinePoints))
+                self.rightTrackEdge = [''] * (len(self.splinePoints))
 
-                xExt = (self.splinePoints[-1][0] - self.splinePoints[-2][0])
-                yExt = (self.splinePoints[-1][1] - self.splinePoints[-2][1])
-                pointExt = (self.splinePoints[-1][0] + xExt, self.splinePoints[-1][1] + yExt)
-                extendedSplinePoints = self.splinePoints + [pointExt]
+            xExt = (self.splinePoints[-1][0] - self.splinePoints[-2][0])
+            yExt = (self.splinePoints[-1][1] - self.splinePoints[-2][1])
+            pointExt = (self.splinePoints[-1][0] + xExt, self.splinePoints[-1][1] + yExt)
+            extendedSplinePoints = self.splinePoints + [pointExt]
 
-                for updateRange in updateRanges:
-                    for seg in range(*updateRange):
-                        distance = pointDistance(extendedSplinePoints[seg], extendedSplinePoints[seg + 1])
+            for updateRange in updateRanges:
+                for seg in range(*updateRange):
+                    distance = pointDistance(extendedSplinePoints[seg], extendedSplinePoints[seg + 1])
 
-                        newXLeft = ((self.width * (extendedSplinePoints[seg][1] - extendedSplinePoints[seg + 1][1])) / distance) + extendedSplinePoints[seg][0]
-                        newYLeft = ((self.width * (extendedSplinePoints[seg + 1][0] - extendedSplinePoints[seg][0])) / distance) + extendedSplinePoints[seg][1]
+                    newXLeft = ((self.width * (extendedSplinePoints[seg][1] - extendedSplinePoints[seg + 1][1])) / distance) + extendedSplinePoints[seg][0]
+                    newYLeft = ((self.width * (extendedSplinePoints[seg + 1][0] - extendedSplinePoints[seg][0])) / distance) + extendedSplinePoints[seg][1]
 
-                        newXRight = ((-self.width * (extendedSplinePoints[seg][1] - extendedSplinePoints[seg + 1][1])) / distance) + extendedSplinePoints[seg][0]
-                        newYRight = ((-self.width * (extendedSplinePoints[seg + 1][0] - extendedSplinePoints[seg][0])) / distance) + extendedSplinePoints[seg][1]
+                    newXRight = ((-self.width * (extendedSplinePoints[seg][1] - extendedSplinePoints[seg + 1][1])) / distance) + extendedSplinePoints[seg][0]
+                    newYRight = ((-self.width * (extendedSplinePoints[seg + 1][0] - extendedSplinePoints[seg][0])) / distance) + extendedSplinePoints[seg][1]
 
-                        self.leftTrackEdge[seg] = (newXLeft, newYLeft)
-                        self.rightTrackEdge[seg] = (newXRight, newYRight)
+                    self.leftTrackEdge[seg] = (newXLeft, newYLeft)
+                    self.rightTrackEdge[seg] = (newXRight, newYRight)
 
     def deKink(self):
         xExt = (self.splinePoints[-1][0] - self.splinePoints[-2][0])
