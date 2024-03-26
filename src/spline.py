@@ -217,19 +217,37 @@ class Track:
 
             updateRanges = []
             for point in updatePoints:
-                updateRange = (0, resolution)
                 if len(updatePoints) > 0:
-                    lowerBound = max(point - 2, 0)
-                    upperBound = min(point + 2, numOfSegments)
-
                     if self.closed:
-                        lowerBound += 2
-                        upperBound += 2
+                        lengthPoints = (len(self.points) - 1) - 4
+                        point += 2
 
-                    updateRange = (lowerBound * self.perSegRes, upperBound * self.perSegRes)
-                updateRanges.append(updateRange)
+                        beforeJoinLowerBound = max(point - 2, 2)
+                        beforeJoinUpperBound = min(point + 2, lengthPoints + 2)
+                        beforeJoinUpdateRange = [beforeJoinLowerBound * self.perSegRes, beforeJoinUpperBound * self.perSegRes]
 
-            if len(updateRanges) == 0: updateRanges = [(0, resolution)]
+                        afterJoinLowerBound = max((point + lengthPoints) - 2, 2)
+                        afterJoinUpperBound = min((point + lengthPoints) + 2, lengthPoints + 2)
+                        afterJoinUpdateRange = [afterJoinLowerBound * self.perSegRes, afterJoinUpperBound * self.perSegRes]
+
+                        if afterJoinLowerBound >= (lengthPoints + 2):
+                            afterJoinLowerBound = max((point - lengthPoints) - 2, 2)
+                            afterJoinUpperBound = max(min((point - lengthPoints) + 2, lengthPoints + 2), 2)
+                            afterJoinUpdateRange = [afterJoinLowerBound * self.perSegRes, afterJoinUpperBound * self.perSegRes]
+
+                        updateRanges.append(beforeJoinUpdateRange)
+                        updateRanges.append(afterJoinUpdateRange)
+
+                    else:
+                        lowerBound = max(point - 2, 0)
+                        upperBound = min(point + 2, numOfSegments)
+                        updateRange = (lowerBound * self.perSegRes, upperBound * self.perSegRes)
+
+                        updateRanges.append(updateRange)
+
+            if len(updateRanges) == 0:
+                updateRanges = [(0, resolution)]
+                self.splinePoints = ([''] * resolution)
 
             for updateRange in updateRanges:
                 for tInt in range(*updateRange):
@@ -243,33 +261,60 @@ class Track:
                 self.remove(-1, False)
 
     def computeTrackEdges(self, updatePoints = []):
-        if len(self.splinePoints) >= 2:
-            if len(updatePoints) == 0:
-                self.leftTrackEdge = [''] * (len(self.splinePoints))
-                self.rightTrackEdge = [''] * (len(self.splinePoints))
+        if len(self.points) >= 2:
+            numOfSegments = len(self.points) - 1
+            resolution = numOfSegments * self.perSegRes
 
-            updateRange = (0, len(self.splinePoints))
-            if len(updatePoints) > 0:
-                lowerBound = max((min(updatePoints) - 2) * self.perSegRes, 0)
-                upperBound = min((max(updatePoints) + 2) * self.perSegRes, len(self.splinePoints))
-                updateRange = (lowerBound, upperBound)
+            updateRanges = []
+            for point in updatePoints:
+                if len(updatePoints) > 0:
+                    if self.closed:
+                        lengthPoints = (len(self.points) - 1)
 
-            xExt = (self.splinePoints[-1][0] - self.splinePoints[-2][0])
-            yExt = (self.splinePoints[-1][1] - self.splinePoints[-2][1])
-            pointExt = (self.splinePoints[-1][0] + xExt, self.splinePoints[-1][1] + yExt)
-            extendedSplinePoints = self.splinePoints + [pointExt]
+                        beforeJoinLowerBound = max(point - 2, 0)
+                        beforeJoinUpperBound = min(point + 2, lengthPoints)
+                        beforeJoinUpdateRange = [beforeJoinLowerBound * self.perSegRes, beforeJoinUpperBound * self.perSegRes]
 
-            for seg in range(*updateRange):
-                distance = pointDistance(extendedSplinePoints[seg], extendedSplinePoints[seg + 1])
+                        afterJoinLowerBound = max((point + lengthPoints) - 2, 0)
+                        afterJoinUpperBound = min((point + lengthPoints) + 2, lengthPoints)
+                        afterJoinUpdateRange = [afterJoinLowerBound * self.perSegRes, afterJoinUpperBound * self.perSegRes]
 
-                newXLeft = ((self.width * (extendedSplinePoints[seg][1] - extendedSplinePoints[seg + 1][1])) / distance) + extendedSplinePoints[seg][0]
-                newYLeft = ((self.width * (extendedSplinePoints[seg + 1][0] - extendedSplinePoints[seg][0])) / distance) + extendedSplinePoints[seg][1]
+                        if afterJoinLowerBound >= (lengthPoints + 2):
+                            afterJoinLowerBound = max((point - lengthPoints) - 2, 0)
+                            afterJoinUpperBound = max(min((point - lengthPoints) + 2, lengthPoints), 0)
+                            afterJoinUpdateRange = [afterJoinLowerBound * self.perSegRes, afterJoinUpperBound * self.perSegRes]
 
-                newXRight = ((-self.width * (extendedSplinePoints[seg][1] - extendedSplinePoints[seg + 1][1])) / distance) + extendedSplinePoints[seg][0]
-                newYRight = ((-self.width * (extendedSplinePoints[seg + 1][0] - extendedSplinePoints[seg][0])) / distance) + extendedSplinePoints[seg][1]
+                        updateRanges.append(beforeJoinUpdateRange)
+                        updateRanges.append(afterJoinUpdateRange)
 
-                self.leftTrackEdge[seg] = (newXLeft, newYLeft)
-                self.rightTrackEdge[seg] = (newXRight, newYRight)
+                    else:
+                        lowerBound = max(point - 2, 0)
+                        upperBound = min(point + 2, numOfSegments)
+                        updateRange = (lowerBound * self.perSegRes, upperBound * self.perSegRes)
+
+                        updateRanges.append(updateRange)
+
+                if len(updatePoints) == 0:
+                    self.leftTrackEdge = [''] * (len(self.splinePoints))
+                    self.rightTrackEdge = [''] * (len(self.splinePoints))
+
+                xExt = (self.splinePoints[-1][0] - self.splinePoints[-2][0])
+                yExt = (self.splinePoints[-1][1] - self.splinePoints[-2][1])
+                pointExt = (self.splinePoints[-1][0] + xExt, self.splinePoints[-1][1] + yExt)
+                extendedSplinePoints = self.splinePoints + [pointExt]
+
+                for updateRange in updateRanges:
+                    for seg in range(*updateRange):
+                        distance = pointDistance(extendedSplinePoints[seg], extendedSplinePoints[seg + 1])
+
+                        newXLeft = ((self.width * (extendedSplinePoints[seg][1] - extendedSplinePoints[seg + 1][1])) / distance) + extendedSplinePoints[seg][0]
+                        newYLeft = ((self.width * (extendedSplinePoints[seg + 1][0] - extendedSplinePoints[seg][0])) / distance) + extendedSplinePoints[seg][1]
+
+                        newXRight = ((-self.width * (extendedSplinePoints[seg][1] - extendedSplinePoints[seg + 1][1])) / distance) + extendedSplinePoints[seg][0]
+                        newYRight = ((-self.width * (extendedSplinePoints[seg + 1][0] - extendedSplinePoints[seg][0])) / distance) + extendedSplinePoints[seg][1]
+
+                        self.leftTrackEdge[seg] = (newXLeft, newYLeft)
+                        self.rightTrackEdge[seg] = (newXRight, newYRight)
 
     def deKink(self):
         xExt = (self.splinePoints[-1][0] - self.splinePoints[-2][0])
