@@ -161,7 +161,7 @@ class Slider (UIElement): #Use label class for label
     def display(self):
         bar = self.layer.pygame.Rect(self.posX, self.posY, self.length, 7 * self.size)
         self.layer.pygame.draw.rect(self.layer.screen, self.barColour, bar, 0, 100)
-        self.font.render_to(self.layer.screen, (self.posX + self.length + 10, self.posY - 3), str(int(self.value)), self.barColour)
+        self.font.render_to(self.layer.screen, (self.posX + self.length + 17, self.posY - 3), str(int(self.value)), self.barColour)
         self.layer.pygame.draw.circle(self.layer.screen, self.displayColour, (self.posX + self.handleX, self.posY + (7 * self.size) / 2), self.handleSize)
 
 class Switch (UIElement): #Use label class for label
