@@ -146,7 +146,12 @@ class Slider (UIElement): #Use label class for label
 
             if self.posX < mouseX < (self.posX + self.length):
                 self.handleX = mouseX - self.posX
-                self.value = (self.handleX / (self.length / (self.valueRange[1] - self.valueRange[0]))) + self.valueRange[0]
+            elif self.posX >= mouseX:
+                self.handleX = 0
+            else:
+                self.handleX = self.length
+
+            self.value = (self.handleX / (self.length / (self.valueRange[1] - self.valueRange[0]))) + self.valueRange[0]
 
         if not self.handleSelected:
             self.handleSelected = self.mouseHovering and self.layer.pygame.mouse.get_pressed()[0] and not self.mouseDownLast
