@@ -8,6 +8,12 @@ def pointDistance(point1, point2):
 
     return math.sqrt(((y2 - y1) ** 2) + ((x1 - x2) ** 2))
 
+def gradient(point1, point2):
+    x1, y1 = point1
+    x2, y2 = point2
+
+    return abs((y2 - y1) / (x2 - x1))
+
 def lineToPointDistance(lineA, lineB, point):
     lineA = np.array(lineA)
     lineB = np.array(lineB)
@@ -98,7 +104,8 @@ class ControlPoint:
 
     #Draws point to screen
     def draw(self, colour, screen, pygame, offset):
-        pygame.draw.circle(screen, colour, (self.posX + offset[0], self.posY + offset[1]), self.size)
+        pygame.gfxdraw.aacircle(screen, self.posX + offset[0], self.posY + offset[1], self.size, colour)
+        pygame.gfxdraw.filled_circle(screen, self.posX + offset[0], self.posY + offset[1], self.size, colour)
 
 class Track:
     def __init__(self, points = []):
@@ -316,6 +323,36 @@ class Track:
                     self.leftTrackEdge[seg] = (newXLeft, newYLeft)
                     self.rightTrackEdge[seg] = (newXRight, newYRight)
 
+    def computeKerbs(self, pygame, screen):
+        kerbThreshold = 0.08
+        if len(self.points) >= 2:
+            lengthOfSpline = len(self.splinePoints) - 1
+            previousGrad = gradient(self.splinePoints[0], self.splinePoints[1])
+            kerbRanges = []
+
+            lowerBound = None
+            upperBound = None
+
+            for dot in range(lengthOfSpline):
+                currentGrad = gradient(self.splinePoints[dot], self.splinePoints[dot + 1])
+                diffInGrad = (previousGrad - currentGrad) / previousGrad
+                if diffInGrad > kerbThreshold:
+                    if lowerBound is None:
+                        lowerBound = dot
+                else:
+                    if lowerBound is not None:
+                        upperBound = dot
+                        kerbRanges.append((lowerBound, upperBound))
+
+                        lowerBound = None
+                        upperBound = None
+
+                previousGrad = currentGrad
+
+            for kerbRange in kerbRanges:
+                for dot in range(*kerbRange):
+                    pygame.draw.circle(screen, (252, 186, 3), self.splinePoints[dot], 5)
+
     def deKink(self):
         xExt = (self.splinePoints[-1][0] - self.splinePoints[-2][0])
         yExt = (self.splinePoints[-1][1] - self.splinePoints[-2][1])
@@ -391,6 +428,7 @@ class Track:
                 offsetMainCurve.append(offsetMainCurve[0])
                 offsetLeftTrackEdge.append(offsetLeftTrackEdge[0])
                 offsetRightTrackEdge.append(offsetRightTrackEdge[0])
+
             pygame.draw.lines(screen, (200, 200, 200), False, offsetLeftTrackEdge, 20)
             pygame.draw.lines(screen, (200, 200, 200), False, offsetRightTrackEdge, 20)
 

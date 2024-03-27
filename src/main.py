@@ -1,4 +1,5 @@
 import pygame
+import pygame.gfxdraw
 import pygame.freetype
 
 from pygameUIElements import *
@@ -28,11 +29,14 @@ programColours = {"background": (20, 20, 20),
                   "frontControlPoint": (204, 138, 24),
                   "mainGrid": (30, 30, 30),
                   "innerGrid": (25, 25, 25),
-                  "white": (200, 200, 200),}
+                  "white": (200, 200, 200),
+                  "link":(150, 150, 150)}
 
 mainFont = "../assets/MonoFont.ttf"
 
 UILayer = Layer("UI", 0, screen, pygame, mainFont)
+trackLayer = Layer("Track", 1, screen, pygame, mainFont)
+
 mouseCoordsX = Label(UILayer, 15, (100, 50), "NE", "", programColours["white"])
 mouseCoordsY = Label(UILayer, 15, (100, 30), "NE", "", programColours["white"])
 
@@ -120,7 +124,9 @@ while running:
 
     mouseCoordsX.text = ("x: " + str(mousePosX - offsetPosition[0]))
     mouseCoordsY.text = ("y: " + str(mousePosY - offsetPosition[1]))
+
     UILayer.display(screenWidth, screenHeight)
+    trackLayer.display(screenWidth, screenHeight, offsetPosition)
 
     pygame.display.flip()
     clock.tick(60) #Refresh Rate
