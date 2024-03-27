@@ -30,7 +30,7 @@ programColours = {"background": (20, 20, 20),
                   "mainGrid": (30, 30, 30),
                   "innerGrid": (25, 25, 25),
                   "white": (200, 200, 200),
-                  "link":(150, 150, 150)}
+                  "mainTrack": (100, 100, 100)}
 
 mainFont = "../assets/MonoFont.ttf"
 
@@ -46,7 +46,7 @@ magneticLabel = Label(UILayer, 15, (163, 98), "SE", "Snap", programColours["whit
 switchFront = Switch(UILayer, programColours["white"], (120, 130), "SE", 0.8, value = False)
 switchFrontLabel = Label(UILayer, 15, (235, 128), "SE", "Switch front", programColours["white"])
 
-trackWidth = Slider(UILayer, 15, programColours["white"], programColours["controlPoint"], (180, 173), "SE", 1, 100, (20, 100), action = lambda: mainTrack.changeWidth(trackWidth.value), value = mainTrack.width)
+trackWidth = Slider(UILayer, 15, programColours["white"], programColours["controlPoint"], (180, 173), "SE", 1, 100, (20, 200), action = lambda: mainTrack.changeWidth(trackWidth.value), value = mainTrack.width)
 trackWidthLabel = Label(UILayer, 15, (240, 178), "SE", "Width", programColours["white"])
 
 trackRes = Slider(UILayer, 15, programColours["white"], programColours["controlPoint"], (180, 208), "SE", 1, 100, (10, 100), action = lambda: mainTrack.changeRes(trackRes.value), value = mainTrack.perSegRes)
