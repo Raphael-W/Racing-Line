@@ -1,3 +1,5 @@
+import json
+
 import pygame
 import pygame.gfxdraw
 import pygame.freetype
@@ -32,7 +34,12 @@ programColours = {"background": (20, 20, 20),
                   "white": (200, 200, 200),
                   "mainTrack": (100, 100, 100)}
 
-mainFont = "../assets/MonoFont.ttf"
+directories = {"mainFont": "../assets/MonoFont.ttf",
+               "recentre": "../assets/aim.png",
+               "finishLine": "../assets/flag.png",
+               "scale": "../assets/scale.png"}
+
+mainFont = directories["mainFont"]
 
 UILayer = Layer("UI", 0, screen, pygame, mainFont)
 trackLayer = Layer("Track", 1, screen, pygame, mainFont)
@@ -40,17 +47,35 @@ trackLayer = Layer("Track", 1, screen, pygame, mainFont)
 mouseCoordsX = Label(UILayer, 15, (100, 50), "NE", "", programColours["white"])
 mouseCoordsY = Label(UILayer, 15, (100, 30), "NE", "", programColours["white"])
 
-magneticSwitch = Switch(UILayer, programColours["white"], (120, 100), "SE", 0.8, value = False)
-magneticLabel = Label(UILayer, 15, (163, 98), "SE", "Snap", programColours["white"])
+snapPoints = Switch(UILayer, programColours["white"], (120, 100), "SE", 0.8, value = False)
+snapPointsLabel = Label(UILayer, 15, (173, 98), "SE", "Snap", programColours["white"])
 
-switchFront = Switch(UILayer, programColours["white"], (120, 130), "SE", 0.8, value = False)
-switchFrontLabel = Label(UILayer, 15, (235, 128), "SE", "Switch front", programColours["white"])
+switchEnds = Switch(UILayer, programColours["white"], (120, 130), "SE", 0.8, value = False)
+switchEndsLabel = Label(UILayer, 15, (245, 128), "SE", "Switch front", programColours["white"])
 
 trackWidth = Slider(UILayer, 15, programColours["white"], programColours["controlPoint"], (180, 173), "SE", 1, 100, (20, 200), action = lambda: mainTrack.changeWidth(trackWidth.value), value = mainTrack.width)
-trackWidthLabel = Label(UILayer, 15, (240, 178), "SE", "Width", programColours["white"])
+trackWidthLabel = Label(UILayer, 15, (250, 178), "SE", "Width", programColours["white"])
 
 trackRes = Slider(UILayer, 15, programColours["white"], programColours["controlPoint"], (180, 208), "SE", 1, 100, (10, 100), action = lambda: mainTrack.changeRes(trackRes.value), value = mainTrack.perSegRes)
-changeTrackRes = Label(UILayer, 15, (275, 213), "SE", "Track Res", programColours["white"])
+TrackResLabel = Label(UILayer, 15, (285, 213), "SE", "Track Res", programColours["white"])
+
+setStartLine = Button(UILayer, (275, 280), "SE", (225, 35), "Set Finish Line   ", 13, (100, 100, 100), action = None)
+startLineImage = Image(UILayer, (setStartLine.posX - 180, setStartLine.posY - 5), "SE", directories["finishLine"], 1, (70, 70, 70))
+
+setScale = Button(UILayer, (275, 325), "SE", (225, 35), "Set Scale   ", 13, (100, 100, 100), action = None)
+scaleImage = Image(UILayer, (setScale.posX - 180, setScale.posY - 5), "SE", directories["scale"], 1, (70, 70, 70))
+
+recentre = Button(UILayer, (275, 370), "SE", (225, 35), "Recentre   ", 13, (100, 100, 100), action = None)
+recentreImage = Image(UILayer, (recentre.posX - 180, recentre.posY - 5), "SE", directories["recentre"], 1, (70, 70, 70))
+
+newTrack = Button(UILayer, (275, 435), "SE", (50, 35), "New", 13, (100, 100, 100), action = None)
+openTrack = Button(UILayer, (160, 435), "SE", (50, 35), "Open", 13, (100, 100, 100), action = None)
+
+save = Button(UILayer, (275, 480), "SE", (50, 35), "Save", 13, (100, 100, 100), action = None)
+saveAs = Button(UILayer, (160, 480), "SE", (70, 35), "Save As", 13, (100, 100, 100), action = None)
+
+
+accordion = Accordion(UILayer, (300, 440), "SE", (275, 415), [snapPoints, snapPointsLabel, switchEnds, switchEndsLabel, trackWidth, trackWidthLabel, trackRes, TrackResLabel], layerIndex = 0)
 
 def drawGrid(offset, frequency, lineWidth, lineColor):
     columns = math.ceil(screenWidth/ frequency)
@@ -69,6 +94,43 @@ def drawGrid(offset, frequency, lineWidth, lineColor):
         y = line * frequency + offset[1]
         pygame.draw.line(screen, lineColor, (0, y), (screenWidth, y), lineWidth)
 
+def saveTrack():
+    points = mainTrack.saveTrackPoints()
+    settings = {"width": mainTrack.width,
+                "trackRes": mainTrack.perSegRes,
+                "closed": mainTrack.closed,
+                "switchEnds": switchEnds.value,
+                "snap": snapPoints.value}
+
+    trackData = {"points": points,
+             "settings": settings}
+
+    with open("testTrack.track", "w") as outputFile:
+        json.dump(trackData, outputFile)
+
+def loadTrack():
+    with open("testTrack.track") as loadFile:
+        trackData = json.load(loadFile)
+
+    pointCoords = list(trackData["points"].values())
+    mainTrack.loadTrackPoints(pointCoords)
+
+    mainTrack.computeSpline()
+    mainTrack.computeTrackEdges()
+
+    trackSettings = trackData["settings"]
+    trackWidth.updateValue(trackSettings["width"])
+    trackRes.updateValue(trackSettings["trackRes"])
+    mainTrack.updateCloseStatus(trackSettings["closed"])
+    switchEnds.value = trackSettings["switchEnds"]
+    snapPoints.value = trackSettings["snap"]
+
+    mainTrack.computeSpline()
+    mainTrack.computeTrackEdges()
+
+
+saveTrack = Button(UILayer, (100, 100), "", (100, 50), "Save", 12, (100, 100, 100), action = saveTrack)
+loadTrack = Button(UILayer, (250, 100), "", (100, 50), "Load", 12, (100, 100, 100), action = loadTrack)
 
 while running:
     screenWidth, screenHeight = screen.get_size()
@@ -93,7 +155,7 @@ while running:
 
         if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (mainTrack.mouseHovering is None) and (not UILayer.mouseOnLayer((mousePosX, mousePosY))):
             index = -1
-            if switchFront.value:
+            if switchEnds.value:
                 index = 0
 
             validPlacement = True
@@ -107,7 +169,9 @@ while running:
             if validPlacement: mainTrack.add(ControlPoint(mousePosX - offsetPosition[0], mousePosY - offsetPosition[1]), index = index)
 
         if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[2] and (mainTrack.mouseHovering is not None) and (not UILayer.mouseOnLayer((mousePosX, mousePosY))):
-            mainTrack.remove(index = mainTrack.mouseHovering)
+            index = mainTrack.mouseHovering
+            if not(mainTrack.closed and ((index == 0) or (index == len(mainTrack.points) - 1))):
+                mainTrack.remove(index = index)
 
         if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[1]:
             pivotPos = (mousePosX - offsetPosition[0], mousePosY - offsetPosition[1])
@@ -119,8 +183,8 @@ while running:
             if event.key == pygame.K_z and pygame.key.get_mods() & pygame.KMOD_LCTRL and pygame.key.get_mods() & pygame.KMOD_LSHIFT:
                 mainTrack.redo()
 
-    mainTrack.update(mousePosX - offsetPosition[0], mousePosY - offsetPosition[1], screenWidth, screenHeight, screenBorder, pygame, offsetPosition, magneticSwitch.value)
-    mainTrack.draw(programColours, screen, pygame, offsetPosition, switchFront.value)
+    mainTrack.update(mousePosX - offsetPosition[0], mousePosY - offsetPosition[1], screenWidth, screenHeight, screenBorder, pygame, offsetPosition, snapPoints.value)
+    mainTrack.draw(programColours, screen, pygame, offsetPosition, switchEnds.value)
 
     mouseCoordsX.text = ("x: " + str(mousePosX - offsetPosition[0]))
     mouseCoordsY.text = ("y: " + str(mousePosY - offsetPosition[1]))

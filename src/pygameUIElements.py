@@ -1,5 +1,5 @@
 class UIElement:
-    def __init__(self, layer, pos, stick):
+    def __init__(self, layer, pos, stick, show = True, layerIndex = -1):
         self.nonStickPosX = pos[0]
         self.nonStickPosY = pos[1]
 
@@ -10,6 +10,10 @@ class UIElement:
         self.boundingBox = layer.pygame.Rect(0, 0, 0, 0)
 
         self.layer = layer
+        self.layerIndex = layerIndex
+
+        self.show = show
+
         layer.add(self)
 
     def update(self):
@@ -55,8 +59,8 @@ class UIElement:
         return newX, newY
 
 class Button (UIElement):
-    def __init__(self, layer, pos, stick, dimensions, text, fontSize, colour, action):
-        super().__init__(layer, pos, stick)
+    def __init__(self, layer, pos, stick, dimensions, text, fontSize, colour, action, show = True, layerIndex = -1):
+        super().__init__(layer, pos, stick, show, layerIndex)
         self.width = dimensions[0]
         self.height = dimensions[1]
         self.boundingBox = layer.pygame.Rect(self.posX, self.posY, self.width, self.height)
@@ -67,12 +71,18 @@ class Button (UIElement):
         self.action = action
 
         self.mouseHovering = False
-        self.mouseDownLast = False
+        self.actionRun = False
         self.pointSelected = False
 
         self.colour = colour
         self.baseColour = colour
-        self.hoverColour = (colour[0] - 15, colour[1], colour[2])
+        self.hoverColour = (colour[0] - (colour[0] * 0.2),
+                            colour[1] - (colour[1] * 0.2),
+                            colour[2] - (colour[2] * 0.2))
+
+        self.pressedColour = (colour[0] - (colour[0] * 0.4),
+                              colour[1] - (colour[1] * 0.4),
+                              colour[2] - (colour[2] * 0.4))
 
     def update(self):
         mousePos = self.layer.pygame.mouse.get_pos()
@@ -81,15 +91,18 @@ class Button (UIElement):
 
         if self.mouseHovering:
             self.colour = self.hoverColour
-            self.pointSelected = self.mouseHovering and self.layer.pygame.mouse.get_pressed()[0] and not self.mouseDownLast
         else:
             self.colour = self.baseColour
 
-        if self.pointSelected:
-            self.action()
-            self.pointSelected = False
+        self.pointSelected = self.mouseHovering and self.layer.pygame.mouse.get_pressed()[0]
 
-        self.mouseDownLast = self.layer.pygame.mouse.get_pressed()[0]
+        if self.pointSelected:
+            self.colour = self.pressedColour
+            if self.action is not None and not self.actionRun:
+                self.action()
+                self.actionRun = True
+        else:
+            self.actionRun = False
 
     def display(self):
         self.boundingBox = self.layer.pygame.Rect(self.posX, self.posY, self.width, self.height)
@@ -101,21 +114,22 @@ class Button (UIElement):
         self.font.render_to(self.layer.screen, text_rect, self.text, (250, 250, 250))
 
 class Label (UIElement):
-    def __init__(self, layer, fontSize, pos, stick, text, colour):
-        super().__init__(layer, pos, stick)
+    def __init__(self, layer, fontSize, pos, stick, text, colour, show = True, layerIndex = -1):
+        super().__init__(layer, pos, stick, show, layerIndex)
         self.text = text
         self.font = layer.pygame.freetype.Font(layer.fontName, fontSize)
         self.textSize = self.font.get_rect(self.text).size
         self.colour = colour
-
-        self.boundingBox = layer.pygame.Rect(self.posX, self.posY, self.textSize[0], self.textSize[1])
+    def update(self):
+        self.textSize = self.font.get_rect(self.text).size
+        self.boundingBox = self.layer.pygame.Rect((self.posX - 10, self.posY - 10), (self.textSize[0] + 20, self.textSize[1] + 20))
 
     def display(self):
         self.font.render_to(self.layer.screen, (self.posX, self.posY), self.text, self.colour)
 
 class Slider (UIElement): #Use label class for label
-    def __init__(self, layer, fontSize, barColour, handleColour, pos, stick, size, length, valueRange, value = 0, action = None):
-        super().__init__(layer, pos, stick)
+    def __init__(self, layer, fontSize, barColour, handleColour, pos, stick, size, length, valueRange, value = 0, action = None, show = True, layerIndex = -1):
+        super().__init__(layer, pos, stick, show, layerIndex)
 
         self.barColour = barColour
 
@@ -132,7 +146,7 @@ class Slider (UIElement): #Use label class for label
         self.valueRange = valueRange
 
         self.mouseHovering = False
-        self.handleX = ((self.length / (self.valueRange[1] - self.valueRange[0])) * value) - valueRange[0]
+        self.handleX = ((self.length / (self.valueRange[1] - self.valueRange[0])) * value)  - (self.valueRange[0] / 2)
         self.handleSelected = False
         self.mouseDownLast = False
         self.handleSize = 0
@@ -166,7 +180,7 @@ class Slider (UIElement): #Use label class for label
             else:
                 self.handleX = self.length
 
-            self.value = (self.handleX / (self.length / (self.valueRange[1] - self.valueRange[0]))) + self.valueRange[0]
+            self.value = (self.handleX / (self.length / (self.valueRange[1] - self.valueRange[0]))) + (self.valueRange[0])
 
         if not self.handleSelected:
             self.handleSelected = self.mouseHovering and self.layer.pygame.mouse.get_pressed()[0] and not self.mouseDownLast
@@ -181,9 +195,17 @@ class Slider (UIElement): #Use label class for label
         self.layer.pygame.gfxdraw.aacircle(self.layer.screen, int(self.posX + self.handleX), int(self.posY + (7 * self.size) / 2), self.handleSize, self.displayColour)
         self.layer.pygame.gfxdraw.filled_circle(self.layer.screen, int(self.posX + self.handleX), int(self.posY + (7 * self.size) / 2), self.handleSize, self.displayColour)
 
+    def updateValue(self, value):
+        if self.valueRange[0] <= value <= self.valueRange[1]:
+            self.value = value
+            self.handleX = ((self.length / (self.valueRange[1] - self.valueRange[0])) * value) - (self.valueRange[0] / 2)
+
+            if self.action is not None:
+                self.action()
+
 class Switch (UIElement): #Use label class for label
-    def __init__(self, layer, colour, pos, stick, size, value = True, action = None):
-        super().__init__(layer, pos, stick)
+    def __init__(self, layer, colour, pos, stick, size, value = True, action = None, show = True, layerIndex = -1):
+        super().__init__(layer, pos, stick, show, layerIndex)
 
         self.size = size
         self.value = value
@@ -239,24 +261,59 @@ class Switch (UIElement): #Use label class for label
         self.layer.pygame.gfxdraw.filled_circle(self.layer.screen, int(self.posX + (self.barWidth / 4) + circleOffset), int(self.posY + (self.barHeight / 2)), int(9 * self.size), (20, 20, 20))
 
 class Image(UIElement):
-    def __init__(self, layer, pos, stick, imageDir, size, colour = None, show = True):
-        super().__init__(layer, pos, stick)
+    def __init__(self, layer, pos, stick, imageDir, size, colour = None, show = True, layerIndex = -1):
+        super().__init__(layer, pos, stick, show, layerIndex)
 
         self.imageDir = imageDir
         self.size = size
         self.colour = colour
-
-        self.show = show
 
         self.image = self.layer.pygame.image.load(self.imageDir).convert_alpha()
         self.image = self.layer.pygame.transform.scale_by(self.image, self.size)
 
         if self.colour is not None:
             self.image.fill(self.colour, special_flags = self.layer.pygame.BLEND_RGB_MAX)
-
     def display(self):
         if self.show:
             self.layer.screen.blit(self.image, (self.posX, self.posY))
+
+class TextInput(UIElement):
+    def __init__(self, layer, pos, stick, dimensions, placeholder = "", text = "", show = True, layerIndex = -1):
+        super().__init__(layer, pos, stick, show, layerIndex)
+
+        self.width, self.height = dimensions
+        self.placeholder = placeholder
+        self.text = text
+        self.font = layer.pygame.freetype.Font(layer.fontName, self.height - 20)
+
+        self.show = show
+
+    def update(self):
+        pass
+
+    def display(self):
+        transparentSurface = self.layer.pygame.Surface((self.width, self.height), self.layer.pygame.SRCALPHA)
+        self.layer.pygame.draw.rect(transparentSurface, (100, 100, 100, 100), (0, 0, self.width, self.height), border_radius = 15)
+        self.layer.screen.blit(transparentSurface, (self.posX, self.posY))
+
+        self.font.render_to(self.layer.screen, (self.posX + 20, self.posY + 10), self.text, (200, 200, 200))
+
+class Accordion(UIElement):
+    def __init__(self, layer, pos, stick, dimensions, elements, collapse = False, show = True, layerIndex = -1):
+        super().__init__(layer, pos, stick, show, layerIndex)
+
+        self.width, self.height = dimensions
+        self.elements = elements
+        self.collapse = collapse
+
+    def update(self):
+        self.boundingBox = self.layer.pygame.Rect((self.posX, self.posY), (self.width, self.height))
+
+    def display(self):
+        transparentSurface = self.layer.pygame.Surface(self.boundingBox.size, self.layer.pygame.SRCALPHA)
+        self.layer.pygame.draw.rect(transparentSurface, (50, 50, 50, 200), (0, 0, self.width, self.height), border_radius = 15)
+        self.layer.screen.blit(transparentSurface, (self.posX, self.posY))
+
 
 class Layer:
     def __init__(self, name, number, screen, pygame, fontName):
@@ -274,17 +331,18 @@ class Layer:
         self.screenHeight = 0
 
     def add(self, element):
-        self.elements.append(element)
+        self.elements.insert(element.layerIndex, element)
 
     def display(self, screenWidth, screenHeight, offset = None):
         self.screenWidth = screenWidth
         self.screenHeight = screenHeight
         self.offset = offset
         for element in self.elements:
-            element.posX, element.posY = element.stickyPos()
-            element.posX, element.posY = element.offsetPos(offset)
-            element.update()
-            element.display()
+            if element.show:
+                element.posX, element.posY = element.stickyPos()
+                element.posX, element.posY = element.offsetPos(offset)
+                element.update()
+                element.display()
 
     def mouseOnLayer(self, mousePos):
         boundingBoxes = [element.returnBoundingBox() for element in self.elements]

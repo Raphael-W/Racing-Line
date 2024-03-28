@@ -158,6 +158,32 @@ class Track:
         for point in points:
             self.points.append(ControlPoint(point[0], point[1]))
 
+    def clear(self):
+        self.points = []
+        self.splinePoints = []
+
+        self.splinePointsPolygonLeftSide = []
+        self.splinePointsPolygonRightSide = []
+
+        self.leftTrackEdgePolygonInner = []
+        self.leftTrackEdgePolygonOuter = []
+
+        self.rightTrackEdgePolygonInner = []
+        self.rightTrackEdgePolygonOuter = []
+
+    def saveTrackPoints(self):
+        points = {}
+        pointCoords = self.returnPointCoords()
+        for pointIndex in range(len(self.points)):
+            points[pointIndex] = pointCoords[pointIndex]
+
+        return points
+
+    def loadTrackPoints(self, pointCoords):
+        self.clear()
+        for point in pointCoords:
+            self.add(ControlPoint(point[0], point[1]), update = False)
+
     def changeWidth(self, value):
         self.width = value
         self.computeTrackEdges()
@@ -522,8 +548,8 @@ class Track:
 
                 mainTrackPolygon = formPolygon(leftTrackEdgePolygonInnerSegment, rightTrackEdgePolygonInnerSegment)
 
-                # pygame.gfxdraw.aapolygon(screen, mainTrackPolygon, programColours["mainTrack"])
-                # pygame.gfxdraw.filled_polygon(screen, mainTrackPolygon, programColours["mainTrack"])
+                pygame.gfxdraw.aapolygon(screen, mainTrackPolygon, programColours["mainTrack"])
+                pygame.gfxdraw.filled_polygon(screen, mainTrackPolygon, programColours["mainTrack"])
 
             for point in range(len(self.points) - 1):
                 splinePointsPolygonLeftSideOffsetSegment = splinePointsPolygonLeftSideOffset[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1]
