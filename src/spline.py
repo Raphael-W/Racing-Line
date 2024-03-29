@@ -171,13 +171,7 @@ class Track:
         self.rightTrackEdgePolygonInner = []
         self.rightTrackEdgePolygonOuter = []
 
-    def saveTrackPoints(self):
-        points = {}
-        pointCoords = self.returnPointCoords()
-        for pointIndex in range(len(self.points)):
-            points[pointIndex] = pointCoords[pointIndex]
-
-        return points
+        self.closed = False
 
     def loadTrackPoints(self, pointCoords):
         self.clear()
@@ -485,7 +479,7 @@ class Track:
         for point in self.points:
             point.update(mousePosX, mousePosY, screenWidth, screenHeight, screenBorder, pygame, offset, snap)
 
-        if len(self.points) >= 4:
+        if len(self.points) >= 5:
             snapThreshold = 50
             if self.points[0].pointSelected and (-snapThreshold <= self.points[0].posX - self.points[-1].posX <= snapThreshold) and (-snapThreshold <= self.points[0].posY - self.points[-1].posY <= snapThreshold) and not(pygame.key.get_mods() & pygame.KMOD_LSHIFT):
                 self.points[0].posX, self.points[0].posY = self.points[-1].posX, self.points[-1].posY

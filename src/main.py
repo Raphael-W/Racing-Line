@@ -1,8 +1,13 @@
 import json
+from jsonschema import validate
 
 import pygame
 import pygame.gfxdraw
 import pygame.freetype
+
+from tkinter.filedialog import asksaveasfilename, askopenfilename
+import tkinter as tk
+import os
 
 from pygameUIElements import *
 from spline import *
@@ -40,6 +45,21 @@ directories = {"mainFont": "../assets/MonoFont.ttf",
                "scale": "../assets/scale.png",
                "minus": "../assets/minus.png",
                "plus": "../assets/plus.png"}
+
+trackFileSchema = {"type"      : "object",
+                   "properties": {"points": {"type": "array", "items": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2}},
+
+                   "properties": {"properties": {"width": {"type": "number"},
+                                "trackRes": {"type": "number"},
+                                "closed": {"type": "boolean"},
+                                "switchEnds": {"type": "boolean"},
+                                "snap": {"type": "boolean"}},
+
+                                  "required": ["width", "trackRes", "closed", "switchEnds", "snap"]}},
+
+                   "required"  : ["points", "properties"]}
+
+saveDirectory = None
 
 mainFont = directories["mainFont"]
 
@@ -88,44 +108,102 @@ def drawGrid(offset, frequency, lineWidth, lineColor):
         y = line * frequency + offset[1]
         pygame.draw.line(screen, lineColor, (0, y), (screenWidth, y), lineWidth)
 
-def saveTrack():
-    points = mainTrack.saveTrackPoints()
-    settings = {"width": mainTrack.width,
+def saveTrack(saveNewDirectory = False):
+    def closeError(sender):
+        sender.close()
+
+    global saveDirectory
+    points = mainTrack.returnPointCoords()
+    properties = {"width": mainTrack.width,
                 "trackRes": mainTrack.perSegRes,
                 "closed": mainTrack.closed,
                 "switchEnds": switchEnds.value,
                 "snap": snapPoints.value}
 
     trackData = {"points": points,
-             "settings": settings}
+             "properties": properties}
 
-    with open("testTrack.track", "w") as outputFile:
-        json.dump(trackData, outputFile)
+    validFile = True
+    if saveDirectory is None or saveNewDirectory:
+        root = tk.Tk()
+        root.withdraw()
+        saveDirectory = asksaveasfilename(title = "Save Track", initialfile = 'Untitled.track', defaultextension = ".track",filetypes = [("Track Files","*.track")])
+        validFile = os.path.isdir(os.path.dirname(saveDirectory))
+        root.destroy()
 
-def loadTrack():
-    with open("testTrack.track") as loadFile:
-        trackData = json.load(loadFile)
+    if validFile:
+        try:
+            with open(saveDirectory, "w") as outputFile:
+                json.dump(trackData, outputFile)
+        except Exception as error:
+            errorMessage = Message(UILayer, "Can't Save", error, "OK", closeError, "grey")
+            saveDirectory = None
 
-    pointCoords = list(trackData["points"].values())
-    mainTrack.loadTrackPoints(pointCoords)
+    elif not validFile and saveDirectory != '':
+        print("Invalid Directory")
+        errorMessage = Message(UILayer, "Can't Save", "Please select a valid directory", "OK", closeError, "grey")
+        saveDirectory = None
 
-    mainTrack.computeSpline()
-    mainTrack.computeTrackEdges()
+def openTrack():
+    global saveDirectory
 
-    trackSettings = trackData["settings"]
-    trackWidth.updateValue(trackSettings["width"])
-    trackRes.updateValue(trackSettings["trackRes"])
-    mainTrack.updateCloseStatus(trackSettings["closed"], update = True)
-    switchEnds.value = trackSettings["switchEnds"]
-    snapPoints.value = trackSettings["snap"]
+    def closeError(sender):
+        sender.close()
+
+    root = tk.Tk()
+    root.withdraw()
+    saveDirectory = askopenfilename(title="Open Track", defaultextension = ".track",filetypes = [("Track Files","*.track")])
+    validFile = os.path.isfile(saveDirectory)
+    root.destroy()
+
+    if validFile:
+        try:
+            with open(saveDirectory) as loadFile:
+                try:
+                    trackData = json.load(loadFile)
+                    validate(instance = trackData, schema = trackFileSchema)
+                except Exception:
+                    errorMessage = Message(UILayer, "Invalid File", "Please select a valid file", "OK", closeError, "grey")
+                    validFile = False
+                    saveDirectory = None
+
+        except Exception as error:
+            errorMessage = Message(UILayer, "Can't Open", error, "OK", closeError, "grey")
+            validFile = False
+            saveDirectory = None
+
+    else:
+        print("Invalid Directory")
+        errorMessage = Message(UILayer, "No File", "There is no file at this path", "OK", closeError, "grey")
+        saveDirectory = None
+
+    if validFile:
+        pointCoords = trackData["points"]
+        mainTrack.loadTrackPoints(pointCoords)
+
+        mainTrack.computeSpline()
+        mainTrack.computeTrackEdges()
+
+        trackProperties = trackData["properties"]
+        trackWidth.updateValue(trackProperties["width"])
+        trackRes.updateValue(trackProperties["trackRes"])
+        mainTrack.updateCloseStatus(trackProperties["closed"], update = True)
+        switchEnds.value = trackProperties["switchEnds"]
+        snapPoints.value = trackProperties["snap"]
 
 
-save = Button(UILayer, (305, 387.5), "SE", (123.75, 30), "Save", 12, (100, 100, 100), action = saveTrack)
-saveAs = Button(UILayer, (173.75, 387.5), "SE", (123.75, 30), "Save As", 12, (100, 100, 100), action = saveTrack)
-openTrack = Button(UILayer, (305, 350), "SE", (123.75, 30), "Open", 12, (100, 100, 100), action = loadTrack)
-newTrack = Button(UILayer, (173.75, 350), "SE", (123.75, 30), "New", 12, (100, 100, 100), action = loadTrack)
+def newTrack():
+    global saveDirectory
 
-configAccordion.elements += [save, saveAs, openTrack, newTrack]
+    mainTrack.clear()
+    saveDirectory = None
+
+saveButton = Button(UILayer, (305, 387.5), "SE", (123.75, 30), "Save", 12, (100, 100, 100), action = saveTrack)
+saveAsButton = Button(UILayer, (173.75, 387.5), "SE", (123.75, 30), "Save As", 12, (100, 100, 100), action = lambda: saveTrack(saveNewDirectory = True))
+openTrackButton = Button(UILayer, (305, 350), "SE", (123.75, 30), "Open", 12, (100, 100, 100), action = openTrack)
+newTrackButton = Button(UILayer, (173.75, 350), "SE", (123.75, 30), "New", 12, (100, 100, 100), action = newTrack)
+
+configAccordion.elements += [saveButton, saveAsButton, openTrackButton, newTrackButton]
 
 
 while running:

@@ -58,28 +58,6 @@ class UIElement:
 
         return newX, newY
 
-    def deStickPos(self):
-        vertValid = not(("n" in self.stick) and ("s" in self.stick))
-        horValid = not (("e" in self.stick) and ("w" in self.stick))
-        charValid = all([True for char in self.stick if char in ["n", "e", "s", "w"]])
-
-        horStick = None
-        vertStick = None
-        for char in self.stick:
-            if char in ["n", "s"]: vertStick = char
-            elif char in ["e", "w"]: horStick = char
-
-        newX = self.posX
-        newY = self.posY
-        if vertValid and horValid and charValid and (len(self.stick) > 0):
-            if horStick == "e":
-                newX = self.layer.screenWidth - self.nonStickPosX
-
-            if vertStick == "s":
-                newY = self.layer.screenHeight - self.nonStickPosY
-
-        return newX, newY
-
 class Button (UIElement):
     def __init__(self, layer, pos, stick, dimensions, text, fontSize, colour, textOffset = (0, 0), roundedCorners = 10, action = None, show = True, layerIndex = -1):
         super().__init__(layer, pos, stick, show, layerIndex)
@@ -381,6 +359,75 @@ class Accordion(UIElement):
         for element in self.elements:
             element.show = not self.collapse
 
+class Message(UIElement):
+    def __init__(self, layer, title, message, button1Text, button1Action, button1Colour, button2Text = None, button2Action = None, button2Colour = None, show = True, layerIndex = -1):
+        super().__init__(layer, (0, 0), "", show, layerIndex)
+
+        self.message = message
+        self.title = title
+
+        self.button1Text = button1Text
+        self.button1Action = button1Action
+        self.button1Colour = button1Colour
+
+        self.button2Text = button2Text
+        self.button2Action = button2Action
+        self.button2Colour = button2Colour
+
+        self.greyColour = (70, 70, 70)
+        self.redColour = (95, 25, 25)
+
+        self.width = 400
+        self.height = 150
+
+        self.posX = (self.layer.screenWidth / 2) - (self.width / 2)
+        self.posY = (self.layer.screenHeight / 2) - (self.height / 2)
+
+        self.boundingBox = self.layer.pygame.Rect(self.posX, self.posY, self.width, self.height)
+
+        self.messageFont = layer.pygame.freetype.Font(layer.fontName, 15)
+        self.titleFont = layer.pygame.freetype.Font(layer.fontName, 25)
+
+        self.messageSize = self.messageFont.get_rect(self.message).size
+        self.messageBoundingBox = self.layer.pygame.Rect((self.posX, self.posY), (self.messageSize[0], self.messageSize[1]))
+        self.messageBoundingBox.center = self.boundingBox.center
+
+        self.titleSize = self.titleFont.get_rect(self.title).size
+        self.titleBoundingBox = self.layer.pygame.Rect((self.posX, self.posY), (self.titleSize[0], self.titleSize[1]))
+        self.titleBoundingBox.center = self.boundingBox.center
+
+        if button2Text is None:
+            centreButtonColour = self.greyColour
+            if self.button1Colour == "red":
+                centreButtonColour = self.redColour
+
+            self.centreButton = Button(layer, (self.posX + 10, (self.posY + self.height) - 40), "", (self.width - 20, 30), button1Text, 15, centreButtonColour, action = lambda: button1Action(self))
+
+        else:
+            leftButtonColour = self.greyColour
+            if self.button1Colour == "red":
+                leftButtonColour = self.redColour
+
+            rightButtonColour = self.greyColour
+            if self.button2Colour == "red":
+                rightButtonColour = self.redColour
+
+            self.leftButton = Button(layer, (self.posX + 10, (self.posY + self.height) - 40), "", ((self.width / 2) - 20, 30), button1Text, 15, leftButtonColour, action = lambda: button1Action(self))
+            self.rightButton = Button(layer, (self.posX + 10 + (self.width / 2), (self.posY + self.height) - 40), "",((self.width / 2) - 20, 30), button2Text, 15, rightButtonColour, action = lambda: button2Action(self))
+
+    def display(self):
+        self.layer.pygame.draw.rect(self.layer.screen, (100, 100, 100), (self.posX, self.posY, self.width, self.height), border_radius = 15)
+        self.titleFont.render_to(self.layer.screen, (self.titleBoundingBox.centerx - (self.titleSize[0] / 2), self.posY + 20), self.title, (200, 200, 200))
+        self.messageFont.render_to(self.layer.screen, (self.messageBoundingBox.centerx - (self.messageSize[0] / 2), self.posY + 60), self.message, (200, 200, 200))
+
+    def close(self):
+        if self.button2Text is None:
+            self.layer.elements.remove(self.centreButton)
+        else:
+            self.layer.elements.remove(self.leftButton)
+            self.layer.elements.remove(self.rightButton)
+
+        self.layer.elements.remove(self)
 
 class Layer:
     def __init__(self, name, number, screen, pygame, fontName, directories):
