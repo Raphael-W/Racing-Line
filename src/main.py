@@ -37,45 +37,39 @@ programColours = {"background": (20, 20, 20),
 directories = {"mainFont": "../assets/MonoFont.ttf",
                "recentre": "../assets/aim.png",
                "finishLine": "../assets/flag.png",
-               "scale": "../assets/scale.png"}
+               "scale": "../assets/scale.png",
+               "minus": "../assets/minus.png",
+               "plus": "../assets/plus.png"}
 
 mainFont = directories["mainFont"]
 
-UILayer = Layer("UI", 0, screen, pygame, mainFont)
-trackLayer = Layer("Track", 1, screen, pygame, mainFont)
+UILayer = Layer("UI", 0, screen, pygame, mainFont, directories)
 
 mouseCoordsX = Label(UILayer, 15, (100, 50), "NE", "", programColours["white"])
 mouseCoordsY = Label(UILayer, 15, (100, 30), "NE", "", programColours["white"])
 
-snapPoints = Switch(UILayer, programColours["white"], (120, 100), "SE", 0.8, value = False)
-snapPointsLabel = Label(UILayer, 15, (173, 98), "SE", "Snap", programColours["white"])
+snapPoints = Switch(UILayer, programColours["white"], (140, 100), "SE", 0.8, value = False)
+snapPointsLabel = Label(UILayer, 15, (193, 98), "SE", "Snap", programColours["white"])
 
-switchEnds = Switch(UILayer, programColours["white"], (120, 130), "SE", 0.8, value = False)
-switchEndsLabel = Label(UILayer, 15, (245, 128), "SE", "Switch front", programColours["white"])
+switchEnds = Switch(UILayer, programColours["white"], (140, 130), "SE", 0.8, value = False)
+switchEndsLabel = Label(UILayer, 15, (255, 128), "SE", "Switch front", programColours["white"])
 
-trackWidth = Slider(UILayer, 15, programColours["white"], programColours["controlPoint"], (180, 173), "SE", 1, 100, (20, 200), action = lambda: mainTrack.changeWidth(trackWidth.value), value = mainTrack.width)
-trackWidthLabel = Label(UILayer, 15, (250, 178), "SE", "Width", programColours["white"])
+trackWidth = Slider(UILayer, 15, programColours["white"], programColours["controlPoint"], (200, 173), "SE", 1, 100, (20, 200), action = lambda: mainTrack.changeWidth(trackWidth.value), value = mainTrack.width)
+trackWidthLabel = Label(UILayer, 15, (270, 178), "SE", "Width", programColours["white"])
 
-trackRes = Slider(UILayer, 15, programColours["white"], programColours["controlPoint"], (180, 208), "SE", 1, 100, (10, 100), action = lambda: mainTrack.changeRes(trackRes.value), value = mainTrack.perSegRes)
-TrackResLabel = Label(UILayer, 15, (285, 213), "SE", "Track Res", programColours["white"])
+trackRes = Slider(UILayer, 15, programColours["white"], programColours["controlPoint"], (200, 208), "SE", 1, 100, (10, 100), action = lambda: mainTrack.changeRes(trackRes.value), value = mainTrack.perSegRes)
+TrackResLabel = Label(UILayer, 15, (305, 213), "SE", "Track Res", programColours["white"])
 
-setStartLine = Button(UILayer, (275, 280), "SE", (225, 35), "Set Finish Line   ", 13, (100, 100, 100), action = None)
-startLineImage = Image(UILayer, (setStartLine.posX - 180, setStartLine.posY - 5), "SE", directories["finishLine"], 1, (70, 70, 70))
+setFinish = Button(UILayer, (305, 300), "SE", (80, 60), "Set Finish", 10, (100, 100, 100), (0, -18), action = None)
+startFinishImage = Image(UILayer, (setFinish.posX - 28, setFinish.posY - 10), "SE", directories["finishLine"], 1, (30, 30, 30))
 
-setScale = Button(UILayer, (275, 325), "SE", (225, 35), "Set Scale   ", 13, (100, 100, 100), action = None)
-scaleImage = Image(UILayer, (setScale.posX - 180, setScale.posY - 5), "SE", directories["scale"], 1, (70, 70, 70))
+setScale = Button(UILayer, (217.5, 300), "SE", (80, 60), "Set Scale", 10, (100, 100, 100), (0, -18), action = None)
+scaleImage = Image(UILayer, (setScale.posX - 28, setScale.posY - 10), "SE", directories["scale"], 1, (30, 30, 30))
 
-recentre = Button(UILayer, (275, 370), "SE", (225, 35), "Recentre   ", 13, (100, 100, 100), action = None)
-recentreImage = Image(UILayer, (recentre.posX - 180, recentre.posY - 5), "SE", directories["recentre"], 1, (70, 70, 70))
+recentre = Button(UILayer, (130, 300), "SE", (80, 60), "Recentre", 10, (100, 100, 100), (0, -18), action = None)
+recentreImage = Image(UILayer, (recentre.posX - 27, recentre.posY - 10), "SE", directories["recentre"], 1, (30, 30, 30))
 
-newTrack = Button(UILayer, (275, 435), "SE", (50, 35), "New", 13, (100, 100, 100), action = None)
-openTrack = Button(UILayer, (160, 435), "SE", (50, 35), "Open", 13, (100, 100, 100), action = None)
-
-save = Button(UILayer, (275, 480), "SE", (50, 35), "Save", 13, (100, 100, 100), action = None)
-saveAs = Button(UILayer, (160, 480), "SE", (70, 35), "Save As", 13, (100, 100, 100), action = None)
-
-
-accordion = Accordion(UILayer, (300, 440), "SE", (275, 415), [snapPoints, snapPointsLabel, switchEnds, switchEndsLabel, trackWidth, trackWidthLabel, trackRes, TrackResLabel], layerIndex = 0)
+configAccordion = Accordion(UILayer, (330, 440), "SE", (305, 415), [snapPoints, snapPointsLabel, switchEnds, switchEndsLabel, trackWidth, trackWidthLabel, trackRes, TrackResLabel, setFinish, startFinishImage, setScale, scaleImage, recentre, recentreImage], layerIndex = 0)
 
 def drawGrid(offset, frequency, lineWidth, lineColor):
     columns = math.ceil(screenWidth/ frequency)
@@ -121,16 +115,18 @@ def loadTrack():
     trackSettings = trackData["settings"]
     trackWidth.updateValue(trackSettings["width"])
     trackRes.updateValue(trackSettings["trackRes"])
-    mainTrack.updateCloseStatus(trackSettings["closed"])
+    mainTrack.updateCloseStatus(trackSettings["closed"], update = True)
     switchEnds.value = trackSettings["switchEnds"]
     snapPoints.value = trackSettings["snap"]
 
-    mainTrack.computeSpline()
-    mainTrack.computeTrackEdges()
 
+save = Button(UILayer, (305, 387.5), "SE", (123.75, 30), "Save", 12, (100, 100, 100), action = saveTrack)
+saveAs = Button(UILayer, (173.75, 387.5), "SE", (123.75, 30), "Save As", 12, (100, 100, 100), action = saveTrack)
+openTrack = Button(UILayer, (305, 350), "SE", (123.75, 30), "Open", 12, (100, 100, 100), action = loadTrack)
+newTrack = Button(UILayer, (173.75, 350), "SE", (123.75, 30), "New", 12, (100, 100, 100), action = loadTrack)
 
-saveTrack = Button(UILayer, (100, 100), "", (100, 50), "Save", 12, (100, 100, 100), action = saveTrack)
-loadTrack = Button(UILayer, (250, 100), "", (100, 50), "Load", 12, (100, 100, 100), action = loadTrack)
+configAccordion.elements += [save, saveAs, openTrack, newTrack]
+
 
 while running:
     screenWidth, screenHeight = screen.get_size()
@@ -190,7 +186,6 @@ while running:
     mouseCoordsY.text = ("y: " + str(mousePosY - offsetPosition[1]))
 
     UILayer.display(screenWidth, screenHeight)
-    trackLayer.display(screenWidth, screenHeight, offsetPosition)
 
     pygame.display.flip()
     clock.tick(60) #Refresh Rate

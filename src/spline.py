@@ -193,8 +193,11 @@ class Track:
         self.computeSpline()
         self.computeTrackEdges()
 
-    def updateCloseStatus(self, value):
+    def updateCloseStatus(self, value, update = False):
         self.closed = value
+        if update:
+            self.computeSpline(updatePoints = [0])
+            self.computeTrackEdges(updatePoints = [0])
 
     #Checks if current mouse pos crosses the spline (for inserting points)
     def mouseOnCurve(self, mousePosX, mousePosY, margin):

@@ -58,14 +58,38 @@ class UIElement:
 
         return newX, newY
 
+    def deStickPos(self):
+        vertValid = not(("n" in self.stick) and ("s" in self.stick))
+        horValid = not (("e" in self.stick) and ("w" in self.stick))
+        charValid = all([True for char in self.stick if char in ["n", "e", "s", "w"]])
+
+        horStick = None
+        vertStick = None
+        for char in self.stick:
+            if char in ["n", "s"]: vertStick = char
+            elif char in ["e", "w"]: horStick = char
+
+        newX = self.posX
+        newY = self.posY
+        if vertValid and horValid and charValid and (len(self.stick) > 0):
+            if horStick == "e":
+                newX = self.layer.screenWidth - self.nonStickPosX
+
+            if vertStick == "s":
+                newY = self.layer.screenHeight - self.nonStickPosY
+
+        return newX, newY
+
 class Button (UIElement):
-    def __init__(self, layer, pos, stick, dimensions, text, fontSize, colour, action, show = True, layerIndex = -1):
+    def __init__(self, layer, pos, stick, dimensions, text, fontSize, colour, textOffset = (0, 0), roundedCorners = 10, action = None, show = True, layerIndex = -1):
         super().__init__(layer, pos, stick, show, layerIndex)
         self.width = dimensions[0]
         self.height = dimensions[1]
         self.boundingBox = layer.pygame.Rect(self.posX, self.posY, self.width, self.height)
+        self.roundedCorers = roundedCorners
 
         self.text = text
+        self.textOffset = textOffset
         self.font = layer.pygame.freetype.Font(layer.fontName, fontSize)
 
         self.action = action
@@ -106,10 +130,10 @@ class Button (UIElement):
 
     def display(self):
         self.boundingBox = self.layer.pygame.Rect(self.posX, self.posY, self.width, self.height)
-        self.layer.pygame.draw.rect(self.layer.screen, self.colour, self.boundingBox, 0, 10)
+        self.layer.pygame.draw.rect(self.layer.screen, self.colour, self.boundingBox, 0, self.roundedCorers)
 
         text_rect = self.font.get_rect(self.text)
-        text_rect.center = self.boundingBox.center
+        text_rect.center = (self.boundingBox.center[0] - self.textOffset[0], self.boundingBox.center[1] - self.textOffset[1])
 
         self.font.render_to(self.layer.screen, text_rect, self.text, (250, 250, 250))
 
@@ -273,9 +297,16 @@ class Image(UIElement):
 
         if self.colour is not None:
             self.image.fill(self.colour, special_flags = self.layer.pygame.BLEND_RGB_MAX)
+
     def display(self):
         if self.show:
             self.layer.screen.blit(self.image, (self.posX, self.posY))
+
+    def manualUpdate(self):
+        self.image = self.layer.pygame.image.load(self.imageDir).convert_alpha()
+        self.image = self.layer.pygame.transform.scale_by(self.image, self.size)
+        if self.colour is not None:
+            self.image.fill(self.colour, special_flags = self.layer.pygame.BLEND_RGB_MAX)
 
 class TextInput(UIElement):
     def __init__(self, layer, pos, stick, dimensions, placeholder = "", text = "", show = True, layerIndex = -1):
@@ -303,23 +334,61 @@ class Accordion(UIElement):
         super().__init__(layer, pos, stick, show, layerIndex)
 
         self.width, self.height = dimensions
+        self.displayWidth, self.displayHeight = dimensions
+        self.displayPosX, self.displayPosY = (self.posX, self.posY)
+        self.collapsedSize = 50
         self.elements = elements
         self.collapse = collapse
 
+        self.collapseButton = Button(layer, ((self.displayPosX - self.displayWidth) + 40, self.displayPosY - 10), stick, (30, 30), "", 15, (100, 100, 100), roundedCorners = 30, action = self.toggleCollapse)
+        self.collapseImage = Image(layer, ((self.displayPosX - self.displayWidth) + 38, self.displayPosY - 12), stick, self.layer.directories["minus"], 1, (200, 200, 200))
+
+        self.expandButton = Button(layer, ((self.displayPosX - self.displayWidth) + 40, (self.displayPosY - self.displayHeight) + 40), stick, (30, 30), "", 15, (100, 100, 100), roundedCorners = 30, action = self.toggleCollapse)
+        self.expandImage = Image(layer, ((self.displayPosX - self.displayWidth) + 38, (self.displayPosY - self.displayHeight) + 38), stick, self.layer.directories["plus"], 1, (200, 200, 200))
+
     def update(self):
-        self.boundingBox = self.layer.pygame.Rect((self.posX, self.posY), (self.width, self.height))
+        if self.collapse:
+            self.displayPosX, self.displayPosY = ((self.posX + self.width) - self.collapsedSize, (self.posY + self.height) - self.collapsedSize)
+
+            self.collapseButton.show = False
+            self.collapseImage.show = False
+            self.expandButton.show = True
+            self.expandImage.show = True
+
+            self.displayHeight = self.collapsedSize
+            self.displayWidth = self.collapsedSize
+
+        else:
+            self.displayPosX, self.displayPosY = (self.posX, self.posY)
+
+            self.collapseButton.show = True
+            self.collapseImage.show = True
+            self.expandButton.show = False
+            self.expandImage.show = False
+
+            self.displayHeight = self.height
+            self.displayWidth = self.width
+
+        self.boundingBox = self.layer.pygame.Rect((self.displayPosX, self.displayPosY), (self.displayHeight, self.displayHeight))
 
     def display(self):
         transparentSurface = self.layer.pygame.Surface(self.boundingBox.size, self.layer.pygame.SRCALPHA)
-        self.layer.pygame.draw.rect(transparentSurface, (50, 50, 50, 200), (0, 0, self.width, self.height), border_radius = 15)
-        self.layer.screen.blit(transparentSurface, (self.posX, self.posY))
+        self.layer.pygame.draw.rect(transparentSurface, (50, 50, 50, 200), (0, 0, self.displayWidth, self.displayHeight), border_radius = 15)
+        self.layer.screen.blit(transparentSurface, (self.displayPosX, self.displayPosY))
+
+    def toggleCollapse(self):
+        self.collapse = not self.collapse
+        for element in self.elements:
+            element.show = not self.collapse
 
 
 class Layer:
-    def __init__(self, name, number, screen, pygame, fontName):
+    def __init__(self, name, number, screen, pygame, fontName, directories):
         self.name = name
         self.number = number
         self.elements = []
+
+        self.directories = directories
 
         self.screen = screen
         self.pygame = pygame
@@ -345,12 +414,12 @@ class Layer:
                 element.display()
 
     def mouseOnLayer(self, mousePos):
-        boundingBoxes = [element.returnBoundingBox() for element in self.elements]
+        boundingBoxes = [element.returnBoundingBox() for element in self.elements if element.show]
         hovering = False
         mouseX, mouseY = mousePos
 
-        for i in boundingBoxes:
-            hovering = hovering or ((i[0][0] < mouseX < i[1][0]) and (i[0][1] < mouseY < i[2][1]))
+        for box in boundingBoxes:
+            hovering = hovering or ((box[0][0] < mouseX < box[1][0]) and (box[0][1] < mouseY < box[2][1]))
 
         return hovering
 
