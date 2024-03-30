@@ -44,7 +44,8 @@ directories = {"mainFont": "../assets/MonoFont.ttf",
                "finishLine": "../assets/flag.png",
                "scale": "../assets/scale.png",
                "minus": "../assets/minus.png",
-               "plus": "../assets/plus.png"}
+               "plus": "../assets/plus.png",
+               "cross": "../assets/cross.png"}
 
 trackFileSchema = {"type"      : "object",
                    "properties": {"points": {"type": "array", "items": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2}},
@@ -60,6 +61,9 @@ trackFileSchema = {"type"      : "object",
                    "required"  : ["points", "properties"]}
 
 saveDirectory = None
+saved = True
+newCaption = None
+lastCaption = None
 
 mainFont = directories["mainFont"]
 
@@ -109,10 +113,10 @@ def drawGrid(offset, frequency, lineWidth, lineColor):
         pygame.draw.line(screen, lineColor, (0, y), (screenWidth, y), lineWidth)
 
 def saveTrack(saveNewDirectory = False):
+    global saveDirectory, mainTrack
     def closeError(sender):
         sender.close()
 
-    global saveDirectory
     points = mainTrack.returnPointCoords()
     properties = {"width": mainTrack.width,
                 "trackRes": mainTrack.perSegRes,
@@ -135,68 +139,122 @@ def saveTrack(saveNewDirectory = False):
         try:
             with open(saveDirectory, "w") as outputFile:
                 json.dump(trackData, outputFile)
+                pygame.display.set_caption(os.path.splitext(os.path.basename(saveDirectory))[0] + " - " + saveDirectory)
+                mainTrack.saved = True
         except Exception as error:
-            errorMessage = Message(UILayer, "Can't Save", error, "OK", closeError, "grey")
+            errorMessage = Message(UILayer, "Can't Save", str(error), "OK", closeError, "grey")
             saveDirectory = None
+            mainTrack.saved = False
 
     elif not validFile and saveDirectory != '':
         print("Invalid Directory")
         errorMessage = Message(UILayer, "Can't Save", "Please select a valid directory", "OK", closeError, "grey")
         saveDirectory = None
+        mainTrack.saved = False
 
 def openTrack():
-    global saveDirectory
+    global saveDirectory, mainTrack
+
+    def openTrackSequence(valid, tempSaveDirectory):
+        global saveDirectory
+        if valid:
+            try:
+                with open(tempSaveDirectory) as loadFile:
+                    try:
+                        trackData = json.load(loadFile)
+                        validate(instance = trackData, schema = trackFileSchema)
+                    except Exception:
+                        errorMessage = Message(UILayer, "Invalid File", "Please select a valid file", "OK", closeError,
+                                               "grey")
+                        valid = False
+                        tempSaveDirectory = None
+
+            except Exception as error:
+                errorMessage = Message(UILayer, "Can't Open", str(error), "OK", closeError, "grey")
+                valid = False
+                tempSaveDirectory = None
+
+
+        elif not valid and tempSaveDirectory != '':
+            print("Invalid Directory")
+            errorMessage = Message(UILayer, "No File", "There is no file at this path", "OK", closeError, "grey")
+            tempSaveDirectory = None
+
+        if valid:
+            pointCoords = trackData["points"]
+            mainTrack.loadTrackPoints(pointCoords)
+
+            mainTrack.computeSpline()
+            mainTrack.computeTrackEdges()
+
+            trackProperties = trackData["properties"]
+            trackWidth.updateValue(trackProperties["width"])
+            trackRes.updateValue(trackProperties["trackRes"])
+            mainTrack.updateCloseStatus(trackProperties["closed"], update = True)
+            switchEnds.value = trackProperties["switchEnds"]
+            snapPoints.value = trackProperties["snap"]
+
+            saveDirectory = tempSaveDirectory
+            mainTrack.saved = True
 
     def closeError(sender):
         sender.close()
 
+    def saveTrackFirst(sender):
+        global saveDirectory
+        sender.close()
+        saveTrack()
+        openTrackSequence(validFile, tempDirectory)
+
+        mainTrack.saved = True
+    def discardTrack(sender):
+        global saveDirectory
+        sender.close()
+        openTrackSequence(validFile, tempDirectory)
+
+        mainTrack.saved = True
+
     root = tk.Tk()
     root.withdraw()
-    saveDirectory = askopenfilename(title="Open Track", defaultextension = ".track",filetypes = [("Track Files","*.track")])
-    validFile = os.path.isfile(saveDirectory)
+    tempDirectory = askopenfilename(title="Open Track", defaultextension = ".track",filetypes = [("Track Files","*.track")])
+    validFile = os.path.isfile(tempDirectory)
     root.destroy()
 
-    if validFile:
-        try:
-            with open(saveDirectory) as loadFile:
-                try:
-                    trackData = json.load(loadFile)
-                    validate(instance = trackData, schema = trackFileSchema)
-                except Exception:
-                    errorMessage = Message(UILayer, "Invalid File", "Please select a valid file", "OK", closeError, "grey")
-                    validFile = False
-                    saveDirectory = None
-
-        except Exception as error:
-            errorMessage = Message(UILayer, "Can't Open", error, "OK", closeError, "grey")
-            validFile = False
-            saveDirectory = None
+    if tempDirectory != '' and mainTrack.saved == False:
+        areYouSure = Message(UILayer, "Sure?", "You currently have an unsaved file open", "Save", saveTrackFirst, "grey","Discard", discardTrack, "red")
 
     else:
-        print("Invalid Directory")
-        errorMessage = Message(UILayer, "No File", "There is no file at this path", "OK", closeError, "grey")
-        saveDirectory = None
-
-    if validFile:
-        pointCoords = trackData["points"]
-        mainTrack.loadTrackPoints(pointCoords)
-
-        mainTrack.computeSpline()
-        mainTrack.computeTrackEdges()
-
-        trackProperties = trackData["properties"]
-        trackWidth.updateValue(trackProperties["width"])
-        trackRes.updateValue(trackProperties["trackRes"])
-        mainTrack.updateCloseStatus(trackProperties["closed"], update = True)
-        switchEnds.value = trackProperties["switchEnds"]
-        snapPoints.value = trackProperties["snap"]
+        openTrackSequence(validFile, tempDirectory)
 
 
 def newTrack():
-    global saveDirectory
+    global saveDirectory, mainTrack
 
-    mainTrack.clear()
-    saveDirectory = None
+    def saveTrackFirst(sender):
+        global saveDirectory
+        sender.close()
+        saveTrack()
+        mainTrack.clear()
+
+        mainTrack.saved = True
+        saveDirectory = None
+    def discardTrack(sender):
+        global saveDirectory
+        sender.close()
+        mainTrack.clear()
+
+        mainTrack.saved = True
+        saveDirectory = None
+
+    if not mainTrack.saved:
+        areYouSure = Message(UILayer, "Sure?", "You currently have an unsaved file open", "Save", saveTrackFirst, "grey", "Discard", discardTrack, "red")
+
+    elif saveDirectory is not None:
+        saveTrack()
+        mainTrack.clear()
+        mainTrack.saved = True
+        saveDirectory = None
+
 
 saveButton = Button(UILayer, (305, 387.5), "SE", (123.75, 30), "Save", 12, (100, 100, 100), action = saveTrack)
 saveAsButton = Button(UILayer, (173.75, 387.5), "SE", (123.75, 30), "Save As", 12, (100, 100, 100), action = lambda: saveTrack(saveNewDirectory = True))
@@ -257,8 +315,33 @@ while running:
             if event.key == pygame.K_z and pygame.key.get_mods() & pygame.KMOD_LCTRL and pygame.key.get_mods() & pygame.KMOD_LSHIFT:
                 mainTrack.redo()
 
+            if event.key == pygame.K_s and pygame.key.get_mods() & pygame.KMOD_LCTRL:
+                saveTrack()
+
+            if event.key == pygame.K_o and pygame.key.get_mods() & pygame.KMOD_LCTRL:
+                openTrack()
+
+            if event.key == pygame.K_n and pygame.key.get_mods() & pygame.KMOD_LCTRL:
+                newTrack()
+
     mainTrack.update(mousePosX - offsetPosition[0], mousePosY - offsetPosition[1], screenWidth, screenHeight, screenBorder, pygame, offsetPosition, snapPoints.value)
     mainTrack.draw(programColours, screen, pygame, offsetPosition, switchEnds.value)
+
+    saved = mainTrack.saved
+    if saved:
+        saveCharacter = ""
+    else:
+        saveCharacter = "*"
+
+    if saveDirectory is None:
+        newCaption = "Untitled Track" + saveCharacter
+    else:
+        newCaption = str(os.path.splitext(os.path.basename(saveDirectory))[0] + saveCharacter + " - " + saveDirectory)
+
+    if lastCaption != newCaption:
+        pygame.display.set_caption(newCaption)
+
+    lastCaption = newCaption
 
     mouseCoordsX.text = ("x: " + str(mousePosX - offsetPosition[0]))
     mouseCoordsY.text = ("y: " + str(mousePosY - offsetPosition[1]))

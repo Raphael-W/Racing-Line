@@ -158,6 +158,8 @@ class Track:
         for point in points:
             self.points.append(ControlPoint(point[0], point[1]))
 
+        self.saved = True
+
     def clear(self):
         self.points = []
         self.splinePoints = []
@@ -172,6 +174,7 @@ class Track:
         self.rightTrackEdgePolygonOuter = []
 
         self.closed = False
+        self.saved = False
 
     def loadTrackPoints(self, pointCoords):
         self.clear()
@@ -182,16 +185,23 @@ class Track:
         self.width = value
         self.computeTrackEdges()
 
+        self.saved = False
+
     def changeRes(self, value):
         self.perSegRes = int(value)
         self.computeSpline()
         self.computeTrackEdges()
 
+        self.saved = False
+
     def updateCloseStatus(self, value, update = False):
-        self.closed = value
-        if update:
-            self.computeSpline(updatePoints = [0])
-            self.computeTrackEdges(updatePoints = [0])
+        if self.closed is not value:
+            self.closed = value
+            if update:
+                self.computeSpline(updatePoints = [0])
+                self.computeTrackEdges(updatePoints = [0])
+
+            self.saved = False
 
     #Checks if current mouse pos crosses the spline (for inserting points)
     def mouseOnCurve(self, mousePosX, mousePosY, margin):
@@ -237,6 +247,8 @@ class Track:
             self.computeSpline(updatePoints = [index])
             self.computeTrackEdges(updatePoints = [index])
 
+        self.saved = False
+
     def remove(self, index = -1, update = True):
         if index == -1:
             index = len(self.points) - 1
@@ -268,6 +280,8 @@ class Track:
             if update:
                 self.computeSpline(updatePoints = [index])
                 self.computeTrackEdges(updatePoints = [index])
+
+            self.saved = False
 
     def undo(self):
         print("Undo")
@@ -336,6 +350,7 @@ class Track:
                 self.splinePoints = ([''] * resolution)
 
             for updateRange in updateRanges:
+                self.saved = False
                 for tInt in range(*updateRange):
                     t = tInt / resolution
                     self.splinePoints[tInt] = (calculateSpline(self.returnPointCoords(), t))
@@ -393,6 +408,7 @@ class Track:
                 self.rightTrackEdgePolygonOuter = ([''] * resolution)
 
             for updateRange in updateRanges:
+                self.saved = False
                 for point in range(*updateRange):
                     self.splinePointsPolygonLeftSide[point] = calculateSide(self.splinePoints, point, 5)
                     self.splinePointsPolygonRightSide[point] = calculateSide(self.splinePoints, point, -5)
@@ -433,6 +449,8 @@ class Track:
                 for dot in range(*kerbRange):
                     pygame.draw.circle(screen, (252, 186, 3), self.splinePoints[dot], 5)
 
+            self.saved = False
+
     def deKink(self):
         extendedSplinePoints = extendPoints(self.splinePoints)
 
@@ -458,6 +476,8 @@ class Track:
             else:
                 nonKinkCoordRightInner = self.rightTrackEdgePolygonInner[seg]
                 nonKinkCoordRightOuter = self.rightTrackEdgePolygonOuter[seg]
+
+        self.saved = False
 
     def update(self, mousePosX, mousePosY, screenWidth, screenHeight, screenBorder, pygame, offset, snap):
         self.pointsSelected = [[self.points[point], point] for point in range(len(self.points)) if self.points[point].pointSelected]

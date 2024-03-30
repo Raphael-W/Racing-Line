@@ -374,7 +374,7 @@ class Message(UIElement):
         self.button2Action = button2Action
         self.button2Colour = button2Colour
 
-        self.greyColour = (70, 70, 70)
+        self.greyColour = (120, 120, 120)
         self.redColour = (95, 25, 25)
 
         self.width = 400
@@ -396,6 +396,9 @@ class Message(UIElement):
         self.titleBoundingBox = self.layer.pygame.Rect((self.posX, self.posY), (self.titleSize[0], self.titleSize[1]))
         self.titleBoundingBox.center = self.boundingBox.center
 
+        self.closeButton = Button(layer, (self.posX + self.width - 40, self.posY + 10), "", (30, 30), "", 10, self.greyColour, action = self.close)
+        self.closeImage = Image(layer, (self.posX + self.width - 38, self.posY + 12), "", self.layer.directories["cross"], 1, (200, 200, 200))
+
         if button2Text is None:
             centreButtonColour = self.greyColour
             if self.button1Colour == "red":
@@ -416,7 +419,7 @@ class Message(UIElement):
             self.rightButton = Button(layer, (self.posX + 10 + (self.width / 2), (self.posY + self.height) - 40), "",((self.width / 2) - 20, 30), button2Text, 15, rightButtonColour, action = lambda: button2Action(self))
 
     def display(self):
-        self.layer.pygame.draw.rect(self.layer.screen, (100, 100, 100), (self.posX, self.posY, self.width, self.height), border_radius = 15)
+        self.layer.pygame.draw.rect(self.layer.screen, (70, 70, 70), (self.posX, self.posY, self.width, self.height), border_radius = 15)
         self.titleFont.render_to(self.layer.screen, (self.titleBoundingBox.centerx - (self.titleSize[0] / 2), self.posY + 20), self.title, (200, 200, 200))
         self.messageFont.render_to(self.layer.screen, (self.messageBoundingBox.centerx - (self.messageSize[0] / 2), self.posY + 60), self.message, (200, 200, 200))
 
@@ -427,6 +430,8 @@ class Message(UIElement):
             self.layer.elements.remove(self.leftButton)
             self.layer.elements.remove(self.rightButton)
 
+        self.layer.elements.remove(self.closeButton)
+        self.layer.elements.remove(self.closeImage)
         self.layer.elements.remove(self)
 
 class Layer:
