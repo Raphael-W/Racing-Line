@@ -119,12 +119,15 @@ class Label (UIElement):
     def __init__(self, layer, fontSize, pos, stick, text, colour, show = True, layerIndex = -1):
         super().__init__(layer, pos, stick, show, layerIndex)
         self.text = text
+
         self.font = layer.pygame.freetype.Font(layer.fontName, fontSize)
         self.textSize = self.font.get_rect(self.text).size
         self.colour = colour
+
+        self.boundingBox = self.layer.pygame.Rect((self.posX - 10, self.posY - 10),  (self.textSize[0] + 20, self.textSize[1] + 20))
+
     def update(self):
         self.textSize = self.font.get_rect(self.text).size
-        self.boundingBox = self.layer.pygame.Rect((self.posX - 10, self.posY - 10), (self.textSize[0] + 20, self.textSize[1] + 20))
 
     def display(self):
         self.font.render_to(self.layer.screen, (self.posX, self.posY), self.text, self.colour)

@@ -93,7 +93,10 @@ scaleImage = Image(UILayer, (setScale.posX - 28, setScale.posY - 10), "SE", dire
 recentre = Button(UILayer, (130, 300), "SE", (80, 60), "Recentre", 10, (100, 100, 100), (0, -18), action = None)
 recentreImage = Image(UILayer, (recentre.posX - 27, recentre.posY - 10), "SE", directories["recentre"], 1, (30, 30, 30))
 
-configAccordion = Accordion(UILayer, (330, 440), "SE", (305, 415), [snapPoints, snapPointsLabel, switchEnds, switchEndsLabel, trackWidth, trackWidthLabel, trackRes, TrackResLabel, setFinish, startFinishImage, setScale, scaleImage, recentre, recentreImage], layerIndex = 0)
+configAccordion = Accordion(UILayer, (330, 460), "SE", (305, 435), [snapPoints, snapPointsLabel, switchEnds, switchEndsLabel, trackWidth, trackWidthLabel, trackRes, TrackResLabel, setFinish, startFinishImage, setScale, scaleImage, recentre, recentreImage], layerIndex = 0)
+
+trackName = Label(UILayer, 20, (330, 440), "SE", "Untitled Track", (200, 200, 200))
+configAccordion.elements.append(trackName)
 
 def drawGrid(offset, frequency, lineWidth, lineColor):
     columns = math.ceil(screenWidth/ frequency)
@@ -335,8 +338,10 @@ while running:
 
     if saveDirectory is None:
         newCaption = "Untitled Track" + saveCharacter
+        trackName.text = "Untitled Track" + saveCharacter
     else:
         newCaption = str(os.path.splitext(os.path.basename(saveDirectory))[0] + saveCharacter + " - " + saveDirectory)
+        trackName.text = str(os.path.splitext(os.path.basename(saveDirectory))[0] + saveCharacter)
 
     if lastCaption != newCaption:
         pygame.display.set_caption(newCaption)
@@ -347,6 +352,7 @@ while running:
     mouseCoordsY.text = ("y: " + str(mousePosY - offsetPosition[1]))
 
     UILayer.display(screenWidth, screenHeight)
+    trackName.nonStickPosX = ((configAccordion.width / 2) + (trackName.textSize[0] / 2) + 25)
 
     pygame.display.flip()
     clock.tick(60) #Refresh Rate
