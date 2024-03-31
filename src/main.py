@@ -7,6 +7,7 @@ import pygame.freetype
 
 from tkinter.filedialog import asksaveasfilename, askopenfilename
 import tkinter as tk
+
 import os
 
 from pygameUIElements import *
@@ -286,7 +287,29 @@ while running:
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            running = False
+            if not saved:
+                def closeError(sender):
+                    sender.close()
+
+                def saveTrackFirst(sender):
+                    global running
+                    sender.close()
+                    saveTrack()
+                    running = False
+
+                    mainTrack.saved = True
+
+                def discardTrack(sender):
+                    global running
+                    sender.close()
+                    running = False
+
+                    mainTrack.saved = True
+
+                areYouSure = Message(UILayer, "Sure?", "You currently have an unsaved file open", "Save", saveTrackFirst, "grey", "Discard", discardTrack, "red")
+
+            else:
+                running = False
 
         if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (mainTrack.mouseHovering is None) and (not UILayer.mouseOnLayer((mousePosX, mousePosY))):
             index = -1
