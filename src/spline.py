@@ -14,6 +14,18 @@ def gradient(point1, point2):
 
     return abs((y2 - y1) / (x2 - x1))
 
+def angle(point1, point2, point3):
+    distance12 = pointDistance(point1, point2)
+    distance23 = pointDistance(point2, point3)
+    distance31 = pointDistance(point3, point1)
+
+    cosAngle = ((distance12 ** 2) + (distance23 ** 2) - (distance31 ** 2)) / (2 * distance12 * distance23)
+    cosAngle = max(min(cosAngle, 1), -1)
+    angleRad = math.acos(cosAngle)
+    angleDegrees = angleRad * (180.0 / math.pi)
+
+    return angleDegrees
+
 def lineToPointDistance(lineA, lineB, point):
     lineA = np.array(lineA)
     lineB = np.array(lineB)
@@ -134,7 +146,7 @@ class ControlPoint:
         pygame.gfxdraw.filled_circle(screen, self.posX + offset[0], self.posY + offset[1], self.size, colour)
 
 class Track:
-    def __init__(self, points = []):
+    def __init__(self, resolution, points = []):
         self.points = []
         self.splinePoints = []
 
@@ -152,7 +164,10 @@ class Track:
         self.mouseHovering = None
         self.closed = False
 
-        self.perSegRes = 20
+        self.edit = True
+
+        self.perSegRes = resolution
+
         self.width = 100
 
         for point in points:
@@ -349,6 +364,7 @@ class Track:
                 updateRanges = [(0, resolution)]
                 self.splinePoints = ([''] * resolution)
 
+            print(updateRanges)
             for updateRange in updateRanges:
                 self.saved = False
                 for tInt in range(*updateRange):
@@ -420,30 +436,51 @@ class Track:
                     self.rightTrackEdgePolygonOuter[point] = calculateSide(self.splinePoints, point, -(self.width + 20))
 
     def computeKerbs(self, pygame, screen):
-        kerbThreshold = 0.08
+        kerbThreshold = 0.6
         if len(self.points) >= 2:
             lengthOfSpline = len(self.splinePoints) - 1
-            previousGrad = gradient(self.splinePoints[0], self.splinePoints[1])
+            previousAngle = angle(self.splinePoints[0], self.splinePoints[1], self.splinePoints[2])
             kerbRanges = []
 
             lowerBound = None
             upperBound = None
 
-            for dot in range(lengthOfSpline):
-                currentGrad = gradient(self.splinePoints[dot], self.splinePoints[dot + 1])
-                diffInGrad = (previousGrad - currentGrad) / previousGrad
-                if diffInGrad > kerbThreshold:
+            for dot in range(1, lengthOfSpline):
+                currentAngle = angle(self.splinePoints[dot - 1], self.splinePoints[dot], self.splinePoints[dot + 1])
+                diffInAngle = abs(currentAngle - previousAngle)
+                if diffInAngle > kerbThreshold:
                     if lowerBound is None:
                         lowerBound = dot
-                else:
-                    if lowerBound is not None:
                         upperBound = dot
-                        kerbRanges.append((lowerBound, upperBound))
+                    else:
+                        upperBound += 1
+                elif upperBound is not None:
+                    kerbRanges.append((lowerBound, upperBound))
 
-                        lowerBound = None
-                        upperBound = None
+                    lowerBound = None
+                    upperBound = None
 
-                previousGrad = currentGrad
+                previousAngle = currentAngle
+
+            if len(kerbRanges) > 1:
+                smoothedKerbRanges = []
+                lowerBound = kerbRanges[0][0]
+                upperBound = kerbRanges[0][1]
+                for kerbRange in range(1, len(kerbRanges)):
+                    if (pointDistance(self.splinePoints[kerbRanges[kerbRange][0]], self.splinePoints[upperBound]) > 50) or (kerbRange == len(self.splinePoints) - 1):
+                        if (upperBound - lowerBound) >= 5:
+                            smoothedKerbRanges.append((lowerBound, upperBound))
+
+                        lowerBound = kerbRanges[kerbRange][0]
+                        upperBound = kerbRanges[kerbRange][1]
+                    else:
+                        upperBound = kerbRanges[kerbRange][1]
+
+                if self.closed:
+                    pass #smooth end and first points
+
+                kerbRanges = smoothedKerbRanges
+                print(kerbRanges)
 
             for kerbRange in kerbRanges:
                 for dot in range(*kerbRange):
@@ -515,7 +552,7 @@ class Track:
         else:
             self.updateCloseStatus(value = False)
 
-        if len(self.pointsSelected) > 0:
+        if len(self.pointsSelected) > 0 and self.edit:
             updatePoints = [point[1] for point in self.pointsSelected]
 
             self.computeSpline(updatePoints = updatePoints)
@@ -568,27 +605,29 @@ class Track:
                 pygame.gfxdraw.aapolygon(screen, mainTrackPolygon, programColours["mainTrack"])
                 pygame.gfxdraw.filled_polygon(screen, mainTrackPolygon, programColours["mainTrack"])
 
-            for point in range(len(self.points) - 1):
-                splinePointsPolygonLeftSideOffsetSegment = splinePointsPolygonLeftSideOffset[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1]
-                splinePointsPolygonRightSideOffsetSegment = splinePointsPolygonRightSideOffset[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1]
+            if self.edit:
+                for point in range(len(self.points) - 1):
+                    splinePointsPolygonLeftSideOffsetSegment = splinePointsPolygonLeftSideOffset[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1]
+                    splinePointsPolygonRightSideOffsetSegment = splinePointsPolygonRightSideOffset[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1]
 
-                if (point == len(self.points) - 2) and self.closed:
-                    splinePointsPolygonLeftSideOffsetSegment.append(splinePointsPolygonLeftSideOffset[0])
-                    splinePointsPolygonRightSideOffsetSegment.append(splinePointsPolygonRightSideOffset[0])
+                    if (point == len(self.points) - 2) and self.closed:
+                        splinePointsPolygonLeftSideOffsetSegment.append(splinePointsPolygonLeftSideOffset[0])
+                        splinePointsPolygonRightSideOffsetSegment.append(splinePointsPolygonRightSideOffset[0])
 
-                mainCurvePolygon = formPolygon(splinePointsPolygonLeftSideOffsetSegment, splinePointsPolygonRightSideOffsetSegment)
+                    mainCurvePolygon = formPolygon(splinePointsPolygonLeftSideOffsetSegment, splinePointsPolygonRightSideOffsetSegment)
 
-                pygame.gfxdraw.aapolygon(screen, mainCurvePolygon, programColours["curve"])
-                pygame.gfxdraw.filled_polygon(screen, mainCurvePolygon, programColours["curve"])
+                    pygame.gfxdraw.aapolygon(screen, mainCurvePolygon, programColours["curve"])
+                    pygame.gfxdraw.filled_polygon(screen, mainCurvePolygon, programColours["curve"])
 
             # for i in offsetMainCurve:
             #     pygame.draw.circle(screen, programColours["curve"], i, 5)
+        #self.computeKerbs(pygame, screen)
+        if self.edit:
+            for point in range(len(self.points)):
 
-        for point in range(len(self.points)):
+                if (not switchFront and point == len(self.points) - 1) or (switchFront and point == 0) or (self.closed and ((point == 0) or (point == len(self.points) - 1))):
+                    colour = programColours["frontControlPoint"]
+                else:
+                    colour = programColours["controlPoint"]
 
-            if (not switchFront and point == len(self.points) - 1) or (switchFront and point == 0) or (self.closed and ((point == 0) or (point == len(self.points) - 1))):
-                colour = programColours["frontControlPoint"]
-            else:
-                colour = programColours["controlPoint"]
-
-            self.points[point].draw(colour, screen, pygame, offset)
+                self.points[point].draw(colour, screen, pygame, offset)

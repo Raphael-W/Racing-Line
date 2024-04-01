@@ -72,6 +72,7 @@ class Button (UIElement):
 
         self.action = action
 
+        self.stepBeforeClick = False
         self.mouseHovering = False
         self.actionRun = False
         self.pointSelected = False
@@ -98,13 +99,15 @@ class Button (UIElement):
 
         self.pointSelected = self.mouseHovering and self.layer.pygame.mouse.get_pressed()[0]
 
-        if self.pointSelected:
+        if self.pointSelected and self.stepBeforeClick:
             self.colour = self.pressedColour
             if self.action is not None and not self.actionRun:
                 self.action()
                 self.actionRun = True
         else:
             self.actionRun = False
+
+        self.stepBeforeClick = self.mouseHovering and not(self.layer.pygame.mouse.get_pressed()[0])
 
     def display(self):
         self.boundingBox = self.layer.pygame.Rect(self.posX, self.posY, self.width, self.height)
@@ -363,7 +366,7 @@ class Accordion(UIElement):
             element.show = not self.collapse
 
 class Message(UIElement):
-    def __init__(self, layer, title, message, button1Text, button1Action, button1Colour, button2Text = None, button2Action = None, button2Colour = None, show = True, layerIndex = -1):
+    def __init__(self, layer, title, message, button1Text, button1Action, button1Colour, button2Text = None, button2Action = None, button2Colour = None, xAction = None, show = True, layerIndex = -1):
         super().__init__(layer, (0, 0), "", show, layerIndex)
 
         self.message = message
@@ -376,6 +379,8 @@ class Message(UIElement):
         self.button2Text = button2Text
         self.button2Action = button2Action
         self.button2Colour = button2Colour
+
+        self.xAction = xAction
 
         self.greyColour = (120, 120, 120)
         self.redColour = (95, 25, 25)
@@ -399,7 +404,7 @@ class Message(UIElement):
         self.titleBoundingBox = self.layer.pygame.Rect((self.posX, self.posY), (self.titleSize[0], self.titleSize[1]))
         self.titleBoundingBox.center = self.boundingBox.center
 
-        self.closeButton = Button(layer, (self.posX + self.width - 40, self.posY + 10), "", (30, 30), "", 10, self.greyColour, action = self.close)
+        self.closeButton = Button(layer, (self.posX + self.width - 40, self.posY + 10), "", (30, 30), "", 10, self.greyColour, action = self.closeButton)
         self.closeImage = Image(layer, (self.posX + self.width - 38, self.posY + 12), "", self.layer.directories["cross"], 1, (200, 200, 200))
 
         if button2Text is None:
@@ -436,6 +441,11 @@ class Message(UIElement):
         self.layer.elements.remove(self.closeButton)
         self.layer.elements.remove(self.closeImage)
         self.layer.elements.remove(self)
+    def closeButton(self):
+        if self.xAction is None:
+            self.close()
+        else:
+            self.xAction()
 
 class Layer:
     def __init__(self, name, number, screen, pygame, fontName, directories):

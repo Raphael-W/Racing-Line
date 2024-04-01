@@ -23,13 +23,16 @@ pygame.display.set_caption("Racing Line Finder")
 screen = pygame.display.set_mode((1280, 720), pygame.RESIZABLE)
 clock = pygame.time.Clock()
 screenWidth, screenHeight = screen.get_size()
+
 running = True
+closeCount = 0
 
 pivotPos = None
 offsetPosition = (0, 0)
 screenBorder = 5
 
-mainTrack = Track()
+trackRes = 20
+mainTrack = Track(resolution = trackRes)
 
 programColours = {"background": (20, 20, 20),
                   "curve": (128, 128, 128),
@@ -68,21 +71,34 @@ lastCaption = None
 
 mainFont = directories["mainFont"]
 
+def setEditStatus(value):
+    mainTrack.edit = value
+    if not value:
+        mainTrack.computeSpline()
+        mainTrack.computeTrackEdges()
+        mainTrack.deKink()
+    else:
+        mainTrack.computeSpline()
+        mainTrack.computeTrackEdges()
+
 UILayer = Layer("UI", 0, screen, pygame, mainFont, directories)
 
 mouseCoordsX = Label(UILayer, 15, (100, 50), "NE", "", programColours["white"])
 mouseCoordsY = Label(UILayer, 15, (100, 30), "NE", "", programColours["white"])
 
-snapPoints = Switch(UILayer, programColours["white"], (140, 100), "SE", 0.8, value = False)
-snapPointsLabel = Label(UILayer, 15, (193, 98), "SE", "Snap", programColours["white"])
-
 switchEnds = Switch(UILayer, programColours["white"], (140, 130), "SE", 0.8, value = False)
 switchEndsLabel = Label(UILayer, 15, (255, 128), "SE", "Switch front", programColours["white"])
 
-trackWidth = Slider(UILayer, 15, programColours["white"], programColours["controlPoint"], (200, 173), "SE", 1, 100, (20, 200), action = lambda: mainTrack.changeWidth(trackWidth.value), value = mainTrack.width)
+snapPoints = Switch(UILayer, programColours["white"], (140, 100), "SE", 0.8, value = False)
+snapPointsLabel = Label(UILayer, 15, (184, 98), "SE", "Snap", programColours["white"])
+
+editMode = Switch(UILayer, programColours["white"], (140, 70), "SE", 0.8, value = True, action = lambda: setEditStatus(editMode.value))
+editModeLabel = Label(UILayer, 15, (184, 68), "SE", "Edit", programColours["white"])
+
+changeTrackWidth = Slider(UILayer, 15, programColours["white"], programColours["controlPoint"], (200, 173), "SE", 1, 100, (20, 200), action = lambda: mainTrack.changeWidth(changeTrackWidth.value), value = mainTrack.width)
 trackWidthLabel = Label(UILayer, 15, (270, 178), "SE", "Width", programColours["white"])
 
-trackRes = Slider(UILayer, 15, programColours["white"], programColours["controlPoint"], (200, 208), "SE", 1, 100, (10, 100), action = lambda: mainTrack.changeRes(trackRes.value), value = mainTrack.perSegRes)
+changeTrackRes = Slider(UILayer, 15, programColours["white"], programColours["controlPoint"], (200, 208), "SE", 1, 100, (10, 100), action = lambda: mainTrack.changeRes(changeTrackRes.value), value = mainTrack.perSegRes)
 TrackResLabel = Label(UILayer, 15, (305, 213), "SE", "Track Res", programColours["white"])
 
 setFinish = Button(UILayer, (305, 300), "SE", (80, 60), "Set Finish", 10, (100, 100, 100), (0, -18), action = None)
@@ -94,7 +110,7 @@ scaleImage = Image(UILayer, (setScale.posX - 28, setScale.posY - 10), "SE", dire
 recentre = Button(UILayer, (130, 300), "SE", (80, 60), "Recentre", 10, (100, 100, 100), (0, -18), action = None)
 recentreImage = Image(UILayer, (recentre.posX - 27, recentre.posY - 10), "SE", directories["recentre"], 1, (30, 30, 30))
 
-configAccordion = Accordion(UILayer, (330, 460), "SE", (305, 435), [snapPoints, snapPointsLabel, switchEnds, switchEndsLabel, trackWidth, trackWidthLabel, trackRes, TrackResLabel, setFinish, startFinishImage, setScale, scaleImage, recentre, recentreImage], layerIndex = 0)
+configAccordion = Accordion(UILayer, (330, 460), "SE", (305, 435), [snapPoints, snapPointsLabel, switchEnds, switchEndsLabel, changeTrackWidth, trackWidthLabel, changeTrackRes, TrackResLabel, setFinish, startFinishImage, setScale, scaleImage, recentre, recentreImage], layerIndex = 0)
 
 trackName = Label(UILayer, 20, (330, 440), "SE", "Untitled Track", (200, 200, 200))
 configAccordion.elements.append(trackName)
@@ -132,11 +148,15 @@ def saveTrack(saveNewDirectory = False):
              "properties": properties}
 
     validFile = True
+    tempDirectory = None
     if saveDirectory is None or saveNewDirectory:
         root = tk.Tk()
         root.withdraw()
-        saveDirectory = asksaveasfilename(title = "Save Track", initialfile = 'Untitled.track', defaultextension = ".track",filetypes = [("Track Files","*.track")])
-        validFile = os.path.isdir(os.path.dirname(saveDirectory))
+        tempDirectory = asksaveasfilename(title = "Save Track", initialfile = 'Untitled.track', defaultextension = ".track",filetypes = [("Track Files","*.track")])
+        if tempDirectory != '':
+            validFile = os.path.isdir(os.path.dirname(saveDirectory))
+        else:
+            validFile = False
         root.destroy()
 
     if validFile:
@@ -145,12 +165,13 @@ def saveTrack(saveNewDirectory = False):
                 json.dump(trackData, outputFile)
                 pygame.display.set_caption(os.path.splitext(os.path.basename(saveDirectory))[0] + " - " + saveDirectory)
                 mainTrack.saved = True
+                saveDirectory = tempDirectory
         except Exception as error:
             errorMessage = Message(UILayer, "Can't Save", str(error), "OK", closeError, "grey")
             saveDirectory = None
             mainTrack.saved = False
 
-    elif not validFile and saveDirectory != '':
+    elif not validFile and tempDirectory != '':
         print("Invalid Directory")
         errorMessage = Message(UILayer, "Can't Save", "Please select a valid directory", "OK", closeError, "grey")
         saveDirectory = None
@@ -192,8 +213,8 @@ def openTrack():
             mainTrack.computeTrackEdges()
 
             trackProperties = trackData["properties"]
-            trackWidth.updateValue(trackProperties["width"])
-            trackRes.updateValue(trackProperties["trackRes"])
+            changeTrackWidth.updateValue(trackProperties["width"])
+            changeTrackRes.updateValue(trackProperties["trackRes"])
             mainTrack.updateCloseStatus(trackProperties["closed"], update = True)
             switchEnds.value = trackProperties["switchEnds"]
             snapPoints.value = trackProperties["snap"]
@@ -288,10 +309,13 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             if not saved:
-                def closeError(sender):
-                    sender.close()
+                def closeError_closing(sender):
+                    global closeCount
 
-                def saveTrackFirst(sender):
+                    sender.close()
+                    closeCount = 0
+
+                def saveTrackFirst_closing(sender):
                     global running
                     sender.close()
                     saveTrack()
@@ -299,14 +323,18 @@ while running:
 
                     mainTrack.saved = True
 
-                def discardTrack(sender):
+                def discardTrack_closing(sender):
                     global running
                     sender.close()
                     running = False
 
                     mainTrack.saved = True
 
-                areYouSure = Message(UILayer, "Sure?", "You currently have an unsaved file open", "Save", saveTrackFirst, "grey", "Discard", discardTrack, "red")
+                if closeCount == 0:
+                    areYouSure_Closing = Message(UILayer, "Sure?", "You currently have an unsaved file open", "Save", saveTrackFirst_closing, "grey", "Discard", discardTrack_closing, "red", xAction = lambda: closeError_closing(areYouSure_Closing))
+                    closeCount += 1
+                else:
+                    running = False
 
             else:
                 running = False
@@ -322,23 +350,22 @@ while running:
                 onLine, nearPointIndex = mainTrack.mouseOnCurve(mousePosX - offsetPosition[0], mousePosY - offsetPosition[1], 20)
                 if onLine: index = nearPointIndex
 
-
-            validPlacement = not mainTrack.closed or onLine
+            validPlacement = (not mainTrack.closed or onLine) and mainTrack.edit
             if validPlacement: mainTrack.add(ControlPoint(mousePosX - offsetPosition[0], mousePosY - offsetPosition[1]), index = index)
 
         if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[2] and (mainTrack.mouseHovering is not None) and (not UILayer.mouseOnLayer((mousePosX, mousePosY))):
             index = mainTrack.mouseHovering
-            if not(mainTrack.closed and ((index == 0) or (index == len(mainTrack.points) - 1))):
+            if not(mainTrack.closed and ((index == 0) or (index == len(mainTrack.points) - 1))) and mainTrack.edit:
                 mainTrack.remove(index = index)
 
         if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[1]:
             pivotPos = (mousePosX - offsetPosition[0], mousePosY - offsetPosition[1])
 
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_z and pygame.key.get_mods() & pygame.KMOD_LCTRL and not(pygame.key.get_mods() & pygame.KMOD_LSHIFT):
+            if event.key == pygame.K_z and pygame.key.get_mods() & pygame.KMOD_LCTRL and not(pygame.key.get_mods() & pygame.KMOD_LSHIFT) and mainTrack.edit:
                 mainTrack.undo()
 
-            if event.key == pygame.K_z and pygame.key.get_mods() & pygame.KMOD_LCTRL and pygame.key.get_mods() & pygame.KMOD_LSHIFT:
+            if event.key == pygame.K_z and pygame.key.get_mods() & pygame.KMOD_LCTRL and pygame.key.get_mods() & pygame.KMOD_LSHIFT and mainTrack.edit:
                 mainTrack.redo()
 
             if event.key == pygame.K_s and pygame.key.get_mods() & pygame.KMOD_LCTRL:
