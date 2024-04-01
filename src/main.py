@@ -153,17 +153,18 @@ def saveTrack(saveNewDirectory = False):
         root = tk.Tk()
         root.withdraw()
         tempDirectory = asksaveasfilename(title = "Save Track", initialfile = 'Untitled.track', defaultextension = ".track",filetypes = [("Track Files","*.track")])
+
         if tempDirectory != '':
-            validFile = os.path.isdir(os.path.dirname(saveDirectory))
+            validFile = os.path.isdir(os.path.dirname(tempDirectory))
         else:
             validFile = False
         root.destroy()
 
     if validFile:
         try:
-            with open(saveDirectory, "w") as outputFile:
+            with open(tempDirectory, "w") as outputFile:
                 json.dump(trackData, outputFile)
-                pygame.display.set_caption(os.path.splitext(os.path.basename(saveDirectory))[0] + " - " + saveDirectory)
+                pygame.display.set_caption(os.path.splitext(os.path.basename(tempDirectory))[0] + " - " + tempDirectory)
                 mainTrack.saved = True
                 saveDirectory = tempDirectory
         except Exception as error:
