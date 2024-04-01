@@ -364,7 +364,6 @@ class Track:
                 updateRanges = [(0, resolution)]
                 self.splinePoints = ([''] * resolution)
 
-            print(updateRanges)
             for updateRange in updateRanges:
                 self.saved = False
                 for tInt in range(*updateRange):
@@ -435,12 +434,12 @@ class Track:
                     self.rightTrackEdgePolygonInner[point] = calculateSide(self.splinePoints, point, -self.width)
                     self.rightTrackEdgePolygonOuter[point] = calculateSide(self.splinePoints, point, -(self.width + 20))
 
-    def computeKerbs(self, pygame, screen):
-        kerbThreshold = 0.6
+    def computeCurbs(self, pygame, screen):
+        curbThreshold = 0.6
         if len(self.points) >= 2:
             lengthOfSpline = len(self.splinePoints) - 1
             previousAngle = angle(self.splinePoints[0], self.splinePoints[1], self.splinePoints[2])
-            kerbRanges = []
+            curbRanges = []
 
             lowerBound = None
             upperBound = None
@@ -448,42 +447,41 @@ class Track:
             for dot in range(1, lengthOfSpline):
                 currentAngle = angle(self.splinePoints[dot - 1], self.splinePoints[dot], self.splinePoints[dot + 1])
                 diffInAngle = abs(currentAngle - previousAngle)
-                if diffInAngle > kerbThreshold:
+                if diffInAngle > curbThreshold:
                     if lowerBound is None:
                         lowerBound = dot
                         upperBound = dot
                     else:
                         upperBound += 1
                 elif upperBound is not None:
-                    kerbRanges.append((lowerBound, upperBound))
+                    curbRanges.append((lowerBound, upperBound))
 
                     lowerBound = None
                     upperBound = None
 
                 previousAngle = currentAngle
 
-            if len(kerbRanges) > 1:
-                smoothedKerbRanges = []
-                lowerBound = kerbRanges[0][0]
-                upperBound = kerbRanges[0][1]
-                for kerbRange in range(1, len(kerbRanges)):
-                    if (pointDistance(self.splinePoints[kerbRanges[kerbRange][0]], self.splinePoints[upperBound]) > 50) or (kerbRange == len(self.splinePoints) - 1):
+            if len(curbRanges) > 1:
+                smoothedCurbRanges = []
+                lowerBound = curbRanges[0][0]
+                upperBound = curbRanges[0][1]
+                for curbRange in range(1, len(curbRanges)):
+                    if (pointDistance(self.splinePoints[curbRanges[curbRange][0]], self.splinePoints[upperBound]) > 50) or (curbRange == len(self.splinePoints) - 1):
                         if (upperBound - lowerBound) >= 5:
-                            smoothedKerbRanges.append((lowerBound, upperBound))
+                            smoothedCurbRanges.append((lowerBound, upperBound))
 
-                        lowerBound = kerbRanges[kerbRange][0]
-                        upperBound = kerbRanges[kerbRange][1]
+                        lowerBound = curbRanges[curbRange][0]
+                        upperBound = curbRanges[curbRange][1]
                     else:
-                        upperBound = kerbRanges[kerbRange][1]
+                        upperBound = curbRanges[curbRange][1]
 
                 if self.closed:
                     pass #smooth end and first points
 
-                kerbRanges = smoothedKerbRanges
-                print(kerbRanges)
+                curbRanges = smoothedCurbRanges
 
-            for kerbRange in kerbRanges:
-                for dot in range(*kerbRange):
+            for curbRange in curbRanges:
+                for dot in range(*curbRange):
                     pygame.draw.circle(screen, (252, 186, 3), self.splinePoints[dot], 5)
 
             self.saved = False
@@ -621,7 +619,7 @@ class Track:
 
             # for i in offsetMainCurve:
             #     pygame.draw.circle(screen, programColours["curve"], i, 5)
-        #self.computeKerbs(pygame, screen)
+        #self.computeCurbs(pygame, screen)
         if self.edit:
             for point in range(len(self.points)):
 
