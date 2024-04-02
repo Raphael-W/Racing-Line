@@ -409,7 +409,7 @@ while running:
                     if zoom > upperZoomLimit:
                         zoom = upperZoomLimit
 
-                    zoomDifference = abs(zoom - beforeZoom) / zoom
+                    zoomDifference = (zoom/beforeZoom) - 1
                     offsetPosition = (int(offsetPosition[0] - (mousePosX - offsetPosition[0]) * zoomDifference), int(offsetPosition[1] - (mousePosY - offsetPosition[1]) * zoomDifference))
 
             elif event.y < 0:
@@ -420,7 +420,7 @@ while running:
                     if zoom < lowerZoomLimit:
                         zoom = lowerZoomLimit
 
-                    zoomDifference = abs(zoom - beforeZoom) / zoom
+                    zoomDifference = (beforeZoom/zoom) - 1
                     offsetPosition = (int(offsetPosition[0] + (mousePosX - offsetPosition[0]) * zoomDifference), int(offsetPosition[1] + (mousePosY - offsetPosition[1]) * zoomDifference))
 
         if event.type == pygame.KEYDOWN:
