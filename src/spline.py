@@ -117,8 +117,9 @@ class ControlPoint:
 
     #Calculates whether mouse is hovering, and whether user has selected point
     def update(self, mousePosX, mousePosY, zoom, screenWidth, screenHeight, screenBorder, pygame, offset, snap):
-        self.mouseHovering = ((self.posX + (self.size + 2) > mousePosX > self.posX - (self.size + 2)) and
-                               (self.posY + (self.size + 2) > mousePosY > self.posY - (self.size + 2)))
+        zoomedSize = self.size / zoom
+        self.mouseHovering = ((self.posX + (zoomedSize + 2) > mousePosX > self.posX - (zoomedSize + 2)) and
+                               (self.posY + (zoomedSize + 2) > mousePosY > self.posY - (zoomedSize + 2)))
 
         if self.mouseHovering:
             self.size = self.baseSize + 2

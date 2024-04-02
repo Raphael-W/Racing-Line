@@ -32,9 +32,9 @@ offsetPosition = (0, 0)
 screenBorder = 5
 
 zoom = 1
-zoomIncrement = 0.03
+zoomIncrement = 0.05
 upperZoomLimit = 2
-lowerZoomLimit = 0.3
+lowerZoomLimit = 0.2
 
 
 trackRes = 20
