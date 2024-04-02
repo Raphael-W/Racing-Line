@@ -31,6 +31,11 @@ pivotPos = None
 offsetPosition = (0, 0)
 screenBorder = 5
 
+zoom = 1
+upperZoomLimit = 5
+lowerZoomLimit = 0.5
+
+
 trackRes = 20
 mainTrack = Track(resolution = trackRes)
 
@@ -85,6 +90,7 @@ UILayer = Layer("UI", 0, screen, pygame, mainFont, directories)
 
 mouseCoordsX = Label(UILayer, 15, (100, 50), "NE", "", programColours["white"])
 mouseCoordsY = Label(UILayer, 15, (100, 30), "NE", "", programColours["white"])
+scaleLabel = Label(UILayer, 15, (136, 70), "NE", "", programColours["white"])
 
 switchEnds = Switch(UILayer, programColours["white"], (140, 130), "SE", 0.8, value = False)
 switchEndsLabel = Label(UILayer, 15, (255, 128), "SE", "Switch front", programColours["white"])
@@ -297,14 +303,15 @@ while running:
 
     screen.fill(programColours["background"])
 
-    drawGrid(offsetPosition, 50, 2, programColours["mainGrid"])
-    drawGrid(offsetPosition, 10, 1, programColours["innerGrid"])
+    drawGrid(offsetPosition, 50 * zoom, 2, programColours["mainGrid"])
+    drawGrid(offsetPosition, 10 * zoom, 1, programColours["innerGrid"])
 
     if pygame.mouse.get_pressed()[1]:
         if pivotPos is not None:
             offsetPosition = (mousePosX - pivotPos[0], mousePosY - pivotPos[1])
     else:
         pivotPos = None
+        zooming = False
 
 
     for event in pygame.event.get():
@@ -362,6 +369,23 @@ while running:
         if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[1]:
             pivotPos = (mousePosX - offsetPosition[0], mousePosY - offsetPosition[1])
 
+        if event.type == pygame.MOUSEWHEEL:
+            if event.y > 0:
+                if zoom < upperZoomLimit:
+                    zooming = True
+                    zoom *= 1.03
+                    offsetPosition = (offsetPosition[0] - (mousePosX - offsetPosition[0]) * 0.03, offsetPosition[1] - (mousePosY - offsetPosition[1]) * 0.03)
+                else:
+                    zoom = upperZoomLimit
+
+            elif event.y < 0:
+                if zoom > lowerZoomLimit:
+                    zooming = True
+                    zoom *= 0.97
+                    offsetPosition = (offsetPosition[0] + (mousePosX - offsetPosition[0]) * 0.03, offsetPosition[1] + (mousePosY - offsetPosition[1]) * 0.03)
+                else:
+                    zoom = lowerZoomLimit
+
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_z and pygame.key.get_mods() & pygame.KMOD_LCTRL and not(pygame.key.get_mods() & pygame.KMOD_LSHIFT) and mainTrack.edit:
                 mainTrack.undo()
@@ -399,8 +423,9 @@ while running:
 
     lastCaption = newCaption
 
-    mouseCoordsX.text = ("x: " + str(mousePosX - offsetPosition[0]))
-    mouseCoordsY.text = ("y: " + str(mousePosY - offsetPosition[1]))
+    mouseCoordsX.text = ("x: " + str(int(mousePosX - offsetPosition[0])))
+    mouseCoordsY.text = ("y: " + str(int(mousePosY - offsetPosition[1])))
+    scaleLabel.text = ("Scale: " + str(int(zoom * 100)) + "%")
 
     UILayer.display(screenWidth, screenHeight)
     trackName.nonStickPosX = ((configAccordion.width / 2) + (trackName.textSize[0] / 2) + 25)
