@@ -32,6 +32,7 @@ offsetPosition = (0, 0)
 screenBorder = 5
 
 zoom = 1
+zoomIncrement = 0.03
 upperZoomLimit = 5
 lowerZoomLimit = 0.5
 
@@ -355,11 +356,11 @@ while running:
             validPlacement = True
             onLine = False
             if len(mainTrack.points) >= 2:
-                onLine, nearPointIndex = mainTrack.mouseOnCurve(mousePosX - offsetPosition[0], mousePosY - offsetPosition[1], 20)
+                onLine, nearPointIndex = mainTrack.mouseOnCurve((mousePosX - offsetPosition[0]) / zoom, (mousePosY - offsetPosition[1]) / zoom, 20)
                 if onLine: index = nearPointIndex
 
             validPlacement = (not mainTrack.closed or onLine) and mainTrack.edit
-            if validPlacement: mainTrack.add(ControlPoint(mousePosX - offsetPosition[0], mousePosY - offsetPosition[1]), index = index)
+            if validPlacement: mainTrack.add(ControlPoint((mousePosX - offsetPosition[0]) / zoom, (mousePosY - offsetPosition[1]) / zoom), index = index)
 
         if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[2] and (mainTrack.mouseHovering is not None) and (not UILayer.mouseOnLayer((mousePosX, mousePosY))):
             index = mainTrack.mouseHovering
@@ -373,16 +374,16 @@ while running:
             if event.y > 0:
                 if zoom < upperZoomLimit:
                     zooming = True
-                    zoom *= 1.03
-                    offsetPosition = (int(offsetPosition[0] - (mousePosX - offsetPosition[0]) * 0.03), int(offsetPosition[1] - (mousePosY - offsetPosition[1]) * 0.03))
+                    zoom *= 1 + zoomIncrement
+                    offsetPosition = (int(offsetPosition[0] - (mousePosX - offsetPosition[0]) * zoomIncrement), int(offsetPosition[1] - (mousePosY - offsetPosition[1]) * zoomIncrement))
                 else:
                     zoom = upperZoomLimit
 
             elif event.y < 0:
                 if zoom > lowerZoomLimit:
                     zooming = True
-                    zoom *= 0.97
-                    offsetPosition = (int(offsetPosition[0] + (mousePosX - offsetPosition[0]) * 0.03), int(offsetPosition[1] + (mousePosY - offsetPosition[1]) * 0.03))
+                    zoom *= 1 - zoomIncrement
+                    offsetPosition = (int(offsetPosition[0] + (mousePosX - offsetPosition[0]) * zoomIncrement), int(offsetPosition[1] + (mousePosY - offsetPosition[1]) * zoomIncrement))
                 else:
                     zoom = lowerZoomLimit
 
@@ -402,7 +403,7 @@ while running:
             if event.key == pygame.K_n and pygame.key.get_mods() & pygame.KMOD_LCTRL:
                 newTrack()
 
-    mainTrack.update(mousePosX - offsetPosition[0], mousePosY - offsetPosition[1], screenWidth, screenHeight, screenBorder, pygame, offsetPosition, snapPoints.value)
+    mainTrack.update((mousePosX - offsetPosition[0]) / zoom, (mousePosY - offsetPosition[1]) / zoom, zoom, screenWidth, screenHeight, screenBorder, pygame, offsetPosition, snapPoints.value)
     mainTrack.draw(programColours, screen, pygame, offsetPosition, zoom, switchEnds.value)
 
     saved = mainTrack.saved
@@ -422,7 +423,6 @@ while running:
         pygame.display.set_caption(newCaption)
 
     lastCaption = newCaption
-    #(points[0] * zoom) + offset[0], (points[1] * zoom) + offset[1]
     mouseCoordsX.text = ("x: " + str(int(((mousePosX * 1) - offsetPosition[0]) / zoom)))
     mouseCoordsY.text = ("y: " + str(int(((mousePosY * 1) - offsetPosition[1]) / zoom)))
     scaleLabel.text = ("Scale: " + str(int(zoom * 100)) + "%")

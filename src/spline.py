@@ -116,7 +116,7 @@ class ControlPoint:
         return self.posX, self.posY
 
     #Calculates whether mouse is hovering, and whether user has selected point
-    def update(self, mousePosX, mousePosY, screenWidth, screenHeight, screenBorder, pygame, offset, snap):
+    def update(self, mousePosX, mousePosY, zoom, screenWidth, screenHeight, screenBorder, pygame, offset, snap):
         self.mouseHovering = ((self.posX + (self.size + 2) > mousePosX > self.posX - (self.size + 2)) and
                                (self.posY + (self.size + 2) > mousePosY > self.posY - (self.size + 2)))
 
@@ -132,10 +132,10 @@ class ControlPoint:
         else: roundValue = 0
 
         if self.pointSelected:
-            if screenBorder - offset[0] < mousePosX < screenWidth - screenBorder - offset[0]:
+            if (screenBorder - offset[0]) / zoom < mousePosX < (screenWidth - screenBorder - offset[0]) / zoom:
                 self.posX = round(mousePosX, roundValue)
 
-            if screenBorder - offset[1] < mousePosY < screenHeight - screenBorder - offset[1]:
+            if (screenBorder - offset[1]) / zoom < mousePosY < (screenHeight - screenBorder - offset[1]) / zoom:
                 self.posY = round(mousePosY, roundValue)
 
         if not self.pointSelected:
@@ -520,7 +520,7 @@ class Track:
 
         self.saved = False
 
-    def update(self, mousePosX, mousePosY, screenWidth, screenHeight, screenBorder, pygame, offset, snap):
+    def update(self, mousePosX, mousePosY, zoom, screenWidth, screenHeight, screenBorder, pygame, offset, snap):
         self.pointsSelected = [[self.points[point], point] for point in range(len(self.points)) if self.points[point].pointSelected]
 
         for point in range(len(self.pointsSelected)):
@@ -538,7 +538,7 @@ class Track:
             if point.mouseHovering: self.mouseHovering = self.points.index(point)
 
         for point in self.points:
-            point.update(mousePosX, mousePosY, screenWidth, screenHeight, screenBorder, pygame, offset, snap)
+            point.update(mousePosX, mousePosY, zoom, screenWidth, screenHeight, screenBorder, pygame, offset, snap)
 
         if len(self.points) >= 5:
             snapThreshold = 50
