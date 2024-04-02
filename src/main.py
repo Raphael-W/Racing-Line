@@ -374,7 +374,7 @@ while running:
                 if zoom < upperZoomLimit:
                     zooming = True
                     zoom *= 1.03
-                    offsetPosition = (offsetPosition[0] - (mousePosX - offsetPosition[0]) * 0.03, offsetPosition[1] - (mousePosY - offsetPosition[1]) * 0.03)
+                    offsetPosition = (int(offsetPosition[0] - (mousePosX - offsetPosition[0]) * 0.03), int(offsetPosition[1] - (mousePosY - offsetPosition[1]) * 0.03))
                 else:
                     zoom = upperZoomLimit
 
@@ -382,7 +382,7 @@ while running:
                 if zoom > lowerZoomLimit:
                     zooming = True
                     zoom *= 0.97
-                    offsetPosition = (offsetPosition[0] + (mousePosX - offsetPosition[0]) * 0.03, offsetPosition[1] + (mousePosY - offsetPosition[1]) * 0.03)
+                    offsetPosition = (int(offsetPosition[0] + (mousePosX - offsetPosition[0]) * 0.03), int(offsetPosition[1] + (mousePosY - offsetPosition[1]) * 0.03))
                 else:
                     zoom = lowerZoomLimit
 
@@ -403,7 +403,7 @@ while running:
                 newTrack()
 
     mainTrack.update(mousePosX - offsetPosition[0], mousePosY - offsetPosition[1], screenWidth, screenHeight, screenBorder, pygame, offsetPosition, snapPoints.value)
-    mainTrack.draw(programColours, screen, pygame, offsetPosition, switchEnds.value)
+    mainTrack.draw(programColours, screen, pygame, offsetPosition, zoom, switchEnds.value)
 
     saved = mainTrack.saved
     if saved:
@@ -422,9 +422,9 @@ while running:
         pygame.display.set_caption(newCaption)
 
     lastCaption = newCaption
-
-    mouseCoordsX.text = ("x: " + str(int(mousePosX - offsetPosition[0])))
-    mouseCoordsY.text = ("y: " + str(int(mousePosY - offsetPosition[1])))
+    #(points[0] * zoom) + offset[0], (points[1] * zoom) + offset[1]
+    mouseCoordsX.text = ("x: " + str(int(((mousePosX * 1) - offsetPosition[0]) / zoom)))
+    mouseCoordsY.text = ("y: " + str(int(((mousePosY * 1) - offsetPosition[1]) / zoom)))
     scaleLabel.text = ("Scale: " + str(int(zoom * 100)) + "%")
 
     UILayer.display(screenWidth, screenHeight)

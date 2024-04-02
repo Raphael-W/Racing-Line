@@ -47,8 +47,11 @@ def extendPoints(points):
 
     return extendedSplinePoints
 
-def offsetPoints(points, offset):
-    return [(point[0] + offset[0], point[1] + offset[1]) for point in points]
+def offsetPoints(points, offset, zoom):
+    if type(points[0]) is tuple:
+        return [((point[0] * zoom) + offset[0], (point[1] * zoom) + offset[1]) for point in points]
+    else:
+        return (points[0] * zoom) + offset[0], (points[1] * zoom) + offset[1]
 
 def calculateSide(points, pointIndex, width):
     width = width / 2
@@ -141,9 +144,12 @@ class ControlPoint:
         self.mouseDownLast = pygame.mouse.get_pressed()[0]
 
     #Draws point to screen
-    def draw(self, colour, screen, pygame, offset):
-        pygame.gfxdraw.aacircle(screen, self.posX + offset[0], self.posY + offset[1], self.size, colour)
-        pygame.gfxdraw.filled_circle(screen, self.posX + offset[0], self.posY + offset[1], self.size, colour)
+    def draw(self, colour, screen, pygame, offset, zoom):
+        newPos = offsetPoints((self.posX, self.posY), offset, zoom)
+        newPos = [int(point) for point in newPos]
+
+        pygame.gfxdraw.aacircle(screen, newPos[0], newPos[1], self.size, colour)
+        pygame.gfxdraw.filled_circle(screen, newPos[0], newPos[1], self.size, colour)
 
 class Track:
     def __init__(self, resolution, points = []):
@@ -556,16 +562,16 @@ class Track:
             self.computeSpline(updatePoints = updatePoints)
             self.computeTrackEdges(updatePoints = updatePoints)
 
-    def draw(self, programColours, screen, pygame, offset, switchFront):
+    def draw(self, programColours, screen, pygame, offset, zoom, switchFront):
         if len(self.points) >= 2:
-            splinePointsPolygonLeftSideOffset = offsetPoints(self.splinePointsPolygonLeftSide, offset)
-            splinePointsPolygonRightSideOffset = offsetPoints(self.splinePointsPolygonRightSide, offset)
+            splinePointsPolygonLeftSideOffset = offsetPoints(self.splinePointsPolygonLeftSide, offset, zoom)
+            splinePointsPolygonRightSideOffset = offsetPoints(self.splinePointsPolygonRightSide, offset, zoom)
 
-            leftTrackEdgePolygonInnerOffset = offsetPoints(self.leftTrackEdgePolygonInner, offset)
-            leftTrackEdgePolygonOuterOffset = offsetPoints(self.leftTrackEdgePolygonOuter, offset)
+            leftTrackEdgePolygonInnerOffset = offsetPoints(self.leftTrackEdgePolygonInner, offset, zoom)
+            leftTrackEdgePolygonOuterOffset = offsetPoints(self.leftTrackEdgePolygonOuter, offset, zoom)
 
-            rightTrackEdgePolygonInnerOffset = offsetPoints(self.rightTrackEdgePolygonInner, offset)
-            rightTrackEdgePolygonOuterOffset = offsetPoints(self.rightTrackEdgePolygonOuter, offset)
+            rightTrackEdgePolygonInnerOffset = offsetPoints(self.rightTrackEdgePolygonInner, offset, zoom)
+            rightTrackEdgePolygonOuterOffset = offsetPoints(self.rightTrackEdgePolygonOuter, offset, zoom)
 
             for point in range(len(self.points) - 1):
                 leftTrackEdgePolygonInnerSegment = leftTrackEdgePolygonInnerOffset[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1]
@@ -628,4 +634,4 @@ class Track:
                 else:
                     colour = programColours["controlPoint"]
 
-                self.points[point].draw(colour, screen, pygame, offset)
+                self.points[point].draw(colour, screen, pygame, offset, zoom)
