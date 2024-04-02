@@ -33,8 +33,8 @@ screenBorder = 5
 
 zoom = 1
 zoomIncrement = 0.03
-upperZoomLimit = 5
-lowerZoomLimit = 0.5
+upperZoomLimit = 2
+lowerZoomLimit = 0.3
 
 
 trackRes = 20
@@ -50,7 +50,7 @@ programColours = {"background": (20, 20, 20),
                   "mainTrack": (100, 100, 100)}
 
 directories = {"mainFont": "../assets/MonoFont.ttf",
-               "recentre": "../assets/aim.png",
+               "recentreButton": "../assets/aim.png",
                "finishLine": "../assets/flag.png",
                "scale": "../assets/scale.png",
                "minus": "../assets/minus.png",
@@ -87,6 +87,34 @@ def setEditStatus(value):
         mainTrack.computeSpline()
         mainTrack.computeTrackEdges()
 
+def recentreFrame():
+    global offsetPosition, zoom
+
+    minX = minY = float('inf')
+    maxX = maxY = float('-inf')
+
+    if len(mainTrack.points) >= 1:
+        for point in mainTrack.returnPointCoords():
+            if point[0] > maxX:
+                maxX = point[0]
+            if point[0] < minX:
+                minX = point[0]
+
+            if point[1] > maxY:
+                maxY = point[1]
+            if point[1] < minY:
+                minY = point[1]
+    else:
+        minX = maxX = minY = maxY = 0
+
+    centreX = (maxX + minX) / 2
+    centreY = (maxY + minY) / 2
+
+    zoomPercentage = (max((maxX - minX) / screenWidth, (maxY - minY) / screenHeight) * 1.05) + 0.3
+    zoom = 1 / zoomPercentage
+    zoom = min(max(zoom, lowerZoomLimit), upperZoomLimit)
+    offsetPosition = ((((screenWidth / zoom) / 2) - centreX) * zoom, (((screenHeight / zoom) / 2) - centreY) * zoom)
+
 UILayer = Layer("UI", 0, screen, pygame, mainFont, directories)
 
 mouseCoordsX = Label(UILayer, 15, (100, 50), "NE", "", programColours["white"])
@@ -114,10 +142,10 @@ startFinishImage = Image(UILayer, (setFinish.posX - 28, setFinish.posY - 10), "S
 setScale = Button(UILayer, (217.5, 300), "SE", (80, 60), "Set Scale", 10, (100, 100, 100), (0, -18), action = None)
 scaleImage = Image(UILayer, (setScale.posX - 28, setScale.posY - 10), "SE", directories["scale"], 1, (30, 30, 30))
 
-recentre = Button(UILayer, (130, 300), "SE", (80, 60), "Recentre", 10, (100, 100, 100), (0, -18), action = None)
-recentreImage = Image(UILayer, (recentre.posX - 27, recentre.posY - 10), "SE", directories["recentre"], 1, (30, 30, 30))
+recentreButton = Button(UILayer, (130, 300), "SE", (80, 60), "Recentre", 10, (100, 100, 100), (0, -18), action = recentreFrame)
+recentreImage = Image(UILayer, (recentreButton.posX - 27, recentreButton.posY - 10), "SE", directories["recentreButton"], 1, (30, 30, 30))
 
-configAccordion = Accordion(UILayer, (330, 460), "SE", (305, 435), [snapPoints, snapPointsLabel, switchEnds, switchEndsLabel, changeTrackWidth, trackWidthLabel, changeTrackRes, TrackResLabel, setFinish, startFinishImage, setScale, scaleImage, recentre, recentreImage], layerIndex = 0)
+configAccordion = Accordion(UILayer, (330, 460), "SE", (305, 435), [snapPoints, snapPointsLabel, switchEnds, switchEndsLabel, changeTrackWidth, trackWidthLabel, changeTrackRes, TrackResLabel, setFinish, startFinishImage, setScale, scaleImage, recentreButton, recentreImage], layerIndex = 0)
 
 trackName = Label(UILayer, 20, (330, 440), "SE", "Untitled Track", (200, 200, 200))
 configAccordion.elements.append(trackName)
@@ -166,6 +194,8 @@ def saveTrack(saveNewDirectory = False):
         else:
             validFile = False
         root.destroy()
+    else:
+        tempDirectory = saveDirectory
 
     if validFile:
         try:
@@ -228,6 +258,7 @@ def openTrack():
             snapPoints.value = trackProperties["snap"]
 
             saveDirectory = tempSaveDirectory
+            recentreFrame()
             mainTrack.saved = True
 
     def closeError(sender):
@@ -312,7 +343,6 @@ while running:
             offsetPosition = (mousePosX - pivotPos[0], mousePosY - pivotPos[1])
     else:
         pivotPos = None
-        zooming = False
 
 
     for event in pygame.event.get():
@@ -373,19 +403,25 @@ while running:
         if event.type == pygame.MOUSEWHEEL:
             if event.y > 0:
                 if zoom < upperZoomLimit:
-                    zooming = True
+                    beforeZoom = zoom
                     zoom *= 1 + zoomIncrement
-                    offsetPosition = (int(offsetPosition[0] - (mousePosX - offsetPosition[0]) * zoomIncrement), int(offsetPosition[1] - (mousePosY - offsetPosition[1]) * zoomIncrement))
-                else:
-                    zoom = upperZoomLimit
+
+                    if zoom > upperZoomLimit:
+                        zoom = upperZoomLimit
+
+                    zoomDifference = abs(zoom - beforeZoom) / zoom
+                    offsetPosition = (int(offsetPosition[0] - (mousePosX - offsetPosition[0]) * zoomDifference), int(offsetPosition[1] - (mousePosY - offsetPosition[1]) * zoomDifference))
 
             elif event.y < 0:
                 if zoom > lowerZoomLimit:
-                    zooming = True
+                    beforeZoom = zoom
                     zoom *= 1 - zoomIncrement
-                    offsetPosition = (int(offsetPosition[0] + (mousePosX - offsetPosition[0]) * zoomIncrement), int(offsetPosition[1] + (mousePosY - offsetPosition[1]) * zoomIncrement))
-                else:
-                    zoom = lowerZoomLimit
+
+                    if zoom < lowerZoomLimit:
+                        zoom = lowerZoomLimit
+
+                    zoomDifference = abs(zoom - beforeZoom) / zoom
+                    offsetPosition = (int(offsetPosition[0] + (mousePosX - offsetPosition[0]) * zoomDifference), int(offsetPosition[1] + (mousePosY - offsetPosition[1]) * zoomDifference))
 
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_z and pygame.key.get_mods() & pygame.KMOD_LCTRL and not(pygame.key.get_mods() & pygame.KMOD_LSHIFT) and mainTrack.edit:
