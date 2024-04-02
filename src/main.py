@@ -145,7 +145,7 @@ scaleImage = Image(UILayer, (setScale.posX - 28, setScale.posY - 10), "SE", dire
 recentreButton = Button(UILayer, (130, 300), "SE", (80, 60), "Recentre", 10, (100, 100, 100), (0, -18), action = recentreFrame)
 recentreImage = Image(UILayer, (recentreButton.posX - 27, recentreButton.posY - 10), "SE", directories["recentreButton"], 1, (30, 30, 30))
 
-configAccordion = Accordion(UILayer, (330, 460), "SE", (305, 435), [snapPoints, snapPointsLabel, switchEnds, switchEndsLabel, changeTrackWidth, trackWidthLabel, changeTrackRes, TrackResLabel, setFinish, startFinishImage, setScale, scaleImage, recentreButton, recentreImage], layerIndex = 0)
+configAccordion = Accordion(UILayer, (330, 460), "SE", (305, 435), [snapPoints, snapPointsLabel, switchEnds, switchEndsLabel, editMode, editModeLabel, changeTrackWidth, trackWidthLabel, changeTrackRes, TrackResLabel, setFinish, startFinishImage, setScale, scaleImage, recentreButton, recentreImage], layerIndex = 0)
 
 trackName = Label(UILayer, 20, (330, 440), "SE", "Untitled Track", (200, 200, 200))
 configAccordion.elements.append(trackName)
