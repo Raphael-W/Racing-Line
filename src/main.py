@@ -335,9 +335,6 @@ while running:
 
     screen.fill(programColours["background"])
 
-    drawGrid(offsetPosition, 50 * zoom, 2, programColours["mainGrid"])
-    drawGrid(offsetPosition, 10 * zoom, 1, programColours["innerGrid"])
-
     if pygame.mouse.get_pressed()[1]:
         if pivotPos is not None:
             offsetPosition = (mousePosX - pivotPos[0], mousePosY - pivotPos[1])
@@ -438,6 +435,9 @@ while running:
 
             if event.key == pygame.K_n and pygame.key.get_mods() & pygame.KMOD_LCTRL:
                 newTrack()
+
+    drawGrid(offsetPosition, 50 * zoom, 2, programColours["mainGrid"])
+    drawGrid(offsetPosition, 10 * zoom, 1, programColours["innerGrid"])
 
     mainTrack.update((mousePosX - offsetPosition[0]) / zoom, (mousePosY - offsetPosition[1]) / zoom, zoom, screenWidth, screenHeight, screenBorder, pygame, offsetPosition, snapPoints.value)
     mainTrack.draw(programColours, screen, pygame, offsetPosition, zoom, switchEnds.value)
