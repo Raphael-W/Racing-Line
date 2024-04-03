@@ -627,6 +627,7 @@ class Track:
             # for i in offsetMainCurve:
             #     pygame.draw.circle(screen, programColours["curve"], i, 5)
         #self.computeCurbs(pygame, screen)
+
         if self.edit:
             for point in range(len(self.points)):
 

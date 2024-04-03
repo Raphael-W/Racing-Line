@@ -113,6 +113,9 @@ def recentreFrame():
     zoomPercentage = (max((maxX - minX) / screenWidth, (maxY - minY) / screenHeight) * 1.05) + 0.3
     zoom = 1 / zoomPercentage
     zoom = min(max(zoom, lowerZoomLimit), upperZoomLimit)
+    if len(mainTrack.points) == 0:
+        zoom = 1
+
     offsetPosition = ((((screenWidth / zoom) / 2) - centreX) * zoom, (((screenHeight / zoom) / 2) - centreY) * zoom)
 
 UILayer = Layer("UI", 0, screen, pygame, mainFont, directories)
@@ -327,6 +330,7 @@ newTrackButton = Button(UILayer, (173.75, 350), "SE", (123.75, 30), "New", 12, (
 
 configAccordion.elements += [saveButton, saveAsButton, openTrackButton, newTrackButton]
 
+recentreFrame()
 
 while running:
     screenWidth, screenHeight = screen.get_size()
