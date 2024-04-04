@@ -98,9 +98,10 @@ class Button (UIElement):
             self.colour = self.baseColour
 
         self.pointSelected = self.mouseHovering and self.layer.pygame.mouse.get_pressed()[0]
+        if self.pointSelected:
+            self.colour = self.pressedColour
 
         if self.pointSelected and self.stepBeforeClick:
-            self.colour = self.pressedColour
             if self.action is not None and not self.actionRun:
                 self.action()
                 self.actionRun = True
@@ -131,6 +132,7 @@ class Label (UIElement):
 
     def update(self):
         self.textSize = self.font.get_rect(self.text).size
+        self.boundingBox = self.layer.pygame.Rect((self.posX - 10, self.posY - 10), (self.textSize[0] + 20, self.textSize[1] + 20))
 
     def display(self):
         self.font.render_to(self.layer.screen, (self.posX, self.posY), self.text, self.colour)
@@ -467,14 +469,16 @@ class Layer:
     def add(self, element):
         self.elements.insert(element.layerIndex, element)
 
-    def display(self, screenWidth, screenHeight, offset = None):
+    def display(self, screenWidth, screenHeight, offset = None, zoom = None):
         self.screenWidth = screenWidth
         self.screenHeight = screenHeight
         self.offset = offset
         for element in self.elements:
             if element.show:
-                element.posX, element.posY = element.stickyPos()
-                element.posX, element.posY = element.offsetPos(offset)
+                newPos =  element.stickyPos()
+                element.posX, element.posY = newPos
+                element.boundingBox.x, element.boundingBox.y = newPos
+                element.posX, element.posY = element.offsetPos(offset, zoom)
                 element.update()
                 element.display()
 
