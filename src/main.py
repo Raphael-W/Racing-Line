@@ -344,6 +344,7 @@ def newTrack():
         sender.close()
         saveTrack()
         mainTrack.clear()
+        recentreFrame()
 
         mainTrack.saved = True
         saveDirectory = None
@@ -351,6 +352,7 @@ def newTrack():
         global saveDirectory
         sender.close()
         mainTrack.clear()
+        recentreFrame()
 
         mainTrack.saved = True
         saveDirectory = None
@@ -361,8 +363,13 @@ def newTrack():
     elif saveDirectory is not None:
         saveTrack()
         mainTrack.clear()
+        recentreFrame()
+
         mainTrack.saved = True
         saveDirectory = None
+
+    else:
+        recentreFrame()
 
 
 saveButton = Button(UILayer, (305, 387.5), "SE", (123.75, 30), "Save", 12, (100, 100, 100), action = saveTrack)
