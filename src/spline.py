@@ -1,70 +1,4 @@
-import math
-import numpy as np
-
-#Calculates distance between 2 points
-def pointDistance(point1, point2):
-    x1, y1 = point1
-    x2, y2 = point2
-
-    return math.sqrt(((y2 - y1) ** 2) + ((x1 - x2) ** 2))
-
-def gradient(point1, point2):
-    x1, y1 = point1
-    x2, y2 = point2
-
-    return abs((y2 - y1) / (x2 - x1))
-
-def angle(point1, point2, point3):
-    distance12 = pointDistance(point1, point2)
-    distance23 = pointDistance(point2, point3)
-    distance31 = pointDistance(point3, point1)
-
-    cosAngle = ((distance12 ** 2) + (distance23 ** 2) - (distance31 ** 2)) / (2 * distance12 * distance23)
-    cosAngle = max(min(cosAngle, 1), -1)
-    angleRad = math.acos(cosAngle)
-    angleDegrees = angleRad * (180.0 / math.pi)
-
-    return angleDegrees
-
-def lineToPointDistance(lineA, lineB, point):
-    lineA = np.array(lineA)
-    lineB = np.array(lineB)
-    point = np.array(point)
-
-    l2 = pointDistance(lineA, lineB) ** 2
-    if l2 == 0:
-        return pointDistance(point, lineA)
-
-    t = max(0, min(1, np.dot(point - lineA, lineB - lineA) / l2))
-    projection = lineA + t * (lineB - lineA)
-    return pointDistance(point, projection)
-
-def extendPoints(points):
-    xExt = (points[-1][0] - points[-2][0])
-    yExt = (points[-1][1] - points[-2][1])
-    pointExt = (points[-1][0] + xExt, points[-1][1] + yExt)
-    extendedSplinePoints = points + [pointExt]
-
-    return extendedSplinePoints
-
-def offsetPoints(points, offset, zoom):
-    if type(points[0]) is tuple:
-        return [((point[0] * zoom) + offset[0], (point[1] * zoom) + offset[1]) for point in points]
-    else:
-        return (points[0] * zoom) + offset[0], (points[1] * zoom) + offset[1]
-
-def calculateSide(points, pointIndex, width):
-    width = width / 2
-    points = extendPoints(points)
-
-    distance = pointDistance(points[pointIndex], points[pointIndex + 1])
-    sideX = ((width * (points[pointIndex][1] - points[pointIndex + 1][1])) / distance) + points[pointIndex][0]
-    sideY = ((width * (points[pointIndex + 1][0] - points[pointIndex][0])) / distance) + points[pointIndex][1]
-
-    return sideX, sideY
-
-def formPolygon(leftSide, rightSide):
-     return leftSide + list(reversed(rightSide))
+from utils import *
 
 def findKink(point, linePoints, width):
     width = width / 2
@@ -146,7 +80,7 @@ class ControlPoint:
 
     #Draws point to screen
     def draw(self, colour, screen, pygame, offset, zoom):
-        newPos = offsetPoints((self.posX, self.posY), offset, zoom)
+        newPos = offsetPoints((self.posX, self.posY), offset, zoom, single = True)
         newPos = [int(point) for point in newPos]
 
         pygame.gfxdraw.aacircle(screen, newPos[0], newPos[1], self.size, colour)
@@ -174,6 +108,8 @@ class Track:
         self.edit = True
 
         self.perSegRes = resolution
+        self.scale = None
+        self.length = None
 
         self.width = 100
 
@@ -195,6 +131,9 @@ class Track:
         self.rightTrackEdgePolygonInner = []
         self.rightTrackEdgePolygonOuter = []
 
+        self.scale = None
+        self.length = None
+
         self.closed = False
         self.saved = False
 
@@ -215,6 +154,12 @@ class Track:
         self.computeTrackEdges()
 
         self.saved = False
+
+    def calculateLength(self):
+        if self.scale is not None:
+            self.length = 0
+            for point in range(len(self.splinePoints) - 1):
+                self.length += pointDistance(self.splinePoints[point], self.splinePoints[point + 1]) * self.scale
 
     def updateCloseStatus(self, value, update = False):
         if self.closed is not value:
@@ -383,6 +328,8 @@ class Track:
                 self.remove(-1, False)
                 self.remove(-1, False)
 
+            self.calculateLength()
+
     def computeTrackEdges(self, updatePoints = []):
         if len(self.points) >= 2:
             numOfSegments = len(self.points) - 1
@@ -441,18 +388,44 @@ class Track:
                     self.rightTrackEdgePolygonInner[point] = calculateSide(self.splinePoints, point, -self.width)
                     self.rightTrackEdgePolygonOuter[point] = calculateSide(self.splinePoints, point, -(self.width + 20))
 
-    def computeCurbs(self, pygame, screen):
-        curbThreshold = 0.6
+    def computeCurbs(self, pygame, screen, offset, zoom):
+        curbSpline = self.returnPointCoords()
+        if self.closed:
+            first1 = curbSpline[1]
+            first2 = curbSpline[2]
+            last1 = curbSpline[-2]
+            last2 = curbSpline[-3]
+
+            curbSpline.insert(0, last1)
+            curbSpline.insert(0, last2)
+            curbSpline.insert(-1, first1)
+            curbSpline.insert(-1, first2)
+
+
+        numOfSegments = len(self.points) - 1
+        resolution = numOfSegments * 100
+        for tInt in range(0, resolution):
+            t = tInt / resolution
+            curbSpline.append(calculateSpline(self.returnPointCoords(), t))
+
+        if self.closed:
+            curbSpline.pop(0)
+            curbSpline.pop(0)
+            curbSpline.pop(-1)
+            curbSpline.pop(-1)
+
+        curbThreshold = 0.02
         if len(self.points) >= 2:
-            lengthOfSpline = len(self.splinePoints) - 1
-            previousAngle = angle(self.splinePoints[0], self.splinePoints[1], self.splinePoints[2])
+            splinePoints = offsetPoints(curbSpline, offset, zoom)
+            lengthOfSpline = len(splinePoints) - 1
+            previousAngle = angle(splinePoints[0], splinePoints[1], splinePoints[2])
             curbRanges = []
 
             lowerBound = None
             upperBound = None
 
             for dot in range(1, lengthOfSpline):
-                currentAngle = angle(self.splinePoints[dot - 1], self.splinePoints[dot], self.splinePoints[dot + 1])
+                currentAngle = angle(splinePoints[dot - 1], splinePoints[dot], splinePoints[dot + 1])
                 diffInAngle = abs(currentAngle - previousAngle)
                 if diffInAngle > curbThreshold:
                     if lowerBound is None:
@@ -469,27 +442,31 @@ class Track:
                 previousAngle = currentAngle
 
             if len(curbRanges) > 1:
-                smoothedCurbRanges = []
+                cleanedCurbRanges = []
                 lowerBound = curbRanges[0][0]
                 upperBound = curbRanges[0][1]
+                minDotCount = 15
                 for curbRange in range(1, len(curbRanges)):
-                    if (pointDistance(self.splinePoints[curbRanges[curbRange][0]], self.splinePoints[upperBound]) > 50) or (curbRange == len(self.splinePoints) - 1):
-                        if (upperBound - lowerBound) >= 5:
-                            smoothedCurbRanges.append((lowerBound, upperBound))
+                    if (pointDistance(splinePoints[curbRanges[curbRange][0]], splinePoints[upperBound]) / zoom) > 70:
+                        if (upperBound - lowerBound) > minDotCount:
+                            cleanedCurbRanges.append((lowerBound, upperBound))
 
                         lowerBound = curbRanges[curbRange][0]
                         upperBound = curbRanges[curbRange][1]
                     else:
                         upperBound = curbRanges[curbRange][1]
 
+                if (upperBound - lowerBound) > minDotCount:
+                    cleanedCurbRanges.append((lowerBound, upperBound))
+
                 if self.closed:
                     pass #smooth end and first points
 
-                curbRanges = smoothedCurbRanges
+                curbRanges = cleanedCurbRanges
 
             for curbRange in curbRanges:
                 for dot in range(*curbRange):
-                    pygame.draw.circle(screen, (252, 186, 3), self.splinePoints[dot], 5)
+                    pygame.draw.circle(screen, (252, 186, 3), splinePoints[dot], 5)
 
             self.saved = False
 
@@ -626,7 +603,7 @@ class Track:
 
             # for i in offsetMainCurve:
             #     pygame.draw.circle(screen, programColours["curve"], i, 5)
-        #self.computeCurbs(pygame, screen)
+        #self.computeCurbs(pygame, screen, offset, zoom)
 
         if self.edit:
             for point in range(len(self.points)):

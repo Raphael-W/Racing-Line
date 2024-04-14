@@ -1,3 +1,4 @@
+import time
 class UIElement:
     def __init__(self, layer, pos, stick, show = True, layerIndex = -1):
         self.nonStickPosX = pos[0]
@@ -19,15 +20,16 @@ class UIElement:
     def update(self):
         pass
 
-    def offsetPos(self, offset):
+    def offsetPos(self, offset, zoom):
         if offset is not None:
-            offsetX, offsetY = self.layer.offset
+            offsetX, offsetY = offset
+            if zoom is None:
+                zoom = 1
 
-            offsetPosX = self.posX + offsetX
-            offsetPosY = self.posY + offsetY
+            offsetPosX = ((self.nonStickPosX * zoom) + offsetX)
+            offsetPosY = ((self.nonStickPosY * zoom) + offsetY)
 
             return  offsetPosX, offsetPosY
-
         return self.posX, self.posY
 
     def display(self):
@@ -57,6 +59,9 @@ class UIElement:
                 newY = self.layer.screenHeight - self.nonStickPosY
 
         return newX, newY
+
+    def close(self):
+        self.layer.elements.remove(self)
 
 class Button (UIElement):
     def __init__(self, layer, pos, stick, dimensions, text, fontSize, colour, textOffset = (0, 0), roundedCorners = 10, action = None, show = True, layerIndex = -1):
@@ -127,8 +132,6 @@ class Label (UIElement):
         self.font = layer.pygame.freetype.Font(layer.fontName, fontSize)
         self.textSize = self.font.get_rect(self.text).size
         self.colour = colour
-
-        self.boundingBox = self.layer.pygame.Rect((self.posX - 10, self.posY - 10),  (self.textSize[0] + 20, self.textSize[1] + 20))
 
     def update(self):
         self.textSize = self.font.get_rect(self.text).size
@@ -295,25 +298,76 @@ class Image(UIElement):
             self.image.fill(self.colour, special_flags = self.layer.pygame.BLEND_RGB_MAX)
 
 class TextInput(UIElement):
-    def __init__(self, layer, pos, stick, dimensions, placeholder = "", text = "", show = True, layerIndex = -1):
+    def __init__(self, layer, pos, stick, dimensions, fontSize, placeholder = "", text = "", suffix = "", characterWhitelist = [], enterAction = None, show = True, layerIndex = -1):
         super().__init__(layer, pos, stick, show, layerIndex)
 
         self.width, self.height = dimensions
+        self.fontSize = fontSize
         self.placeholder = placeholder
         self.text = text
-        self.font = layer.pygame.freetype.Font(layer.fontName, self.height - 20)
+        self.suffix = suffix
+
+        self.characterWhitelist = characterWhitelist
+        self.font = layer.pygame.freetype.Font(layer.fontName, self.fontSize)
+        self.enterAction = enterAction
+
+        self.showTypingBar = True
+        self.timeAtFlash = time.time()
+
+        self.hovering = False
+        self.selected = True
+
+        self.cursorIndex = 0
 
         self.show = show
 
     def update(self):
-        pass
+        if self.selected:
+            if (time.time() - self.timeAtFlash) >= 0.5:
+                self.showTypingBar = not self.showTypingBar
+                self.timeAtFlash = time.time()
 
     def display(self):
         transparentSurface = self.layer.pygame.Surface((self.width, self.height), self.layer.pygame.SRCALPHA)
         self.layer.pygame.draw.rect(transparentSurface, (100, 100, 100, 100), (0, 0, self.width, self.height), border_radius = 15)
         self.layer.screen.blit(transparentSurface, (self.posX, self.posY))
 
-        self.font.render_to(self.layer.screen, (self.posX + 20, self.posY + 10), self.text, (200, 200, 200))
+        if self.text == "":
+            self.font.render_to(self.layer.screen, (self.posX + 10, self.posY + (self.height / 2) - (self.fontSize / 2)), self.placeholder, (150, 150, 150))
+        else:
+            self.font.render_to(self.layer.screen, (self.posX + 10, self.posY + (self.height / 2) - (self.fontSize / 2)), self.text + self.suffix, (200, 200, 200))
+
+        if self.showTypingBar:
+            if self.cursorIndex > (len(self.text)):
+                self.cursorIndex = len(self.text)
+
+            elif self.cursorIndex <= 0:
+                self.cursorIndex = 0
+
+            textWidth = self.font.get_rect(self.text[:self.cursorIndex]).width
+            self.layer.pygame.draw.line(self.layer.screen, (200, 200, 200), (self.posX + 10 + textWidth, self.posY + 15), (self.posX + 10 + textWidth, self.posY - 15 + self.height), 2)
+
+    def typeLetter(self, letter):
+        self.timeAtFlash = time.time()
+        self.showTypingBar = True
+
+        letterUni = letter.unicode
+        if letterUni in self.characterWhitelist:
+            self.text = self.text[:self.cursorIndex] + letterUni + self.text[self.cursorIndex:]
+            self.cursorIndex += 1
+
+        if letter.key == self.layer.pygame.K_BACKSPACE:
+            self.text = self.text[:self.cursorIndex - 1] + self.text[self.cursorIndex:]
+
+        if letter.key == self.layer.pygame.K_RIGHT:
+            self.cursorIndex += 1
+
+        if letter.key == self.layer.pygame.K_LEFT:
+            self.cursorIndex -= 1
+
+        if letter.key == self.layer.pygame.K_RETURN:
+            if self.enterAction is not None:
+                self.enterAction(self.text)
 
 class Accordion(UIElement):
     def __init__(self, layer, pos, stick, dimensions, elements, collapse = False, show = True, layerIndex = -1):
@@ -429,6 +483,10 @@ class Message(UIElement):
             self.rightButton = Button(layer, (self.posX + 10 + (self.width / 2), (self.posY + self.height) - 40), "",((self.width / 2) - 20, 30), button2Text, 15, rightButtonColour, action = lambda: button2Action(self))
 
     def display(self):
+        transparentSurface = self.layer.pygame.Surface((self.layer.screenWidth, self.layer.screenHeight), self.layer.pygame.SRCALPHA)
+        self.layer.pygame.draw.rect(transparentSurface, (50, 50, 50, 200), (0, 0, self.layer.screenWidth, self.layer.screenHeight))
+        self.layer.screen.blit(transparentSurface, (0, 0))
+
         self.layer.pygame.draw.rect(self.layer.screen, (70, 70, 70), (self.posX, self.posY, self.width, self.height), border_radius = 15)
         self.titleFont.render_to(self.layer.screen, (self.titleBoundingBox.centerx - (self.titleSize[0] / 2), self.posY + 20), self.title, (200, 200, 200))
         self.messageFont.render_to(self.layer.screen, (self.messageBoundingBox.centerx - (self.messageSize[0] / 2), self.posY + 60), self.message, (200, 200, 200))
@@ -443,6 +501,7 @@ class Message(UIElement):
         self.layer.elements.remove(self.closeButton)
         self.layer.elements.remove(self.closeImage)
         self.layer.elements.remove(self)
+
     def closeButton(self):
         if self.xAction is None:
             self.close()
@@ -479,6 +538,7 @@ class Layer:
                 element.posX, element.posY = newPos
                 element.boundingBox.x, element.boundingBox.y = newPos
                 element.posX, element.posY = element.offsetPos(offset, zoom)
+
                 element.update()
                 element.display()
 

@@ -16,7 +16,7 @@ from spline import *
 import ctypes
 
 appID = 'Raphael Wreford, Racing-Line-Finder' # Arbitrary string
-ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(appID) #Makes taskbar icon same as window icon (Sets app as "individual app" not linked to python)
+ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(appID) #Makes taskbar icon same as window icon (Sets app as "individual app", not linked to python)
 
 pygame.init()
 pygame.display.set_caption("Racing Line Finder")
@@ -33,9 +33,13 @@ screenBorder = 5
 
 zoom = 1
 zoomIncrement = 0.05
-upperZoomLimit = 2
-lowerZoomLimit = 0.2
+upperZoomLimit = 2.5
+lowerZoomLimit = 0.1
 
+userSettingScale = False
+setScalePoint1 = None
+setScalePoint2 = None
+realDistanceTextInput = None
 
 trackRes = 20
 mainTrack = Track(resolution = trackRes)
@@ -64,9 +68,10 @@ trackFileSchema = {"type"      : "object",
                                 "trackRes": {"type": "number"},
                                 "closed": {"type": "boolean"},
                                 "switchEnds": {"type": "boolean"},
-                                "snap": {"type": "boolean"}},
+                                "snap": {"type": "boolean"},
+                                "scale": {"type": ["number", "null"]}},
 
-                                  "required": ["width", "trackRes", "closed", "switchEnds", "snap"]}},
+                                  "required": ["width", "trackRes", "closed", "switchEnds", "snap", "scale"]}},
 
                    "required"  : ["points", "properties"]}
 
@@ -118,11 +123,40 @@ def recentreFrame():
 
     offsetPosition = ((((screenWidth / zoom) / 2) - centreX) * zoom, (((screenHeight / zoom) / 2) - centreY) * zoom)
 
-UILayer = Layer("UI", 0, screen, pygame, mainFont, directories)
+def setScale():
+    global userSettingScale, setScalePoint1, setScalePoint2
 
-mouseCoordsX = Label(UILayer, 15, (100, 50), "NE", "", programColours["white"])
-mouseCoordsY = Label(UILayer, 15, (100, 30), "NE", "", programColours["white"])
-scaleLabel = Label(UILayer, 15, (136, 70), "NE", "", programColours["white"])
+    userSettingScale = True
+    setScalePoint1 = None
+    setScalePoint2 = None
+
+def completeScaling(text):
+    global userSettingScale, saved
+    try:
+        actualDistance = float(text)
+    except:
+        actualDistance = None
+        scalingErrorLabel.text = "Please enter a valid number"
+
+    if actualDistance is not None:
+        if actualDistance == 0:
+            scalingErrorLabel.text = "Please enter a number greater than 0"
+        else:
+            screenDistance = pointDistance(setScalePoint1, setScalePoint2)
+            mainTrack.scale = actualDistance / screenDistance
+            realDistanceTextInput.close()
+            userSettingScale = False
+            mainTrack.saved = False
+            mainTrack.calculateLength()
+            scalingErrorLabel.text = ""
+
+
+UILayer = Layer("UI", 0, screen, pygame, mainFont, directories)
+trackLayer = Layer("Track", 1, screen, pygame, mainFont, directories)
+
+mouseCoordsX = Label(UILayer, 15, (100, 30), "NE", "", programColours["white"])
+mouseCoordsY = Label(UILayer, 15, (100, 50), "NE", "", programColours["white"])
+scaleLabel = Label(UILayer, 15, (127, 70), "NE", "", programColours["white"])
 
 switchEnds = Switch(UILayer, programColours["white"], (140, 130), "SE", 0.8, value = False)
 switchEndsLabel = Label(UILayer, 15, (255, 128), "SE", "Switch front", programColours["white"])
@@ -142,13 +176,16 @@ TrackResLabel = Label(UILayer, 15, (305, 213), "SE", "Track Res", programColours
 setFinish = Button(UILayer, (305, 300), "SE", (80, 60), "Set Finish", 10, (100, 100, 100), (0, -18), action = None)
 startFinishImage = Image(UILayer, (setFinish.posX - 28, setFinish.posY - 10), "SE", directories["finishLine"], 1, (30, 30, 30))
 
-setScale = Button(UILayer, (217.5, 300), "SE", (80, 60), "Set Scale", 10, (100, 100, 100), (0, -18), action = None)
-scaleImage = Image(UILayer, (setScale.posX - 28, setScale.posY - 10), "SE", directories["scale"], 1, (30, 30, 30))
+setScaleButton = Button(UILayer, (217.5, 300), "SE", (80, 60), "Set Scale", 10, (100, 100, 100), (0, -18), action = setScale)
+scaleImage = Image(UILayer, (setScaleButton.posX - 28, setScaleButton.posY - 10), "SE", directories["scale"], 1, (30, 30, 30))
 
 recentreButton = Button(UILayer, (130, 300), "SE", (80, 60), "Recentre", 10, (100, 100, 100), (0, -18), action = recentreFrame)
 recentreImage = Image(UILayer, (recentreButton.posX - 27, recentreButton.posY - 10), "SE", directories["recentreButton"], 1, (30, 30, 30))
 
-configAccordion = Accordion(UILayer, (330, 460), "SE", (305, 435), [snapPoints, snapPointsLabel, switchEnds, switchEndsLabel, editMode, editModeLabel, changeTrackWidth, trackWidthLabel, changeTrackRes, TrackResLabel, setFinish, startFinishImage, setScale, scaleImage, recentreButton, recentreImage], layerIndex = 0)
+configAccordion = Accordion(UILayer, (330, 460), "SE", (305, 435), [snapPoints, snapPointsLabel, switchEnds, switchEndsLabel, editMode, editModeLabel, changeTrackWidth, trackWidthLabel, changeTrackRes, TrackResLabel, setFinish, startFinishImage, setScaleButton, scaleImage, recentreButton, recentreImage], layerIndex = 0)
+
+trackScaleLabel = Label(UILayer, 15, (180, 30), "S", "", programColours["white"])
+scalingErrorLabel = Label(UILayer, 12, (20, 60), "S", "", (227, 65, 50))
 
 trackName = Label(UILayer, 20, (330, 440), "SE", "Untitled Track", (200, 200, 200))
 configAccordion.elements.append(trackName)
@@ -180,7 +217,8 @@ def saveTrack(saveNewDirectory = False):
                 "trackRes": mainTrack.perSegRes,
                 "closed": mainTrack.closed,
                 "switchEnds": switchEnds.value,
-                "snap": snapPoints.value}
+                "snap": snapPoints.value,
+                "scale": mainTrack.scale}
 
     trackData = {"points": points,
              "properties": properties}
@@ -189,6 +227,7 @@ def saveTrack(saveNewDirectory = False):
     tempDirectory = None
     if saveDirectory is None or saveNewDirectory:
         root = tk.Tk()
+        root.wm_attributes('-topmost', 1)
         root.withdraw()
         tempDirectory = asksaveasfilename(title = "Save Track", initialfile = 'Untitled.track', defaultextension = ".track",filetypes = [("Track Files","*.track")])
 
@@ -213,7 +252,6 @@ def saveTrack(saveNewDirectory = False):
             mainTrack.saved = False
 
     elif not validFile and tempDirectory != '':
-        print("Invalid Directory")
         errorMessage = Message(UILayer, "Can't Save", "Please select a valid directory", "OK", closeError, "grey")
         saveDirectory = None
         mainTrack.saved = False
@@ -242,7 +280,6 @@ def openTrack():
 
 
         elif not valid and tempSaveDirectory != '':
-            print("Invalid Directory")
             errorMessage = Message(UILayer, "No File", "There is no file at this path", "OK", closeError, "grey")
             tempSaveDirectory = None
 
@@ -256,9 +293,13 @@ def openTrack():
             trackProperties = trackData["properties"]
             changeTrackWidth.updateValue(trackProperties["width"])
             changeTrackRes.updateValue(trackProperties["trackRes"])
-            mainTrack.updateCloseStatus(trackProperties["closed"], update = True)
+            mainTrack.updateCloseStatus(trackProperties["closed"], update = False)
             switchEnds.value = trackProperties["switchEnds"]
             snapPoints.value = trackProperties["snap"]
+            mainTrack.scale = trackProperties["scale"]
+
+            mainTrack.computeSpline()
+            mainTrack.computeTrackEdges()
 
             saveDirectory = tempSaveDirectory
             recentreFrame()
@@ -283,6 +324,7 @@ def openTrack():
 
     root = tk.Tk()
     root.withdraw()
+    root.wm_attributes('-topmost', 1)
     tempDirectory = askopenfilename(title="Open Track", defaultextension = ".track",filetypes = [("Track Files","*.track")])
     validFile = os.path.isfile(tempDirectory)
     root.destroy()
@@ -379,7 +421,7 @@ while running:
             else:
                 running = False
 
-        if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (mainTrack.mouseHovering is None) and (not UILayer.mouseOnLayer((mousePosX, mousePosY))):
+        if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (mainTrack.mouseHovering is None) and (not UILayer.mouseOnLayer((mousePosX, mousePosY))) and not userSettingScale:
             index = -1
             if switchEnds.value:
                 index = 0
@@ -392,6 +434,19 @@ while running:
 
             validPlacement = (not mainTrack.closed or onLine) and mainTrack.edit
             if validPlacement: mainTrack.add(ControlPoint((mousePosX - offsetPosition[0]) / zoom, (mousePosY - offsetPosition[1]) / zoom), index = index)
+
+
+        if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (mainTrack.mouseHovering is None) and (not UILayer.mouseOnLayer((mousePosX, mousePosY))) and userSettingScale:
+            if setScalePoint1 is None:
+                setScalePoint1 = ((mousePosX - offsetPosition[0]) / zoom, (mousePosY - offsetPosition[1]) / zoom)
+            elif setScalePoint2 is None:
+                setScalePoint2 = ((mousePosX - offsetPosition[0]) / zoom, (mousePosY - offsetPosition[1]) / zoom)
+
+                realDistanceTextInput = TextInput(UILayer, (20, 120), "S", (180, 50), 15, "Real Distance (m)", "", "m", ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '.'], enterAction = completeScaling)
+
+        if event.type == pygame.KEYDOWN:
+            if userSettingScale:
+                realDistanceTextInput.typeLetter(event)
 
         if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[2] and (mainTrack.mouseHovering is not None) and (not UILayer.mouseOnLayer((mousePosX, mousePosY))):
             index = mainTrack.mouseHovering
@@ -446,6 +501,32 @@ while running:
     mainTrack.update((mousePosX - offsetPosition[0]) / zoom, (mousePosY - offsetPosition[1]) / zoom, zoom, screenWidth, screenHeight, screenBorder, pygame, offsetPosition, snapPoints.value)
     mainTrack.draw(programColours, screen, pygame, offsetPosition, zoom, switchEnds.value)
 
+    if userSettingScale:
+        transparentSurface = pygame.Surface((screenWidth, screenHeight), pygame.SRCALPHA)
+        pygame.draw.rect(transparentSurface, (50, 50, 50, 100), (0, 0, screenWidth, screenHeight))
+        screen.blit(transparentSurface, (0, 0))
+
+        interval = 10
+        if setScalePoint1 is not None:
+            lineStart = ((setScalePoint1[0] * zoom) + offsetPosition[0], (setScalePoint1[1] * zoom) + offsetPosition[1])
+            if setScalePoint2 is None:
+                lineEnd = (mousePosX, mousePosY)
+            else:
+                lineEnd = ((setScalePoint2[0] * zoom) + offsetPosition[0], (setScalePoint2[1] * zoom) + offsetPosition[1])
+
+            endStopsStart = calculateSide([lineStart, lineEnd], 0, 20)
+            endStopsEnd = calculateSide([lineStart, lineEnd], 0, -20)
+
+            lineStart_EndStop = [calculateSide([lineStart, lineEnd], 0, 20),
+                                calculateSide([lineStart, lineEnd], 0, -20)]
+
+            lineEnd_EndStop = [calculateSide([lineStart, lineEnd], 1, 20),
+                                calculateSide([lineStart, lineEnd], 1, -20)]
+
+            pygame.draw.line(screen, (200, 200, 200), lineStart, lineEnd, 5)
+            pygame.draw.line(screen, (200, 200, 200), lineStart_EndStop[0], lineStart_EndStop[1], 5)
+            pygame.draw.line(screen, (200, 200, 200), lineEnd_EndStop[0], lineEnd_EndStop[1], 5)
+
     saved = mainTrack.saved
     if saved:
         saveCharacter = ""
@@ -465,9 +546,27 @@ while running:
     lastCaption = newCaption
     mouseCoordsX.text = ("x: " + str(int(((mousePosX * 1) - offsetPosition[0]) / zoom)))
     mouseCoordsY.text = ("y: " + str(int(((mousePosY * 1) - offsetPosition[1]) / zoom)))
-    scaleLabel.text = ("Scale: " + str(int(zoom * 100)) + "%")
+    scaleLabel.text = ("view: " + str(int(zoom * 100)) + "%")
+
+    if mainTrack.scale is not None:
+        trackScaleReduced = int((mainTrack.scale * 150) / zoom)
+
+        if mainTrack.length > 1000:
+            lengthText = "length: " + str(int(mainTrack.length) / 1000) + "km"
+        else:
+            lengthText = "length: " + str(int(mainTrack.length)) + "m"
+
+        trackScaleLabel.text = str(trackScaleReduced) + "m  | " + lengthText
+        scaleFont = pygame.freetype.Font(mainFont, 15)
+
+        pygame.draw.line(screen, (200, 200, 200), (20, screenHeight - 35), (20, screenHeight - 20), 2)
+        pygame.draw.line(screen, (200, 200, 200), (20, screenHeight - 20), (170, screenHeight - 20), 2)
+        pygame.draw.line(screen, (200, 200, 200), (170, screenHeight - 35), (170, screenHeight - 20), 2)
+    else:
+        trackScaleLabel.text = ""
 
     UILayer.display(screenWidth, screenHeight)
+    trackLayer.display(screenWidth, screenHeight, offsetPosition, zoom)
     trackName.nonStickPosX = ((configAccordion.width / 2) + (trackName.textSize[0] / 2) + 25)
 
     pygame.display.flip()
