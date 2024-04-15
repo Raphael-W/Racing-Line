@@ -1,6 +1,24 @@
 # Racing Line Finder
-When racing, it's important to know where to position yourself on the track, where to brake and accelerate. For new racers, or simply new tracks this can be challenging and figuring out the most optimal line can be time consuming. This piece of software hopes to fix this.
+When racing, it's important to know where to position yourself on the track, where to brake and accelerate. For new racers, or simply new tracks this can be challenging and figuring this out can be time-consuming. This project aims to find the most optimal racing line around a track. 
 
-### Track Design:
-- Click to place a point, right click to remove it
-- You can add a point anywhere on the screen, or in the middle of a line.
+## Setup:
+This project requires you to have python installed
+1. Clone the repository to your local machine
+```console
+git clone https://github.com/Raphael-W/Racing-Line.git
+```
+
+2. Install python from `https://www.python.org/`
+
+3. Install the required libraries:
+```console
+pip install pygame jsonschema numpy
+```
+
+4. Run `main.py`
+
+## Track Designer
+None
+
+
+**Example tracks and vehicles can be located in `examples/`**
