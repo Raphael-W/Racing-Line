@@ -4,21 +4,35 @@ When racing, it's important to know where to position yourself on the track, whe
 ## Setup:
 This project requires you to have python installed
 1. Clone the repository to your local machine
-```console
+```bash
 git clone https://github.com/Raphael-W/Racing-Line.git
 ```
 
-2. Install python from `https://www.python.org/`
-
-3. Install the required libraries:
-```console
+2. Install the required libraries:
+```bash
 pip install pygame jsonschema numpy
 ```
 
-4. Run `main.py`
+3. Run `main.py`
 
 ## Track Designer
-None
+- Left click to add points (both to the end of the track and on the track)
+- Right click to remove the point
+<!-- -->
+- Hold down the scroll wheel to pan
+- Scroll to zoom
+<!-- -->
+- Set scale of track by choosing "Set Scale", selecting 2 points you known the distance of, and typing in the actual distance
+- Set where the finish line is by choosing "Set Finish" and picking any point on the curve
 
+## Examples:
+Example tracks and vehicles can be located in `examples/`
+<br>
+<br>
+**Tracks:**
+- Silverstone
+- Mountain Roads
+- Test Track
 
-**Example tracks and vehicles can be located in `examples/`**
+**Vehicles:**
+- None
