@@ -59,21 +59,11 @@ directories = {"mainFont": "../assets/MonoFont.ttf",
                "scale": "../assets/scale.png",
                "minus": "../assets/minus.png",
                "plus": "../assets/plus.png",
-               "cross": "../assets/cross.png"}
+               "cross": "../assets/cross.png",
+               "trackSchema": "../schemas/trackSchema.json"}
 
-trackFileSchema = {"type"      : "object",
-                   "properties": {"points": {"type": "array", "items": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2}},
-
-                   "properties": {"properties": {"width": {"type": "number"},
-                                "trackRes": {"type": "number"},
-                                "closed": {"type": "boolean"},
-                                "switchEnds": {"type": "boolean"},
-                                "snap": {"type": "boolean"},
-                                "scale": {"type": ["number", "null"]}},
-
-                                  "required": ["width", "trackRes", "closed", "switchEnds", "snap", "scale"]}},
-
-                   "required"  : ["points", "properties"]}
+with open(directories["trackSchema"]) as trackSchema:
+    trackFileSchema = json.load(trackSchema)
 
 saveDirectory = None
 saved = True
