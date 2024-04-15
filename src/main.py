@@ -232,7 +232,7 @@ def saveTrack(saveNewDirectory = False):
     if validFile:
         try:
             with open(tempDirectory, "w") as outputFile:
-                json.dump(trackData, outputFile)
+                json.dump(trackData, outputFile, indent=4)
                 pygame.display.set_caption(os.path.splitext(os.path.basename(tempDirectory))[0] + " - " + tempDirectory)
                 mainTrack.saved = True
                 saveDirectory = tempDirectory
