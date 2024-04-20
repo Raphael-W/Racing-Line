@@ -60,7 +60,10 @@ directories = {"mainFont": "../assets/MonoFont.ttf",
                "minus": "../assets/minus.png",
                "plus": "../assets/plus.png",
                "cross": "../assets/cross.png",
-               "trackSchema": "../schemas/trackSchema.json"}
+               "trackSchema": "../schemas/trackSchema.json",
+               "silverstone": "../assets/silverstoneReference.png"}
+
+pygame.event.set_allowed([pygame.QUIT, pygame.KEYDOWN, pygame.MOUSEBUTTONDOWN])
 
 with open(directories["trackSchema"]) as trackSchema:
     trackFileSchema = json.load(trackSchema)
@@ -176,6 +179,9 @@ configAccordion = Accordion(UILayer, (330, 460), "SE", (305, 435), [snapPoints, 
 
 trackScaleLabel = Label(UILayer, 15, (180, 30), "S", "", programColours["white"])
 scalingErrorLabel = Label(UILayer, 12, (20, 60), "S", "", (227, 65, 50))
+
+# silverstoneReference = pygame.image.load(directories["silverstone"]).convert_alpha()
+# silverstoneReference.fill((255, 255, 255, 100), None, pygame.BLEND_RGBA_MULT)
 
 trackName = Label(UILayer, 20, (330, 440), "SE", "Untitled Track", (200, 200, 200))
 configAccordion.elements.append(trackName)
@@ -503,6 +509,10 @@ while running:
     mainTrack.update((mousePosX - offsetPosition[0]) / zoom, (mousePosY - offsetPosition[1]) / zoom, zoom, screenWidth, screenHeight, screenBorder, pygame, offsetPosition, snapPoints.value)
     mainTrack.draw(programColours, screen, pygame, offsetPosition, zoom, switchEnds.value)
 
+    # pictSize = silverstoneReference.get_rect().size
+    # silverstoneReferenceScaled = pygame.transform.scale(silverstoneReference,(zoom * 2000 * (pictSize[0] / pictSize[1]), zoom * 2000))
+    # screen.blit(silverstoneReferenceScaled, (0 + offsetPosition[0], 0 + offsetPosition[1]))
+
     if userSettingScale:
         transparentSurface = pygame.Surface((screenWidth, screenHeight), pygame.SRCALPHA)
         pygame.draw.rect(transparentSurface, (50, 50, 50, 100), (0, 0, screenWidth, screenHeight))
@@ -572,6 +582,6 @@ while running:
     trackName.nonStickPosX = ((configAccordion.width / 2) + (trackName.textSize[0] / 2) + 25)
 
     pygame.display.flip()
-    clock.tick(60) #Refresh Rate
+    clock.tick(120) #Refresh Rate
 
 pygame.quit()
