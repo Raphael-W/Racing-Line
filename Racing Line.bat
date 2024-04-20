@@ -1,3 +1,2 @@
 @echo off
-cd %~p0/src
-start pythonw "main.py" %*
+start pythonw "%~p0/src/main.py" %*

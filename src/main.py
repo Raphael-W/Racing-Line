@@ -54,16 +54,18 @@ programColours = {"background": (20, 20, 20),
                   "white": (200, 200, 200),
                   "mainTrack": (100, 100, 100)}
 
-directories = {"mainFont": "../assets/MonoFont.ttf",
-               "recentreButton": "../assets/aim.png",
-               "finishLine": "../assets/flag.png",
-               "scale": "../assets/scale.png",
-               "minus": "../assets/minus.png",
-               "plus": "../assets/plus.png",
-               "cross": "../assets/cross.png",
-               "trackSchema": "../schemas/trackSchema.json",
-               "silverstone": "../assets/silverstoneReference.png"}
+executionDir = os.path.dirname(os.path.dirname(__file__))
+directories = {"mainFont": "assets/MonoFont.ttf",
+               "recentreButton": "assets/aim.png",
+               "finishLine": "assets/flag.png",
+               "scale": "assets/scale.png",
+               "minus": "assets/minus.png",
+               "plus": "assets/plus.png",
+               "cross": "assets/cross.png",
+               "trackSchema": "schemas/trackSchema.json",
+               "silverstone": "assets/silverstoneReference.png"}
 
+directories = {item: os.path.normpath(os.path.join(executionDir, directory)) for (item, directory) in directories.items()}
 pygame.event.set_allowed([pygame.QUIT, pygame.KEYDOWN, pygame.MOUSEBUTTONDOWN])
 
 with open(directories["trackSchema"]) as trackSchema:
