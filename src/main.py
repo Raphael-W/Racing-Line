@@ -441,9 +441,14 @@ while running:
 
                 realDistanceTextInput = TextInput(UILayer, (20, 120), "S", (180, 50), 15, "Real Distance (m)", "", "m", ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '.'], enterAction = completeScaling)
 
-        if event.type == pygame.KEYDOWN:
-            if userSettingScale:
-                realDistanceTextInput.typeLetter(event)
+        if event.type == pygame.KEYDOWN and userSettingScale:
+                if event.key == pygame.K_ESCAPE:
+                    if realDistanceTextInput is not None:
+                        realDistanceTextInput.close()
+                    userSettingScale = False
+
+                if realDistanceTextInput is not None:
+                    realDistanceTextInput.typeLetter(event)
 
         if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[2] and (mainTrack.mouseHovering is not None) and (not UILayer.mouseOnLayer((mousePosX, mousePosY))):
             index = mainTrack.mouseHovering

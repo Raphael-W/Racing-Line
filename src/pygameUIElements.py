@@ -61,7 +61,8 @@ class UIElement:
         return newX, newY
 
     def close(self):
-        self.layer.elements.remove(self)
+        if self in self.layer.elements:
+            self.layer.elements.remove(self)
 
 class Button (UIElement):
     def __init__(self, layer, pos, stick, dimensions, text, fontSize, colour, textOffset = (0, 0), roundedCorners = 10, action = None, show = True, layerIndex = -1):
