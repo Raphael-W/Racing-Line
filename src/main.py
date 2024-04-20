@@ -9,6 +9,7 @@ from tkinter.filedialog import asksaveasfilename, askopenfilename
 import tkinter as tk
 
 import os
+import sys
 
 from pygameUIElements import *
 from spline import *
@@ -252,7 +253,7 @@ def saveTrack(saveNewDirectory = False):
         saveDirectory = None
         mainTrack.saved = False
 
-def openTrack():
+def openTrack(tempDirectory = None):
     global saveDirectory, mainTrack
 
     def openTrackSequence(valid, tempSaveDirectory):
@@ -318,19 +319,19 @@ def openTrack():
 
         mainTrack.saved = True
 
-    root = tk.Tk()
-    root.withdraw()
-    root.wm_attributes('-topmost', 1)
-    tempDirectory = askopenfilename(title="Open Track", defaultextension = ".track",filetypes = [("Track Files","*.track")])
+    if tempDirectory is None:
+        root = tk.Tk()
+        root.withdraw()
+        root.wm_attributes('-topmost', 1)
+        tempDirectory = askopenfilename(title="Open Track", defaultextension = ".track",filetypes = [("Track Files","*.track")])
+        root.destroy()
     validFile = os.path.isfile(tempDirectory)
-    root.destroy()
 
     if tempDirectory != '' and mainTrack.saved == False:
         areYouSure = Message(UILayer, "Sure?", "You currently have an unsaved file open", "Save", saveTrackFirst, "grey","Discard", discardTrack, "red")
 
     else:
         openTrackSequence(validFile, tempDirectory)
-
 
 def newTrack():
     global saveDirectory, mainTrack
@@ -376,6 +377,10 @@ newTrackButton = Button(UILayer, (173.75, 350), "SE", (123.75, 30), "New", 12, (
 configAccordion.elements += [saveButton, saveAsButton, openTrackButton, newTrackButton]
 
 recentreFrame()
+
+if len(sys.argv) > 1:
+    print(sys.argv)
+    openTrack(sys.argv[1])
 
 while running:
     screenWidth, screenHeight = screen.get_size()
