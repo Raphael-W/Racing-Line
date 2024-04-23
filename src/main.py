@@ -154,31 +154,31 @@ mouseCoordsX = Label(UILayer, 15, (100, 30), "NE", "", programColours["white"])
 mouseCoordsY = Label(UILayer, 15, (100, 50), "NE", "", programColours["white"])
 scaleLabel = Label(UILayer, 15, (127, 70), "NE", "", programColours["white"])
 
-switchEnds = Switch(UILayer, programColours["white"], (140, 130), "SE", 0.8, value = False)
-switchEndsLabel = Label(UILayer, 15, (255, 128), "SE", "Switch front", programColours["white"])
+switchEnds = Switch(UILayer, (165, 155), "SE", 0.8, value = False)
+switchEndsLabel = Label(UILayer, 15, (280, 153), "SE", "Switch front", programColours["white"])
 
-snapPoints = Switch(UILayer, programColours["white"], (140, 100), "SE", 0.8, value = False)
-snapPointsLabel = Label(UILayer, 15, (184, 98), "SE", "Snap", programColours["white"])
+snapPoints = Switch(UILayer, (165, 125), "SE", 0.8, value = False)
+snapPointsLabel = Label(UILayer, 15, (209, 123), "SE", "Snap", programColours["white"])
 
-editMode = Switch(UILayer, programColours["white"], (140, 70), "SE", 0.8, value = True, action = lambda: setEditStatus(editMode.value))
-editModeLabel = Label(UILayer, 15, (184, 68), "SE", "Edit", programColours["white"])
+editMode = Switch(UILayer, (165, 95), "SE", 0.8, value = True, action = lambda: setEditStatus(editMode.value))
+editModeLabel = Label(UILayer, 15, (209, 93), "SE", "Edit", programColours["white"])
 
-changeTrackWidth = Slider(UILayer, 15, programColours["white"], programColours["controlPoint"], (200, 173), "SE", 1, 100, (20, 200), action = lambda: mainTrack.changeWidth(changeTrackWidth.value), value = mainTrack.width)
-trackWidthLabel = Label(UILayer, 15, (270, 178), "SE", "Width", programColours["white"])
+changeTrackWidth = Slider(UILayer, 15, programColours["white"], programColours["controlPoint"], (224, 198), "SE", 1, 100, (20, 200), action = lambda: mainTrack.changeWidth(changeTrackWidth.value), value = mainTrack.width)
+trackWidthLabel = Label(UILayer, 15, (295, 203), "SE", "Width", programColours["white"])
 
-changeTrackRes = Slider(UILayer, 15, programColours["white"], programColours["controlPoint"], (200, 208), "SE", 1, 100, (10, 100), action = lambda: mainTrack.changeRes(changeTrackRes.value), value = mainTrack.perSegRes)
-TrackResLabel = Label(UILayer, 15, (305, 213), "SE", "Track Res", programColours["white"])
+changeTrackRes = Slider(UILayer, 15, programColours["white"], programColours["controlPoint"], (225, 233), "SE", 1, 100, (10, 100), action = lambda: mainTrack.changeRes(changeTrackRes.value), value = mainTrack.perSegRes)
+TrackResLabel = Label(UILayer, 15, (330, 238), "SE", "Track Res", programColours["white"])
 
-setFinish = Button(UILayer, (305, 300), "SE", (80, 60), "Set Finish", 10, (100, 100, 100), (0, -18), action = None)
-startFinishImage = Image(UILayer, (setFinish.posX - 28, setFinish.posY - 10), "SE", directories["finishLine"], 1, (30, 30, 30))
+setFinishButton = Button(UILayer, (330, 325), "SE", (80, 60), "Set Finish", 10, (100, 100, 100), (0, -18), action = setFinish)
+startFinishImage = Image(UILayer, (setFinishButton.posX - 28, setFinishButton.posY - 10), "SE", directories["finishLine"], 1, colour = (30, 30, 30))
 
-setScaleButton = Button(UILayer, (217.5, 300), "SE", (80, 60), "Set Scale", 10, (100, 100, 100), (0, -18), action = setScale)
-scaleImage = Image(UILayer, (setScaleButton.posX - 28, setScaleButton.posY - 10), "SE", directories["scale"], 1, (30, 30, 30))
+setScaleButton = Button(UILayer, (242.5, 325), "SE", (80, 60), "Set Scale", 10, (100, 100, 100), (0, -18), action = setScale)
+scaleImage = Image(UILayer, (setScaleButton.posX - 28, setScaleButton.posY - 10), "SE", directories["scale"], 1, colour = (30, 30, 30))
 
-recentreButton = Button(UILayer, (130, 300), "SE", (80, 60), "Recentre", 10, (100, 100, 100), (0, -18), action = recentreFrame)
-recentreImage = Image(UILayer, (recentreButton.posX - 27, recentreButton.posY - 10), "SE", directories["recentreButton"], 1, (30, 30, 30))
+recentreButton = Button(UILayer, (155, 325), "SE", (80, 60), "Recentre", 10, (100, 100, 100), (0, -18), action = recentreFrame)
+recentreImage = Image(UILayer, (recentreButton.posX - 27, recentreButton.posY - 10), "SE", directories["recentreButton"], 1, colour = (30, 30, 30))
 
-configAccordion = Accordion(UILayer, (330, 460), "SE", (305, 435), [snapPoints, snapPointsLabel, switchEnds, switchEndsLabel, editMode, editModeLabel, changeTrackWidth, trackWidthLabel, changeTrackRes, TrackResLabel, setFinish, startFinishImage, setScaleButton, scaleImage, recentreButton, recentreImage], layerIndex = 0)
+configAccordion = Accordion(UILayer, (50, 50), "SE", (305, 435), "Untitled Track", [snapPoints, snapPointsLabel, switchEnds, switchEndsLabel, editMode, editModeLabel, changeTrackWidth, trackWidthLabel, changeTrackRes, TrackResLabel, setFinishButton, startFinishImage, setScaleButton, scaleImage, recentreButton, recentreImage], layerIndex = 0)
 
 trackScaleLabel = Label(UILayer, 15, (180, 30), "S", "", programColours["white"])
 scalingErrorLabel = Label(UILayer, 12, (20, 60), "S", "", (227, 65, 50))
@@ -371,10 +371,10 @@ def newTrack():
         recentreFrame()
 
 
-saveButton = Button(UILayer, (305, 387.5), "SE", (123.75, 30), "Save", 12, (100, 100, 100), action = saveTrack)
-saveAsButton = Button(UILayer, (173.75, 387.5), "SE", (123.75, 30), "Save As", 12, (100, 100, 100), action = lambda: saveTrack(saveNewDirectory = True))
-openTrackButton = Button(UILayer, (305, 350), "SE", (123.75, 30), "Open", 12, (100, 100, 100), action = openTrack)
-newTrackButton = Button(UILayer, (173.75, 350), "SE", (123.75, 30), "New", 12, (100, 100, 100), action = newTrack)
+saveButton = Button(UILayer, (330, 412.5), "SE", (123.75, 30), "Save", 12, (100, 100, 100), action = saveTrack)
+saveAsButton = Button(UILayer, (198.75, 412.5), "SE", (123.75, 30), "Save As", 12, (100, 100, 100), action = lambda: saveTrack(saveNewDirectory = True))
+openTrackButton = Button(UILayer, (330, 375), "SE", (123.75, 30), "Open", 12, (100, 100, 100), action = openTrack)
+newTrackButton = Button(UILayer, (198.75, 375), "SE", (123.75, 30), "New", 12, (100, 100, 100), action = newTrack)
 
 configAccordion.elements += [saveButton, saveAsButton, openTrackButton, newTrackButton]
 
@@ -554,10 +554,10 @@ while running:
 
     if saveDirectory is None:
         newCaption = "Untitled Track" + saveCharacter
-        trackName.text = "Untitled Track" + saveCharacter
+        configAccordion.titleText = "Untitled Track" + saveCharacter
     else:
         newCaption = str(os.path.splitext(os.path.basename(saveDirectory))[0] + saveCharacter + " - " + saveDirectory)
-        trackName.text = str(os.path.splitext(os.path.basename(saveDirectory))[0] + saveCharacter)
+        configAccordion.titleText = str(os.path.splitext(os.path.basename(saveDirectory))[0] + saveCharacter)
 
     if lastCaption != newCaption:
         pygame.display.set_caption(newCaption)
@@ -586,7 +586,6 @@ while running:
 
     UILayer.display(screenWidth, screenHeight)
     trackLayer.display(screenWidth, screenHeight, offsetPosition, zoom)
-    trackName.nonStickPosX = ((configAccordion.width / 2) + (trackName.textSize[0] / 2) + 25)
 
     pygame.display.flip()
     clock.tick(120) #Refresh Rate
