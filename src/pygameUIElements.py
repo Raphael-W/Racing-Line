@@ -20,45 +20,11 @@ class UIElement:
     def update(self):
         pass
 
-    # def offsetPos(self, offset, zoom):
-    #     if offset is not None:
-    #         offsetX, offsetY = offset
-    #         if zoom is None:
-    #             zoom = 1
-    #
-    #         offsetPosX = ((self.nonStickPosX * zoom) + offsetX)
-    #         offsetPosY = ((self.nonStickPosY * zoom) + offsetY)
-    #
-    #         return  offsetPosX, offsetPosY
-    #     return self.posX, self.posY
-
     def display(self):
         pass
 
     def returnBoundingBox(self):
         return self.boundingBox.topleft, self.boundingBox.topright, self.boundingBox.bottomleft, self.boundingBox.bottomright
-
-    # def stickyPos(self):
-    #     vertValid = not(("n" in self.stick) and ("s" in self.stick))
-    #     horValid = not (("e" in self.stick) and ("w" in self.stick))
-    #     charValid = all([True for char in self.stick if char in ["n", "e", "s", "w"]])
-    #
-    #     horStick = None
-    #     vertStick = None
-    #     for char in self.stick:
-    #         if char in ["n", "s"]: vertStick = char
-    #         elif char in ["e", "w"]: horStick = char
-    #
-    #     newX = self.posX
-    #     newY = self.posY
-    #     if vertValid and horValid and charValid and (len(self.stick) > 0):
-    #         if horStick == "e":
-    #             newX = self.layer.screenWidth - self.nonStickPosX
-    #
-    #         if vertStick == "s":
-    #             newY = self.layer.screenHeight - self.nonStickPosY
-    #
-    #     return newX, newY
 
     def updateContextualPos(self):
         contextualPosX = self.posX
@@ -67,8 +33,8 @@ class UIElement:
         #Offset position
         offsetX, offsetY = self.layer.offset
 
-        contextualPosX = ((contextualPosX * self.layer.zoom) + offsetX)
-        contextualPosY = ((contextualPosY * self.layer.zoom) + offsetY)
+        contextualPosX = (((contextualPosX + (self.boundingBox.size[0] / 2)) * self.layer.zoom) - (self.boundingBox.size[0] / 2) + offsetX)
+        contextualPosY = (((contextualPosY + (self.boundingBox.size[1] / 2)) * self.layer.zoom) - (self.boundingBox.size[1] / 2) + offsetY)
 
         #Apply stickiness to position
         vertValid = not (("n" in self.stick) and ("s" in self.stick))
