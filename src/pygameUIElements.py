@@ -193,7 +193,7 @@ class Slider (UIElement): #Use label class for label
 
             if self.contextualPosX < mouseX < (self.contextualPosX + self.length):
                 self.handleX = mouseX - self.contextualPosX
-            elif self.posX >= mouseX:
+            elif self.contextualPosX >= mouseX:
                 self.handleX = 0
             else:
                 self.handleX = self.length
