@@ -34,6 +34,18 @@
             "number",
             "null"
           ]
+        },
+        "finishIndex": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "finishDir": {
+          "type": [
+            "boolean",
+            "null"
+          ]
         }
       },
       "required": [
@@ -42,7 +54,9 @@
         "closed",
         "switchEnds",
         "snap",
-        "scale"
+        "scale",
+        "finishIndex",
+        "finishDir"
       ]
     }
   },

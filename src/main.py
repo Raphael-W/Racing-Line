@@ -42,6 +42,10 @@ setScalePoint1 = None
 setScalePoint2 = None
 realDistanceTextInput = None
 
+userSettingFinish = False
+finishIndex = None
+finishDir = None
+
 trackRes = 20
 mainTrack = Track(resolution = trackRes)
 
@@ -62,6 +66,7 @@ directories = {"mainFont": "assets/MonoFont.ttf",
                "minus": "assets/minus.png",
                "plus": "assets/plus.png",
                "cross": "assets/cross.png",
+               "arrow": "assets/arrow.png",
                "trackSchema": "schemas/trackSchema.json",
                "silverstone": "assets/silverstoneReference.png"}
 
@@ -146,6 +151,22 @@ def completeScaling(text):
             mainTrack.calculateLength()
             scalingErrorLabel.text = ""
 
+def setFinish():
+    global userSettingFinish, finishIndex, finishDir
+
+    userSettingFinish = True
+    finishIndex = None
+    finishDir = None
+
+def completeFinish():
+    global userSettingFinish
+
+    mainTrack.finishIndex = finishIndex
+    mainTrack.finishDir = finishDir
+
+    userSettingFinish = False
+    mainTrack.saved = False
+
 
 UILayer = Layer("UI", 0, screen, pygame, mainFont, directories)
 trackLayer = Layer("Track", 1, screen, pygame, mainFont, directories)
@@ -183,11 +204,8 @@ configAccordion = Accordion(UILayer, (50, 50), "SE", (305, 435), "Untitled Track
 trackScaleLabel = Label(UILayer, 15, (180, 30), "S", "", programColours["white"])
 scalingErrorLabel = Label(UILayer, 12, (20, 60), "S", "", (227, 65, 50))
 
-# silverstoneReference = pygame.image.load(directories["silverstone"]).convert_alpha()
-# silverstoneReference.fill((255, 255, 255, 100), None, pygame.BLEND_RGBA_MULT)
-
-trackName = Label(UILayer, 20, (330, 440), "SE", "Untitled Track", (200, 200, 200))
-configAccordion.elements.append(trackName)
+finishIcon = Image(trackLayer, (0, 0), "", directories["finishLine"], 1, colour = (programColours["white"]), show = False)
+finishDirIcon = Image(trackLayer, (0, 0), "", directories["arrow"], 1, colour = (programColours["white"]), show = False)
 
 def drawGrid(offset, frequency, lineWidth, lineColor):
     columns = math.ceil(screenWidth/ frequency)
@@ -213,11 +231,13 @@ def saveTrack(saveNewDirectory = False):
 
     points = mainTrack.returnPointCoords()
     properties = {"width": mainTrack.width,
-                "trackRes": mainTrack.perSegRes,
-                "closed": mainTrack.closed,
-                "switchEnds": switchEnds.value,
-                "snap": snapPoints.value,
-                "scale": mainTrack.scale}
+                  "trackRes": mainTrack.perSegRes,
+                  "closed": mainTrack.closed,
+                  "switchEnds": switchEnds.value,
+                  "snap": snapPoints.value,
+                  "scale": mainTrack.scale,
+                  "finishIndex": mainTrack.finishIndex,
+                  "finishDir": mainTrack.finishDir}
 
     trackData = {"points": points,
              "properties": properties}
@@ -296,6 +316,8 @@ def openTrack(tempDirectory = None):
             switchEnds.value = trackProperties["switchEnds"]
             snapPoints.value = trackProperties["snap"]
             mainTrack.scale = trackProperties["scale"]
+            mainTrack.finishIndex = trackProperties["finishIndex"]
+            mainTrack.finishDir = trackProperties["finishDir"]
 
             mainTrack.computeSpline()
             mainTrack.computeTrackEdges()
@@ -431,7 +453,7 @@ while running:
             else:
                 running = False
 
-        if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (mainTrack.mouseHovering is None) and (not UILayer.mouseOnLayer((mousePosX, mousePosY))) and not userSettingScale:
+        if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (mainTrack.mouseHovering is None) and (not UILayer.mouseOnLayer((mousePosX, mousePosY))) and not (userSettingScale or userSettingFinish):
             index = -1
             if switchEnds.value:
                 index = 0
@@ -439,22 +461,23 @@ while running:
             validPlacement = True
             onLine = False
             if len(mainTrack.points) >= 2:
-                onLine, nearPointIndex = mainTrack.mouseOnCurve((mousePosX - offsetPosition[0]) / zoom, (mousePosY - offsetPosition[1]) / zoom, 20)
-                if onLine: index = nearPointIndex
+                onLine, nearPointSegment, nearestPoint, nearPointIndex = mainTrack.pointOnCurve((mousePosX - offsetPosition[0]) / zoom,
+                                                                (mousePosY - offsetPosition[1]) / zoom, 20)
+                if onLine: index = nearPointSegment
 
             validPlacement = (not mainTrack.closed or onLine) and mainTrack.edit
             if validPlacement: mainTrack.add(ControlPoint((mousePosX - offsetPosition[0]) / zoom, (mousePosY - offsetPosition[1]) / zoom), index = index)
 
+        if userSettingScale:
+            if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (not UILayer.mouseOnLayer((mousePosX, mousePosY))):
+                if setScalePoint1 is None:
+                    setScalePoint1 = ((mousePosX - offsetPosition[0]) / zoom, (mousePosY - offsetPosition[1]) / zoom)
+                elif setScalePoint2 is None:
+                    setScalePoint2 = ((mousePosX - offsetPosition[0]) / zoom, (mousePosY - offsetPosition[1]) / zoom)
 
-        if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (mainTrack.mouseHovering is None) and (not UILayer.mouseOnLayer((mousePosX, mousePosY))) and userSettingScale:
-            if setScalePoint1 is None:
-                setScalePoint1 = ((mousePosX - offsetPosition[0]) / zoom, (mousePosY - offsetPosition[1]) / zoom)
-            elif setScalePoint2 is None:
-                setScalePoint2 = ((mousePosX - offsetPosition[0]) / zoom, (mousePosY - offsetPosition[1]) / zoom)
+                    realDistanceTextInput = TextInput(UILayer, (20, 120), "S", (180, 50), 15, "Real Distance (m)", "","m", ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '.'], enterAction = completeScaling)
 
-                realDistanceTextInput = TextInput(UILayer, (20, 120), "S", (180, 50), 15, "Real Distance (m)", "", "m", ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '.'], enterAction = completeScaling)
-
-        if event.type == pygame.KEYDOWN and userSettingScale:
+            if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     if realDistanceTextInput is not None:
                         realDistanceTextInput.close()
@@ -463,7 +486,24 @@ while running:
                 if realDistanceTextInput is not None:
                     realDistanceTextInput.typeLetter(event)
 
-        if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[2] and (mainTrack.mouseHovering is not None) and (not UILayer.mouseOnLayer((mousePosX, mousePosY))):
+        if userSettingFinish:
+            if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (not UILayer.mouseOnLayer((mousePosX, mousePosY))):
+                if finishIndex is None:
+                    finishIndex = ((mousePosX - offsetPosition[0]) / zoom, (mousePosY - offsetPosition[1]) / zoom)
+                    onLine, nearPointSegment, nearestPointCoords, nearestPoint = mainTrack.pointOnCurve(finishIndex[0], finishIndex[1], (mainTrack.width / 2))
+                    if onLine:
+                        finishIndex = nearestPoint / mainTrack.perSegRes
+                    else:
+                        finishIndex = None
+
+                elif finishIndex is not None:
+                    completeFinish()
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    userSettingFinish = False
+
+        if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[2] and (mainTrack.mouseHovering is not None) and (not UILayer.mouseOnLayer((mousePosX, mousePosY))) and not (userSettingScale or userSettingFinish):
             index = mainTrack.mouseHovering
             if not(mainTrack.closed and ((index == 0) or (index == len(mainTrack.points) - 1))) and mainTrack.edit:
                 mainTrack.remove(index = index)
@@ -513,19 +553,15 @@ while running:
     drawGrid(offsetPosition, 50 * zoom, 2, programColours["mainGrid"])
     drawGrid(offsetPosition, 10 * zoom, 1, programColours["innerGrid"])
 
-    mainTrack.update((mousePosX - offsetPosition[0]) / zoom, (mousePosY - offsetPosition[1]) / zoom, zoom, screenWidth, screenHeight, screenBorder, pygame, offsetPosition, snapPoints.value)
+    if not(userSettingScale or userSettingFinish):
+        mainTrack.update((mousePosX - offsetPosition[0]) / zoom, (mousePosY - offsetPosition[1]) / zoom, zoom, screenWidth, screenHeight, screenBorder, pygame, offsetPosition, snapPoints.value)
     mainTrack.draw(programColours, screen, pygame, offsetPosition, zoom, switchEnds.value)
-
-    # pictSize = silverstoneReference.get_rect().size
-    # silverstoneReferenceScaled = pygame.transform.scale(silverstoneReference,(zoom * 2000 * (pictSize[0] / pictSize[1]), zoom * 2000))
-    # screen.blit(silverstoneReferenceScaled, (0 + offsetPosition[0], 0 + offsetPosition[1]))
 
     if userSettingScale:
         transparentSurface = pygame.Surface((screenWidth, screenHeight), pygame.SRCALPHA)
         pygame.draw.rect(transparentSurface, (50, 50, 50, 100), (0, 0, screenWidth, screenHeight))
         screen.blit(transparentSurface, (0, 0))
 
-        interval = 10
         if setScalePoint1 is not None:
             lineStart = ((setScalePoint1[0] * zoom) + offsetPosition[0], (setScalePoint1[1] * zoom) + offsetPosition[1])
             if setScalePoint2 is None:
@@ -545,6 +581,53 @@ while running:
             pygame.draw.line(screen, (200, 200, 200), lineStart, lineEnd, 5)
             pygame.draw.line(screen, (200, 200, 200), lineStart_EndStop[0], lineStart_EndStop[1], 5)
             pygame.draw.line(screen, (200, 200, 200), lineEnd_EndStop[0], lineEnd_EndStop[1], 5)
+
+    if userSettingFinish:
+        transparentSurface = pygame.Surface((screenWidth, screenHeight), pygame.SRCALPHA)
+        pygame.draw.rect(transparentSurface, (50, 50, 50, 100), (0, 0, screenWidth, screenHeight))
+        screen.blit(transparentSurface, (0, 0))
+
+        if finishIndex is not None:
+            if angle(offsetPoints((mousePosX, mousePosY), offsetPosition, zoom, True, True),
+                     mainTrack.splinePoints[int(finishIndex * mainTrack.perSegRes)],
+                     extendPointsBack(mainTrack.splinePoints)[int(finishIndex * mainTrack.perSegRes) + 1]) < 90:
+                finishDir = True
+            else:
+                finishDir = False
+
+    else:
+        finishIndex = mainTrack.finishIndex
+        finishDir = mainTrack.finishDir
+
+    if finishIndex is not None:
+        finishIcon.show = True
+        finishDirIcon.show = True
+    else:
+        finishIcon.show = False
+        finishDirIcon.show = False
+
+    if (finishIndex is not None) and (len(mainTrack.splinePoints) >= int(finishIndex * mainTrack.perSegRes)):
+        finishPointCoords = (mainTrack.splinePoints[int(finishIndex * mainTrack.perSegRes)])
+        finishPointNeighbourCoords = (extendPointsBack(mainTrack.splinePoints)[int(finishIndex * mainTrack.perSegRes) + 1])
+        finishPointNeighboursDistance = pointDistance(finishPointNeighbourCoords, finishPointCoords)
+
+        arrowEndExtX = ((finishPointNeighbourCoords[0] - finishPointCoords[0]) / finishPointNeighboursDistance) / zoom
+        arrowEndExtY = ((finishPointNeighbourCoords[1] - finishPointCoords[1]) / finishPointNeighboursDistance) / zoom
+        arrowPos = (finishPointCoords[0] + (arrowEndExtX * 80 * finishDir) - (arrowEndExtX * 40), finishPointCoords[1] + (arrowEndExtY * 80 * finishDir) - (arrowEndExtY * 40))
+
+        trackAngle = 0 + math.degrees(math.atan2(finishPointCoords[0] - finishPointNeighbourCoords[0], (finishPointCoords[1] - finishPointNeighbourCoords[1]))) - 90
+
+        finishIconSize = finishIcon.getSize()
+        finishDirIconSize = finishDirIcon.getSize()
+
+        finishIcon.posX, finishIcon.posY = (finishPointCoords[0] - (finishIconSize[0] / 2), finishPointCoords[1] - (finishIconSize[1] / 2))
+        finishDirIcon.posX, finishDirIcon.posY = (arrowPos[0] - (finishDirIconSize[0] / 2), arrowPos[1] - (finishDirIconSize[1] / 2))
+        finishDirIcon.angle = trackAngle + (finishDir * 180)
+
+    if len(mainTrack.points) >= 2:
+        editMode.disabled = False
+    else:
+        editMode.disabled = True
 
     saved = mainTrack.saved
     if saved:
@@ -584,8 +667,8 @@ while running:
     else:
         trackScaleLabel.text = ""
 
-    UILayer.display(screenWidth, screenHeight)
     trackLayer.display(screenWidth, screenHeight, offsetPosition, zoom)
+    UILayer.display(screenWidth, screenHeight)
 
     pygame.display.flip()
     clock.tick(120) #Refresh Rate

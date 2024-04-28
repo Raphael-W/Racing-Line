@@ -111,6 +111,9 @@ class Track:
         self.scale = None
         self.length = None
 
+        self.finishIndex = None
+        self.finishDir = None
+
         self.width = 100
 
         for point in points:
@@ -133,6 +136,9 @@ class Track:
 
         self.scale = None
         self.length = None
+
+        self.finishIndex = None
+        self.finishDir = None
 
         self.closed = False
         self.saved = False
@@ -171,16 +177,26 @@ class Track:
             self.saved = False
 
     #Checks if current mouse pos crosses the spline (for inserting points)
-    def mouseOnCurve(self, mousePosX, mousePosY, margin):
+    def pointOnCurve(self, pointX, pointY, margin):
+        smallestDistance = float('inf'), None
+        segment = None
+        nearestPointIndex = None
+
         for pointIndex in range(len(self.splinePoints) - 1):
-            if lineToPointDistance(self.splinePoints[pointIndex], self.splinePoints[pointIndex + 1], (mousePosX, mousePosY)) <= margin:
-                reconstructedT = (pointIndex / len(self.splinePoints))
+            distanceToTrack, nearestPointOnTrack = lineToPointDistance(self.splinePoints[pointIndex], self.splinePoints[pointIndex + 1], (pointX, pointY))
+            if distanceToTrack <= margin:
+                if distanceToTrack < smallestDistance[0]:
+                    smallestDistance = (distanceToTrack, nearestPointOnTrack)
+                    nearestPointIndex = pointIndex
+                    reconstructedT = (pointIndex / len(self.splinePoints))
 
-                numOfPoints = len(self.points) - 1
-                segment = int(reconstructedT * numOfPoints) + 1
+                    numOfPoints = len(self.points) - 1
+                    segment = int(reconstructedT * numOfPoints) + 1
 
-                return True, segment
-        return False, None
+        if segment is not None:
+            return True, segment, smallestDistance[1], nearestPointIndex
+        else:
+            return False, None, None, None
 
     def add(self, anchorObject, index = -1, update = True):
         if index == -1:
@@ -188,6 +204,10 @@ class Track:
 
         self.points.insert(index, anchorObject)
         if len(self.points) > 1:
+            if self.finishIndex is not None:
+                if index <= self.finishIndex:
+                    self.finishIndex += 1
+
             if index > 0:
                 self.splinePoints = self.splinePoints[:((index - 1) * self.perSegRes):] + ([''] * self.perSegRes) + self.splinePoints[((index - 1) * self.perSegRes):]
                 self.splinePointsPolygonLeftSide = self.splinePointsPolygonLeftSide[:((index - 1) * self.perSegRes):] + ([''] * self.perSegRes) + self.splinePointsPolygonLeftSide[((index - 1) * self.perSegRes):]
@@ -222,6 +242,10 @@ class Track:
 
         if len(self.points) - 1 >= index:
             self.points.pop(index)
+
+            if self.finishIndex is not None:
+                if index <= self.finishIndex:
+                    self.finishIndex -= 1
 
             if index > 0:
                 self.splinePoints = self.splinePoints[:((index - 1) * self.perSegRes):] + self.splinePoints[(index * self.perSegRes):]
@@ -471,7 +495,7 @@ class Track:
             self.saved = False
 
     def deKink(self):
-        extendedSplinePoints = extendPoints(self.splinePoints)
+        extendedSplinePoints = extendPointsBack(self.splinePoints)
 
         updateRange = (0, len(self.splinePoints))
         nonKinkCoordLeftInner = self.leftTrackEdgePolygonInner[0]

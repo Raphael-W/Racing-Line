@@ -38,25 +38,41 @@ def lineToPointDistance(lineA, lineB, point):
 
     t = max(0, min(1, np.dot(point - lineA, lineB - lineA) / l2))
     projection = lineA + t * (lineB - lineA)
-    return pointDistance(point, projection)
+    return pointDistance(point, projection), projection
 
-def extendPoints(points):
-    xExt = (points[-1][0] - points[-2][0])
-    yExt = (points[-1][1] - points[-2][1])
-    pointExt = (points[-1][0] + xExt, points[-1][1] + yExt)
-    extendedSplinePoints = points + [pointExt]
+def extendPointsBack(points):
+    xExtBack= (points[-1][0] - points[-2][0])
+    yExtBack = (points[-1][1] - points[-2][1])
+    pointExtBack = (points[-1][0] + xExtBack, points[-1][1] + yExtBack)
+
+    extendedSplinePoints = points + [pointExtBack]
 
     return extendedSplinePoints
 
-def offsetPoints(points, offset, zoom, single = False):
-    if not single:
-        return [((point[0] * zoom) + offset[0], (point[1] * zoom) + offset[1]) for point in points]
+def extendPointsFront(points):
+    xExtFront = (points[1][0] - points[0][0])
+    yExtFront = (points[1][1] - points[0][1])
+    pointExtFront = (points[0][0] - xExtFront, points[0][1] - yExtFront)
+
+    extendedSplinePoints = [pointExtFront] + points
+
+    return extendedSplinePoints
+
+def offsetPoints(points, offset, zoom, single = False, reverse = False):
+    if not reverse:
+        if not single:
+            return [((point[0] * zoom) + offset[0], (point[1] * zoom) + offset[1]) for point in points]
+        else:
+            return (points[0] * zoom) + offset[0], (points[1] * zoom) + offset[1]
     else:
-        return (points[0] * zoom) + offset[0], (points[1] * zoom) + offset[1]
+        if not single:
+            return [((point[0] - offset[0]) / zoom, (point[1] - offset[1]) / zoom) for point in points]
+        else:
+            return (points[0] - offset[0]) / zoom, (points[1] - offset[1]) / zoom
 
 def calculateSide(points, pointIndex, width):
     width = width / 2
-    points = extendPoints(points)
+    points = extendPointsBack(points)
 
     distance = pointDistance(points[pointIndex], points[pointIndex + 1])
     if distance == 0:

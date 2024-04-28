@@ -87,6 +87,8 @@
         "closed": true,
         "switchEnds": false,
         "snap": false,
-        "scale": 0.1066727271811054
+        "scale": 0.1066727271811054,
+        "finishIndex": 17.5,
+        "finishDir": false
     }
 }

@@ -308,6 +308,10 @@ class Image(UIElement):
         self.size = size
         self.colour = colour
 
+        self.angle = 0
+        self.transformedImage = None
+        self.transformedRect = None
+
         self.image = self.layer.pygame.image.load(self.imageDir).convert_alpha()
         self.image = self.layer.pygame.transform.scale_by(self.image, self.size)
         if self.colour is not None:
@@ -317,10 +321,17 @@ class Image(UIElement):
 
     def update(self):
         self.updateContextualPos()
+        self.transformedImage = self.layer.pygame.transform.rotate(self.image, (self.angle % 360))
+
+        imageSize = self.getSize()
+        self.transformedRect = self.transformedImage.get_rect(center = (self.contextualPosX + (imageSize[0] / 2), self.contextualPosY + (imageSize[1] / 2)))
 
     def display(self):
         if self.show:
-            self.layer.screen.blit(self.image, (self.contextualPosX, self.contextualPosY))
+            self.layer.screen.blit(self.transformedImage, self.transformedRect)
+
+    def getSize(self):
+        return self.boundingBox.size
 
 class TextInput(UIElement):
     def __init__(self, layer, pos, stick, dimensions, fontSize, placeholder = "", text = "", suffix = "", characterWhitelist = [], enterAction = None, show = True, layerIndex = -1):
@@ -407,7 +418,7 @@ class Accordion(UIElement):
         self.titleText = title
         self.titleLabel = Label(layer, 20, (0, 0), stick, self.titleText, (200, 200, 200))
 
-        self.elements = elements
+        self.elements = elements + [self.titleLabel]
         self.collapse = collapse
 
         self.collapseButton = Button(layer, (0, 0), stick, (30, 30), "", 15, (100, 100, 100), roundedCorners = 30, action = self.toggleCollapse)
@@ -568,11 +579,6 @@ class Layer:
 
         for element in self.elements:
             if element.show:
-                #newPos =  element.stickyPos()
-                #element.posX, element.posY = newPos
-                #element.boundingBox.x, element.boundingBox.y = newPos
-                #element.posX, element.posY = element.offsetPos(offset, zoom)
-
                 element.update()
                 element.display()
 
