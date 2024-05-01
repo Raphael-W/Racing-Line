@@ -601,13 +601,21 @@ while running:
         finishDir = mainTrack.finishDir
 
     if finishIndex is not None:
+        if ((len(mainTrack.points) - 1) < finishIndex) or (finishIndex < 0):
+            mainTrack.finishIndex = None
+            mainTrack.finishDir = None
+
+            finishIndex = None
+            finishDir = None
+
+    if finishIndex is not None:
         finishIcon.show = True
         finishDirIcon.show = True
     else:
         finishIcon.show = False
         finishDirIcon.show = False
 
-    if (finishIndex is not None) and (len(mainTrack.splinePoints) >= int(finishIndex * mainTrack.perSegRes)):
+    if finishIndex is not None:
         finishPointCoords = (mainTrack.splinePoints[int(finishIndex * mainTrack.perSegRes)])
         finishPointNeighbourCoords = (extendPointsBack(mainTrack.splinePoints)[int(finishIndex * mainTrack.perSegRes) + 1])
         finishPointNeighboursDistance = pointDistance(finishPointNeighbourCoords, finishPointCoords)
