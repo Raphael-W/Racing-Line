@@ -14,10 +14,11 @@ import sys
 from pygameUIElements import *
 from spline import *
 
-import ctypes
+if os.name == "nt":
+    import ctypes
 
-appID = 'Raphael Wreford, Racing-Line-Finder' # Arbitrary string
-ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(appID) #Makes taskbar icon same as window icon (Sets app as "individual app", not linked to python)
+    appID = 'Raphael Wreford, Racing-Line-Finder' # Arbitrary string
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(appID) #Makes taskbar icon same as window icon (Sets app as "individual app", not linked to python)
 
 pygame.init()
 pygame.display.set_caption("Racing Line Finder")
