@@ -255,7 +255,6 @@ def saveTrack(saveNewDirectory = False):
              "properties": properties}
 
     validFile = True
-    tempDirectory = None
     if saveDirectory is None or saveNewDirectory:
         root = tk.Tk()
         root.wm_attributes('-topmost', 1)
@@ -278,12 +277,12 @@ def saveTrack(saveNewDirectory = False):
                 mainTrack.saved = True
                 saveDirectory = tempDirectory
         except Exception as error:
-            errorMessage = Message(UILayer, "Can't Save", str(error), "OK", closeError, "grey")
+            Message(UILayer, "Can't Save", str(error), "OK", closeError, "grey")
             saveDirectory = None
             mainTrack.saved = False
 
     elif not validFile and tempDirectory != '':
-        errorMessage = Message(UILayer, "Can't Save", "Please select a valid directory", "OK", closeError, "grey")
+        Message(UILayer, "Can't Save", "Please select a valid directory", "OK", closeError, "grey")
         saveDirectory = None
         mainTrack.saved = False
 
@@ -299,19 +298,18 @@ def openTrack(tempDirectory = None):
                         trackData = json.load(loadFile)
                         validate(instance = trackData, schema = trackFileSchema)
                     except Exception:
-                        errorMessage = Message(UILayer, "Invalid File", "Please select a valid file", "OK", closeError,
-                                               "grey")
+                        Message(UILayer, "Invalid File", "Please select a valid file", "OK", closeError,"grey")
                         valid = False
                         tempSaveDirectory = None
 
             except Exception as error:
-                errorMessage = Message(UILayer, "Can't Open", str(error), "OK", closeError, "grey")
+                Message(UILayer, "Can't Open", str(error), "OK", closeError, "grey")
                 valid = False
                 tempSaveDirectory = None
 
 
         elif not valid and tempSaveDirectory != '':
-            errorMessage = Message(UILayer, "No File", "There is no file at this path", "OK", closeError, "grey")
+            Message(UILayer, "No File", "There is no file at this path", "OK", closeError, "grey")
             tempSaveDirectory = None
 
         if valid:
@@ -362,7 +360,7 @@ def openTrack(tempDirectory = None):
     validFile = os.path.isfile(tempDirectory)
 
     if tempDirectory != '' and mainTrack.saved == False:
-        areYouSure = Message(UILayer, "Sure?", "You currently have an unsaved file open", "Save", saveTrackFirst, "grey","Discard", discardTrack, "red")
+        Message(UILayer, "Sure?", "You currently have an unsaved file open", "Save", saveTrackFirst, "grey","Discard", discardTrack, "red")
 
     else:
         openTrackSequence(validFile, tempDirectory)
@@ -389,7 +387,7 @@ def newTrack():
         saveDirectory = None
 
     if not mainTrack.saved:
-        areYouSure = Message(UILayer, "Sure?", "You currently have an unsaved file open", "Save", saveTrackFirst, "grey", "Discard", discardTrack, "red")
+        Message(UILayer, "Sure?", "You currently have an unsaved file open", "Save", saveTrackFirst, "grey", "Discard", discardTrack, "red")
 
     elif saveDirectory is not None:
         saveTrack()

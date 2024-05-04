@@ -351,7 +351,7 @@ class Image(UIElement):
         return self.boundingBox.size
 
 class TextInput(UIElement):
-    def __init__(self, layer, pos, stick, dimensions, fontSize, placeholder = "", text = "", suffix = "", characterWhitelist = [], enterAction = None, show = True, layerIndex = -1):
+    def __init__(self, layer, pos, stick, dimensions, fontSize, placeholder = "", text = "", suffix = "", characterWhitelist = (), enterAction = None, show = True, layerIndex = -1):
         super().__init__(layer, pos, stick, show, layerIndex)
 
         self.width, self.height = dimensions

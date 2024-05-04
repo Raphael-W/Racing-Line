@@ -102,7 +102,7 @@ class ControlPoint:
 
 class Track:
     def __init__(self, resolution, points = []):
-        self.points = []
+        self.points = points
         self.splinePoints = []
         self.history = History()
 
@@ -138,7 +138,7 @@ class Track:
     def clear(self):
         self.points = []
         self.splinePoints = []
-        trackHistory = History()
+        self.history = History()
 
         self.splinePointsPolygonLeftSide = []
         self.splinePointsPolygonRightSide = []
