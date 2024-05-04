@@ -68,6 +68,8 @@ directories = {"mainFont": "assets/MonoFont.ttf",
                "plus": "assets/plus.png",
                "cross": "assets/cross.png",
                "arrow": "assets/arrow.png",
+               "undo": "assets/undo.png",
+               "redo": "assets/redo.png",
                "trackSchema": "schemas/trackSchema.json",
                "silverstone": "assets/silverstoneReference.png"}
 
@@ -87,12 +89,10 @@ mainFont = directories["mainFont"]
 def setEditStatus(value):
     mainTrack.edit = value
     if not value:
-        mainTrack.computeSpline()
-        mainTrack.computeTrackEdges()
+        mainTrack.computeTrack()
         mainTrack.deKink()
     else:
-        mainTrack.computeSpline()
-        mainTrack.computeTrackEdges()
+        mainTrack.computeTrack()
 
 def recentreFrame():
     global offsetPosition, zoom
@@ -140,6 +140,8 @@ def completeScaling(text):
         actualDistance = None
         scalingErrorLabel.text = "Please enter a valid number"
 
+    scaleBefore = mainTrack.scale
+
     if actualDistance is not None:
         if actualDistance == 0:
             scalingErrorLabel.text = "Please enter a number greater than 0"
@@ -151,6 +153,7 @@ def completeScaling(text):
             mainTrack.saved = False
             mainTrack.calculateLength()
             scalingErrorLabel.text = ""
+            mainTrack.history.addAction("SET SCALE", [scaleBefore, mainTrack.scale])
 
 def setFinish():
     global userSettingFinish, finishIndex, finishDir
@@ -161,6 +164,8 @@ def setFinish():
 
 def completeFinish():
     global userSettingFinish
+
+    mainTrack.history.addAction("SET FINISH", [[mainTrack.finishIndex, mainTrack.finishDir], [finishIndex, finishDir]])
 
     mainTrack.finishIndex = finishIndex
     mainTrack.finishDir = finishDir
@@ -185,10 +190,10 @@ snapPointsLabel = Label(UILayer, 15, (209, 123), "SE", "Snap", programColours["w
 editMode = Switch(UILayer, (165, 95), "SE", 0.8, value = True, action = lambda: setEditStatus(editMode.value))
 editModeLabel = Label(UILayer, 15, (209, 93), "SE", "Edit", programColours["white"])
 
-changeTrackWidth = Slider(UILayer, 15, programColours["white"], programColours["controlPoint"], (224, 198), "SE", 1, 100, (20, 200), action = lambda: mainTrack.changeWidth(changeTrackWidth.value), value = mainTrack.width)
+changeTrackWidth = Slider(UILayer, 15, programColours["white"], programColours["controlPoint"], (224, 198), "SE", 1, 100, (20, 200), action = mainTrack.changeWidth, finishedUpdatingAction = mainTrack.changeWidthComplete, value = mainTrack.width)
 trackWidthLabel = Label(UILayer, 15, (295, 203), "SE", "Width", programColours["white"])
 
-changeTrackRes = Slider(UILayer, 15, programColours["white"], programColours["controlPoint"], (225, 233), "SE", 1, 100, (10, 100), action = lambda: mainTrack.changeRes(changeTrackRes.value), value = mainTrack.perSegRes)
+changeTrackRes = Slider(UILayer, 15, programColours["white"], programColours["controlPoint"], (225, 233), "SE", 1, 100, (10, 100), action = mainTrack.changeRes, finishedUpdatingAction = mainTrack.changeResComplete, value = mainTrack.perSegRes)
 TrackResLabel = Label(UILayer, 15, (330, 238), "SE", "Track Res", programColours["white"])
 
 setFinishButton = Button(UILayer, (330, 325), "SE", (80, 60), "Set Finish", 10, (100, 100, 100), (0, -18), action = setFinish)
@@ -199,6 +204,12 @@ scaleImage = Image(UILayer, (setScaleButton.posX - 28, setScaleButton.posY - 10)
 
 recentreButton = Button(UILayer, (155, 325), "SE", (80, 60), "Recentre", 10, (100, 100, 100), (0, -18), action = recentreFrame)
 recentreImage = Image(UILayer, (recentreButton.posX - 27, recentreButton.posY - 10), "SE", directories["recentreButton"], 1, colour = (30, 30, 30))
+
+undoButton = Button(UILayer, (330, 95), "SE", (30, 30), "", 12, (100, 100, 100), action = mainTrack.undo)
+undoIcon = Image(UILayer, (undoButton.posX - 2, undoButton.posY - 2), "SE", directories["undo"], 0.8, colour = programColours["white"])
+
+redoButton = Button(UILayer, (295, 95), "SE", (30, 30), "", 12, (100, 100, 100), action = mainTrack.undo)
+redoIcon = Image(UILayer, (redoButton.posX - 2, redoButton.posY - 2), "SE", directories["redo"], 0.8, colour = programColours["white"])
 
 configAccordion = Accordion(UILayer, (50, 50), "SE", (305, 435), "Untitled Track", [snapPoints, snapPointsLabel, switchEnds, switchEndsLabel, editMode, editModeLabel, changeTrackWidth, trackWidthLabel, changeTrackRes, TrackResLabel, setFinishButton, startFinishImage, setScaleButton, scaleImage, recentreButton, recentreImage], layerIndex = 0)
 
@@ -307,8 +318,7 @@ def openTrack(tempDirectory = None):
             pointCoords = trackData["points"]
             mainTrack.loadTrackPoints(pointCoords)
 
-            mainTrack.computeSpline()
-            mainTrack.computeTrackEdges()
+            mainTrack.computeTrack()
 
             trackProperties = trackData["properties"]
             changeTrackWidth.updateValue(trackProperties["width"])
@@ -320,8 +330,7 @@ def openTrack(tempDirectory = None):
             mainTrack.finishIndex = trackProperties["finishIndex"]
             mainTrack.finishDir = trackProperties["finishDir"]
 
-            mainTrack.computeSpline()
-            mainTrack.computeTrackEdges()
+            mainTrack.computeTrack()
 
             saveDirectory = tempSaveDirectory
             recentreFrame()
@@ -404,7 +413,6 @@ configAccordion.elements += [saveButton, saveAsButton, openTrackButton, newTrack
 recentreFrame()
 
 if len(sys.argv) > 1:
-    print(sys.argv)
     openTrack(sys.argv[1])
 
 while running:
@@ -462,12 +470,12 @@ while running:
             validPlacement = True
             onLine = False
             if len(mainTrack.points) >= 2:
-                onLine, nearPointSegment, nearestPoint, nearPointIndex = mainTrack.pointOnCurve((mousePosX - offsetPosition[0]) / zoom,
-                                                                (mousePosY - offsetPosition[1]) / zoom, 20)
+                onLine, nearPointSegment, nearestPoint, nearPointIndex = mainTrack.pointOnCurve((mousePosX - offsetPosition[0]) / zoom, (mousePosY - offsetPosition[1]) / zoom, 20)
                 if onLine: index = nearPointSegment
 
             validPlacement = (not mainTrack.closed or onLine) and mainTrack.edit
-            if validPlacement: mainTrack.add(ControlPoint((mousePosX - offsetPosition[0]) / zoom, (mousePosY - offsetPosition[1]) / zoom), index = index)
+            if validPlacement:
+                mainTrack.add(ControlPoint((mousePosX - offsetPosition[0]) / zoom, (mousePosY - offsetPosition[1]) / zoom), index = index, userPerformed = True)
 
         if userSettingScale:
             if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (not UILayer.mouseOnLayer((mousePosX, mousePosY))):
@@ -507,7 +515,7 @@ while running:
         if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[2] and (mainTrack.mouseHovering is not None) and (not UILayer.mouseOnLayer((mousePosX, mousePosY))) and not (userSettingScale or userSettingFinish):
             index = mainTrack.mouseHovering
             if not(mainTrack.closed and ((index == 0) or (index == len(mainTrack.points) - 1))) and mainTrack.edit:
-                mainTrack.remove(index = index)
+                mainTrack.remove(index = index, userPerformed = True)
 
         if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[1]:
             pivotPos = (mousePosX - offsetPosition[0], mousePosY - offsetPosition[1])
@@ -658,6 +666,20 @@ while running:
     mouseCoordsX.text = ("x: " + str(int(((mousePosX * 1) - offsetPosition[0]) / zoom)))
     mouseCoordsY.text = ("y: " + str(int(((mousePosY * 1) - offsetPosition[1]) / zoom)))
     scaleLabel.text = ("view: " + str(int(zoom * 100)) + "%")
+
+    if len(mainTrack.history.undoStack) == 0:
+        undoButton.enabled = False
+        undoIcon.colour = (90, 90, 90)
+    else:
+        undoButton.enabled = True
+        undoIcon.colour = programColours["white"]
+
+    if len(mainTrack.history.redoStack) == 0:
+        redoButton.enabled = False
+        redoIcon.colour = (90, 90, 90)
+    else:
+        redoButton.enabled = True
+        redoIcon.colour = programColours["white"]
 
     if mainTrack.scale is not None:
         trackScaleReduced = int((mainTrack.scale * 150) / zoom)

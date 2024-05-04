@@ -63,7 +63,7 @@ class UIElement:
             self.layer.elements.remove(self)
 
 class Button (UIElement):
-    def __init__(self, layer, pos, stick, dimensions, text, fontSize, colour, textOffset = (0, 0), roundedCorners = 10, action = None, show = True, layerIndex = -1):
+    def __init__(self, layer, pos, stick, dimensions, text, fontSize, colour, textOffset = (0, 0), roundedCorners = 10, action = None, show = True, enabled = True, layerIndex = -1):
         super().__init__(layer, pos, stick, show, layerIndex)
         self.width = dimensions[0]
         self.height = dimensions[1]
@@ -91,30 +91,36 @@ class Button (UIElement):
                               colour[1] - (colour[1] * 0.4),
                               colour[2] - (colour[2] * 0.4))
 
+        self.enabled = enabled
+
     def update(self):
         self.updateContextualPos()
 
-        mousePos = self.layer.pygame.mouse.get_pos()
-        self.mouseHovering = (((self.contextualPosX + self.width / 2) + ((self.width / 2) + 2) > mousePos[0] > (self.contextualPosX + self.width / 2) - ((self.width / 2) + 2)) and
-                              ((self.contextualPosY + self.height / 2) + ((self.height / 2) + 2) > mousePos[1] > (self.contextualPosY + self.height / 2) - ((self.height / 2) + 2)))
+        if self.enabled:
+            mousePos = self.layer.pygame.mouse.get_pos()
+            self.mouseHovering = (((self.contextualPosX + self.width / 2) + ((self.width / 2) + 2) > mousePos[0] > (self.contextualPosX + self.width / 2) - ((self.width / 2) + 2)) and
+                                  ((self.contextualPosY + self.height / 2) + ((self.height / 2) + 2) > mousePos[1] > (self.contextualPosY + self.height / 2) - ((self.height / 2) + 2)))
 
-        if self.mouseHovering:
-            self.colour = self.hoverColour
+            if self.mouseHovering:
+                self.colour = self.hoverColour
+            else:
+                self.colour = self.baseColour
+
+            self.pointSelected = self.mouseHovering and self.layer.pygame.mouse.get_pressed()[0]
+            if self.pointSelected:
+                self.colour = self.pressedColour
+
+            if self.pointSelected and self.stepBeforeClick:
+                if self.action is not None and not self.actionRun:
+                    self.action()
+                    self.actionRun = True
+            else:
+                self.actionRun = False
+
+            self.stepBeforeClick = self.mouseHovering and not(self.layer.pygame.mouse.get_pressed()[0])
+
         else:
-            self.colour = self.baseColour
-
-        self.pointSelected = self.mouseHovering and self.layer.pygame.mouse.get_pressed()[0]
-        if self.pointSelected:
             self.colour = self.pressedColour
-
-        if self.pointSelected and self.stepBeforeClick:
-            if self.action is not None and not self.actionRun:
-                self.action()
-                self.actionRun = True
-        else:
-            self.actionRun = False
-
-        self.stepBeforeClick = self.mouseHovering and not(self.layer.pygame.mouse.get_pressed()[0])
 
     def display(self):
         self.boundingBox = self.layer.pygame.Rect(self.contextualPosX, self.contextualPosY, self.width, self.height)
@@ -144,7 +150,7 @@ class Label (UIElement):
         self.font.render_to(self.layer.screen, (self.contextualPosX, self.contextualPosY), self.text, self.colour)
 
 class Slider (UIElement): #Use label class for label
-    def __init__(self, layer, fontSize, barColour, handleColour, pos, stick, size, length, valueRange, value = 0, action = None, show = True, layerIndex = -1):
+    def __init__(self, layer, fontSize, barColour, handleColour, pos, stick, size, length, valueRange, value = 0, action = None, finishedUpdatingAction = None, show = True, layerIndex = -1):
         super().__init__(layer, pos, stick, show, layerIndex)
 
         self.barColour = barColour
@@ -164,11 +170,14 @@ class Slider (UIElement): #Use label class for label
         self.mouseHovering = False
         self.handleX = ((self.length / (self.valueRange[1] - self.valueRange[0])) * value)  - (self.valueRange[0] / 2)
         self.handleSelected = False
+        self.handleSelectedLast = False
         self.mouseDownLast = False
         self.handleSize = 0
 
         self.value = value
+        self.initialValue = value
         self.action = action
+        self.finishedUpdatingAction = finishedUpdatingAction
 
     def update(self):
         self.updateContextualPos()
@@ -189,7 +198,7 @@ class Slider (UIElement): #Use label class for label
 
         if self.handleSelected:
             if self.action is not None:
-                self.action()
+                self.action(self.value)
 
             if self.contextualPosX < mouseX < (self.contextualPosX + self.length):
                 self.handleX = mouseX - self.contextualPosX
@@ -203,7 +212,15 @@ class Slider (UIElement): #Use label class for label
         if not self.handleSelected:
             self.handleSelected = self.mouseHovering and self.layer.pygame.mouse.get_pressed()[0] and not self.mouseDownLast
 
+        if self.handleSelected and not self.handleSelectedLast:
+            self.initialValue = self.value
+
+        if not self.handleSelected and self.handleSelectedLast:
+            if self.finishedUpdatingAction is not None:
+                self.finishedUpdatingAction(self.initialValue, self)
+
         self.mouseDownLast = self.layer.pygame.mouse.get_pressed()[0]
+        self.handleSelectedLast = self.handleSelected
 
     def display(self):
         bar = self.layer.pygame.Rect(self.contextualPosX, self.contextualPosY, self.length, 7 * self.size)
@@ -219,7 +236,7 @@ class Slider (UIElement): #Use label class for label
             self.handleX = ((self.length / (self.valueRange[1] - self.valueRange[0])) * value) - (self.valueRange[0] / 2)
 
             if self.action is not None:
-                self.action()
+                self.action(self.value)
 
 class Switch (UIElement): #Use label class for label
     def __init__(self, layer, pos, stick, size, value = True, action = None, show = True, disabled = False, layerIndex = -1):
@@ -313,15 +330,15 @@ class Image(UIElement):
         self.transformedRect = None
 
         self.image = self.layer.pygame.image.load(self.imageDir).convert_alpha()
-        self.image = self.layer.pygame.transform.scale_by(self.image, self.size)
-        if self.colour is not None:
-            self.image.fill(self.colour, special_flags = self.layer.pygame.BLEND_RGB_MAX)
-
         self.boundingBox = self.image.get_rect()
 
     def update(self):
         self.updateContextualPos()
-        self.transformedImage = self.layer.pygame.transform.rotate(self.image, (self.angle % 360))
+        self.transformedImage = self.image
+        self.transformedImage = self.layer.pygame.transform.scale_by(self.transformedImage, self.size)
+        self.transformedImage = self.layer.pygame.transform.rotate(self.transformedImage, (self.angle % 360))
+
+        self.transformedImage.fill(self.colour, special_flags = self.layer.pygame.BLEND_RGB_MAX)
 
         imageSize = self.getSize()
         self.transformedRect = self.transformedImage.get_rect(center = (self.contextualPosX + (imageSize[0] / 2), self.contextualPosY + (imageSize[1] / 2)))

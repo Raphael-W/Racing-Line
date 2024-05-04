@@ -1,4 +1,5 @@
 from utils import *
+from history import *
 
 def findKink(point, linePoints, width):
     width = width / 2
@@ -41,13 +42,21 @@ class ControlPoint:
         self.baseSize = 10
         self.size = self.baseSize
 
+        self.new = True
         self.pointSelected = False
         self.mouseHovering = False
         self.mouseDownLast = False
 
+        self.posAtClick = None
+        self.posAtRelease = None
+
     #Returns the control point's pos in format [posX, posY]
     def getPos(self):
         return self.posX, self.posY
+
+    def move(self, newPos):
+        self.posX = newPos[0]
+        self.posY = newPos[1]
 
     #Calculates whether mouse is hovering, and whether user has selected point
     def update(self, mousePosX, mousePosY, zoom, screenWidth, screenHeight, screenBorder, pygame, offset, snap):
@@ -62,6 +71,8 @@ class ControlPoint:
 
         if not pygame.mouse.get_pressed()[0]:
             self.pointSelected = False
+            self.new = False
+            self.posAtRelease = self.getPos()
 
         if snap: roundValue = -1
         else: roundValue = 0
@@ -75,6 +86,9 @@ class ControlPoint:
 
         if not self.pointSelected:
             self.pointSelected = self.mouseHovering and pygame.mouse.get_pressed()[0] and not self.mouseDownLast
+
+        if self.pointSelected and not self.mouseDownLast and not self.new:
+            self.posAtClick = self.getPos()
 
         self.mouseDownLast = pygame.mouse.get_pressed()[0]
 
@@ -90,6 +104,7 @@ class Track:
     def __init__(self, resolution, points = []):
         self.points = []
         self.splinePoints = []
+        self.history = History()
 
         self.splinePointsPolygonLeftSide = []
         self.splinePointsPolygonRightSide = []
@@ -100,7 +115,6 @@ class Track:
         self.rightTrackEdgePolygonInner = []
         self.rightTrackEdgePolygonOuter = []
 
-        self.history = []
         self.pointsSelected = []
         self.mouseHovering = None
         self.closed = False
@@ -124,6 +138,7 @@ class Track:
     def clear(self):
         self.points = []
         self.splinePoints = []
+        trackHistory = History()
 
         self.splinePointsPolygonLeftSide = []
         self.splinePointsPolygonRightSide = []
@@ -154,12 +169,17 @@ class Track:
 
         self.saved = False
 
+    def changeWidthComplete(self, initialValue, slider):
+        self.history.addAction("CHANGE WIDTH", [initialValue, self.width, slider])
+
     def changeRes(self, value):
         self.perSegRes = int(value)
-        self.computeSpline()
-        self.computeTrackEdges()
+        self.computeTrack()
 
         self.saved = False
+
+    def changeResComplete(self, initialValue, slider):
+        self.history.addAction("CHANGE RESOLUTION", [initialValue, self.perSegRes, slider])
 
     def calculateLength(self):
         if self.scale is not None:
@@ -198,11 +218,13 @@ class Track:
         else:
             return False, None, None, None
 
-    def add(self, anchorObject, index = -1, update = True):
+    def add(self, anchorObject, index = -1, update = True, userPerformed = False):
         if index == -1:
             index = len(self.points)
 
         self.points.insert(index, anchorObject)
+        if userPerformed:
+            self.history.addAction("ADD POINT", [index, anchorObject])
         if len(self.points) > 1:
             if self.finishIndex is not None:
                 if index <= self.finishIndex:
@@ -236,12 +258,14 @@ class Track:
 
         self.saved = False
 
-    def remove(self, index = -1, update = True):
+    def remove(self, index = -1, update = True, userPerformed = False):
         if index == -1:
             index = len(self.points) - 1
 
         if len(self.points) - 1 >= index:
-            self.points.pop(index)
+            removedPoint = self.points.pop(index)
+            if userPerformed:
+                self.history.addAction("REMOVE POINT", [index, removedPoint])
 
             if self.finishIndex is not None:
                 if index <= self.finishIndex:
@@ -269,16 +293,71 @@ class Track:
                 self.rightTrackEdgePolygonOuter = self.rightTrackEdgePolygonOuter[((index + 1) * self.perSegRes):]
 
             if update:
-                self.computeSpline(updatePoints = [index])
-                self.computeTrackEdges(updatePoints = [index])
+                self.computeTrack(updatePoints = [index])
 
             self.saved = False
 
     def undo(self):
-        print("Undo")
+        actions = self.history.undo()
+        for action in actions:
+            if action is not None:
+                if action.command == "ADD POINT":
+                    if action.params[0] in [len(self.points) - 1, 0]:
+                        self.closed = False
+                    self.remove(action.params[0], update = False)
+                    self.computeTrack(updatePoints = [len(self.points) - 1, 0])
+                elif action.command == "REMOVE POINT":
+                    self.add(action.params[1], action.params[0])
+                elif action.command == "MOVE POINT":
+                    self.points[action.params[0]].move(action.params[1])
+                    updatedCloseStatus = self.shouldTrackBeClosed()
+                    if updatedCloseStatus[0] is not updatedCloseStatus[1]:
+                        self.computeTrack(updatePoints = [0, len(self.points) - 1])
+                    else:
+                        self.computeTrack(updatePoints = [action.params[0]])
+                elif action.command == "CHANGE WIDTH":
+                    self.changeWidth(action.params[0])
+                    action.params[2].updateValue(self.width)
+                elif action.command == "CHANGE RESOLUTION":
+                    self.changeRes(action.params[0])
+                    action.params[2].updateValue(self.perSegRes)
+                elif action.command == "SET SCALE":
+                    self.scale = action.params[0]
+                    self.calculateLength()
+                elif action.command == "SET FINISH":
+                    self.finishIndex = action.params[0][0]
+                    self.finishDir = action.params[0][1]
 
     def redo(self):
-        print("Redo")
+        actions = self.history.redo()
+        for action in actions:
+            if action is not None:
+                if action.command == "ADD POINT":
+                    if action.params[0] in [len(self.points), 0]:
+                        self.closed = True
+                    self.add(action.params[1], action.params[0], update = False)
+                    self.computeTrack(updatePoints = [len(self.points), 0])
+                elif action.command == "REMOVE POINT":
+                    self.remove(action.params[0])
+                elif action.command == "MOVE POINT":
+                    self.points[action.params[0]].move(action.params[2])
+                    updatedCloseStatus = self.shouldTrackBeClosed()
+                    if updatedCloseStatus[0] is not updatedCloseStatus[1]:
+                        self.computeTrack(updatePoints = [0, len(self.points) - 1])
+                    else:
+                        self.computeTrack(updatePoints = [action.params[0]])
+                elif action.command == "CHANGE WIDTH":
+                    self.changeWidth(action.params[1])
+                    action.params[2].updateValue(self.width)
+                elif action.command == "CHANGE RESOLUTION":
+                    self.changeRes(action.params[1])
+                    action.params[2].updateValue(self.perSegRes)
+                elif action.command == "SET SCALE":
+                    self.scale = action.params[1]
+                    self.calculateLength()
+                elif action.command == "SET FINISH":
+                    self.finishIndex = action.params[1][0]
+                    self.finishDir = action.params[1][1]
 
     def returnPointCoords(self):
         pointCoords = []
@@ -412,6 +491,10 @@ class Track:
                     self.rightTrackEdgePolygonInner[point] = calculateSide(self.splinePoints, point, -self.width)
                     self.rightTrackEdgePolygonOuter[point] = calculateSide(self.splinePoints, point, -(self.width + 20))
 
+    def computeTrack(self, updatePoints = []):
+        self.computeSpline(updatePoints = updatePoints)
+        self.computeTrackEdges(updatePoints = updatePoints)
+
     def computeCurbs(self, pygame, screen, offset, zoom):
         curbSpline = self.returnPointCoords()
         if self.closed:
@@ -483,9 +566,6 @@ class Track:
                 if (upperBound - lowerBound) > minDotCount:
                     cleanedCurbRanges.append((lowerBound, upperBound))
 
-                if self.closed:
-                    pass #smooth end and first points
-
                 curbRanges = cleanedCurbRanges
 
             for curbRange in curbRanges:
@@ -522,6 +602,16 @@ class Track:
 
         self.saved = False
 
+    def shouldTrackBeClosed(self):
+        pointCoords = self.returnPointCoords()
+        closedStatusBefore = self.closed
+        if pointCoords[0] == pointCoords[-1]:
+            self.closed = True
+        else:
+            self.closed = False
+
+        return [closedStatusBefore, self.closed]
+
     def update(self, mousePosX, mousePosY, zoom, screenWidth, screenHeight, screenBorder, pygame, offset, snap):
         self.pointsSelected = [[self.points[point], point] for point in range(len(self.points)) if self.points[point].pointSelected]
 
@@ -539,8 +629,15 @@ class Track:
         for point in self.points:
             if point.mouseHovering: self.mouseHovering = self.points.index(point)
 
-        for point in self.points:
+        groupMove = False
+        for pointIndex in range(len(self.points)):
+            point = self.points[pointIndex]
             point.update(mousePosX, mousePosY, zoom, screenWidth, screenHeight, screenBorder, pygame, offset, snap)
+            if (point.posAtClick is not None) and (point.posAtRelease is not None) and (point.posAtClick != point.posAtRelease):
+                self.history.addAction("MOVE POINT", [pointIndex, point.posAtClick, point.posAtRelease], group = groupMove)
+                groupMove = True
+                point.posAtClick = None
+                point.posAtRelease = None
 
         if len(self.points) >= 5:
             snapThreshold = 50
