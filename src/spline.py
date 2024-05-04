@@ -302,19 +302,15 @@ class Track:
         for action in actions:
             if action is not None:
                 if action.command == "ADD POINT":
-                    if action.params[0] in [len(self.points) - 1, 0]:
-                        self.closed = False
                     self.remove(action.params[0], update = False)
-                    self.computeTrack(updatePoints = [len(self.points) - 1, 0])
+                    self.shouldTrackBeClosed()
+                    self.computeTrack(updatePoints = [action.params[0]])
                 elif action.command == "REMOVE POINT":
                     self.add(action.params[1], action.params[0])
                 elif action.command == "MOVE POINT":
                     self.points[action.params[0]].move(action.params[1])
-                    updatedCloseStatus = self.shouldTrackBeClosed()
-                    if updatedCloseStatus[0] is not updatedCloseStatus[1]:
-                        self.computeTrack(updatePoints = [0, len(self.points) - 1])
-                    else:
-                        self.computeTrack(updatePoints = [action.params[0]])
+                    self.shouldTrackBeClosed()
+                    self.computeTrack(updatePoints = [action.params[0]])
                 elif action.command == "CHANGE WIDTH":
                     self.changeWidth(action.params[0])
                     action.params[2].updateValue(self.width)
@@ -333,19 +329,15 @@ class Track:
         for action in actions:
             if action is not None:
                 if action.command == "ADD POINT":
-                    if action.params[0] in [len(self.points), 0]:
-                        self.closed = True
                     self.add(action.params[1], action.params[0], update = False)
-                    self.computeTrack(updatePoints = [len(self.points), 0])
+                    self.shouldTrackBeClosed()
+                    self.computeTrack(updatePoints = [action.params[0]])
                 elif action.command == "REMOVE POINT":
                     self.remove(action.params[0])
                 elif action.command == "MOVE POINT":
                     self.points[action.params[0]].move(action.params[2])
-                    updatedCloseStatus = self.shouldTrackBeClosed()
-                    if updatedCloseStatus[0] is not updatedCloseStatus[1]:
-                        self.computeTrack(updatePoints = [0, len(self.points) - 1])
-                    else:
-                        self.computeTrack(updatePoints = [action.params[0]])
+                    self.shouldTrackBeClosed()
+                    self.computeTrack(updatePoints = [action.params[0]])
                 elif action.command == "CHANGE WIDTH":
                     self.changeWidth(action.params[1])
                     action.params[2].updateValue(self.width)
@@ -605,10 +597,15 @@ class Track:
     def shouldTrackBeClosed(self):
         pointCoords = self.returnPointCoords()
         closedStatusBefore = self.closed
-        if pointCoords[0] == pointCoords[-1]:
-            self.closed = True
-        else:
-            self.closed = False
+        if len(self.points) > 0:
+            if pointCoords[0] == pointCoords[-1]:
+                self.closed = True
+                self.computeTrack(updatePoints = [0])
+            else:
+                closedBefore = self.closed
+                self.closed = False
+                if closedBefore:
+                    self.computeTrack(updatePoints = [0, len(self.points) - 1])
 
         return [closedStatusBefore, self.closed]
 
