@@ -211,7 +211,7 @@ undoIcon = Image(UILayer, (undoButton.posX - 2, undoButton.posY - 2), "SE", dire
 redoButton = Button(UILayer, (295, 95), "SE", (30, 30), "", 12, (100, 100, 100), action = mainTrack.undo)
 redoIcon = Image(UILayer, (redoButton.posX - 2, redoButton.posY - 2), "SE", directories["redo"], 0.8, colour = programColours["white"])
 
-configAccordion = Accordion(UILayer, (50, 50), "SE", (305, 435), "Untitled Track", [snapPoints, snapPointsLabel, switchEnds, switchEndsLabel, editMode, editModeLabel, changeTrackWidth, trackWidthLabel, changeTrackRes, TrackResLabel, setFinishButton, startFinishImage, setScaleButton, scaleImage, recentreButton, recentreImage], layerIndex = 0)
+configAccordion = Accordion(UILayer, (50, 50), "SE", (305, 435), "Untitled Track", [snapPoints, snapPointsLabel, switchEnds, switchEndsLabel, editMode, editModeLabel, changeTrackWidth, trackWidthLabel, changeTrackRes, TrackResLabel, setFinishButton, startFinishImage, setScaleButton, scaleImage, recentreButton, recentreImage, undoButton, undoIcon, redoButton, redoIcon], layerIndex = 0)
 
 trackScaleLabel = Label(UILayer, 15, (180, 30), "S", "", programColours["white"])
 scalingErrorLabel = Label(UILayer, 12, (20, 60), "S", "", (227, 65, 50))
@@ -223,9 +223,9 @@ def drawGrid(offset, frequency, lineWidth, lineColor):
     columns = math.ceil(screenWidth/ frequency)
     rows = math.ceil(screenHeight/ frequency)
 
-    startCol = math.floor(-offset[0] / frequency)
+    startCol = int(-offset[0] // frequency)
     endCol = startCol + columns
-    startRow = math.floor(-offset[1] / frequency)
+    startRow = int(-offset[1] // frequency)
     endRow = startRow + rows
 
     for line in range(startCol, endCol + 1):
