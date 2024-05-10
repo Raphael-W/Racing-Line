@@ -330,17 +330,20 @@ def openTrack(tempDirectory = None):
                 pointCoords = trackData["points"]
                 mainTrack.loadTrackPoints(pointCoords)
 
-                mainTrack.computeTrack()
-
                 trackProperties = trackData["properties"]
-                changeTrackWidth.updateValue(trackProperties["width"])
-                changeTrackRes.updateValue(trackProperties["trackRes"])
-                mainTrack.updateCloseStatus(trackProperties["closed"], update = False)
+
+                changeTrackWidth.updateValue(trackProperties["width"], update = False)
+                mainTrack.width = trackProperties["width"]
+
+                changeTrackRes.updateValue(trackProperties["trackRes"], update = False)
+                mainTrack.perSegRes = trackProperties["trackRes"]
+
                 switchEnds.value = trackProperties["switchEnds"]
                 snapPoints.value = trackProperties["snap"]
                 mainTrack.scale = trackProperties["scale"]
                 mainTrack.finishIndex = trackProperties["finishIndex"]
                 mainTrack.finishDir = trackProperties["finishDir"]
+                mainTrack.updateCloseStatus(trackProperties["closed"], update = False)
 
                 mainTrack.computeTrack()
 
