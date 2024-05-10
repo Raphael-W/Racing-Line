@@ -726,7 +726,7 @@ class Track:
                         pygame.gfxdraw.aapolygon(screen, mainTrackPolygon, programColours["mainTrack"])
                         pygame.gfxdraw.filled_polygon(screen, mainTrackPolygon, programColours["mainTrack"])
 
-            if self.edit:
+            if self.edit or viewMode == "Curve":
                 for point in range(len(self.points) - 1):
                     if point in visiblePoints:
                         if viewMode == "Normal" or viewMode == "Skeleton" or viewMode == "Curve":
