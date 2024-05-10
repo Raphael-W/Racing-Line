@@ -150,6 +150,8 @@ class Track:
         self.rightBorderInnerEdge = []
         self.rightBorderOuterEdge = []
 
+        self.width = 100
+
         self.scale = None
         self.length = None
 
@@ -681,65 +683,72 @@ class Track:
                 visiblePoints.append(point)
         return visiblePoints
 
-    def draw(self, programColours, screen, pygame, offset, zoom, switchFront, screenRect):
+    def draw(self, programColours, screen, pygame, offset, zoom, switchFront, screenRect, viewMode):
         if len(self.points) >= 2:
             visiblePoints = self.findVisiblePoints(screenRect, offset, zoom)
             for point in range(len(self.points) - 1):
                 if point in visiblePoints:
-                    leftBorderInnerEdgeSegment = offsetPoints(self.leftBorderInnerEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1], offset, zoom)
-                    leftBorderOuterEdgeSegment = offsetPoints(self.leftBorderOuterEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1], offset, zoom)
+                    if viewMode == "Normal" or viewMode == "Skeleton":
+                        leftBorderInnerEdgeSegment = offsetPoints(self.leftBorderInnerEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1], offset, zoom)
+                        leftBorderOuterEdgeSegment = offsetPoints(self.leftBorderOuterEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1], offset, zoom)
 
-                    rightBorderInnerEdgeSegment = offsetPoints(self.rightBorderInnerEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1], offset, zoom)
-                    rightBorderOuterEdgeSegment = offsetPoints(self.rightBorderOuterEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1], offset, zoom)
+                        rightBorderInnerEdgeSegment = offsetPoints(self.rightBorderInnerEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1], offset, zoom)
+                        rightBorderOuterEdgeSegment = offsetPoints(self.rightBorderOuterEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1], offset, zoom)
 
-                    if (point == len(self.points) - 2) and self.closed:
-                        leftBorderInnerEdgeSegment.append(offsetPoints(self.leftBorderInnerEdge[0], offset, zoom, single = True))
-                        leftBorderOuterEdgeSegment.append(offsetPoints(self.leftBorderOuterEdge[0], offset, zoom, single = True))
+                        if (point == len(self.points) - 2) and self.closed:
+                            leftBorderInnerEdgeSegment.append(offsetPoints(self.leftBorderInnerEdge[0], offset, zoom, single = True))
+                            leftBorderOuterEdgeSegment.append(offsetPoints(self.leftBorderOuterEdge[0], offset, zoom, single = True))
 
-                        rightBorderInnerEdgeSegment.append(offsetPoints(self.rightBorderInnerEdge[0], offset, zoom, single = True))
-                        rightBorderOuterEdgeSegment.append(offsetPoints(self.rightBorderOuterEdge[0], offset, zoom, single = True))
+                            rightBorderInnerEdgeSegment.append(offsetPoints(self.rightBorderInnerEdge[0], offset, zoom, single = True))
+                            rightBorderOuterEdgeSegment.append(offsetPoints(self.rightBorderOuterEdge[0], offset, zoom, single = True))
 
-                    leftTrackEdgePolygon = formPolygon(leftBorderInnerEdgeSegment, leftBorderOuterEdgeSegment)
-                    rightTrackEdgePolygon = formPolygon(rightBorderInnerEdgeSegment, rightBorderOuterEdgeSegment)
+                        leftTrackEdgePolygon = formPolygon(leftBorderInnerEdgeSegment, leftBorderOuterEdgeSegment)
+                        rightTrackEdgePolygon = formPolygon(rightBorderInnerEdgeSegment, rightBorderOuterEdgeSegment)
 
-                    pygame.gfxdraw.aapolygon(screen, leftTrackEdgePolygon, programColours["white"])
-                    pygame.gfxdraw.filled_polygon(screen, leftTrackEdgePolygon, programColours["white"])
+                        pygame.gfxdraw.aapolygon(screen, leftTrackEdgePolygon, programColours["white"])
+                        pygame.gfxdraw.filled_polygon(screen, leftTrackEdgePolygon, programColours["white"])
 
-                    pygame.gfxdraw.aapolygon(screen, rightTrackEdgePolygon, programColours["white"])
-                    pygame.gfxdraw.filled_polygon(screen, rightTrackEdgePolygon, programColours["white"])
+                        pygame.gfxdraw.aapolygon(screen, rightTrackEdgePolygon, programColours["white"])
+                        pygame.gfxdraw.filled_polygon(screen, rightTrackEdgePolygon, programColours["white"])
 
             for point in range(len(self.points) - 1):
                 if point in visiblePoints:
-                    leftBorderInnerEdgeSegment = offsetPoints(self.leftBorderInnerEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1], offset, zoom)
-                    rightBorderInnerEdgeSegment = offsetPoints(self.rightBorderInnerEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1], offset, zoom)
+                    if viewMode == "Normal":
+                        leftBorderInnerEdgeSegment = offsetPoints(self.leftBorderInnerEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1], offset, zoom)
+                        rightBorderInnerEdgeSegment = offsetPoints(self.rightBorderInnerEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1], offset, zoom)
 
-                    if (point == len(self.points) - 2) and self.closed:
-                        leftBorderInnerEdgeSegment.append(offsetPoints(self.leftBorderInnerEdge[0], offset, zoom, single = True))
-                        rightBorderInnerEdgeSegment.append(offsetPoints(self.rightBorderInnerEdge[0], offset, zoom, single = True))
+                        if (point == len(self.points) - 2) and self.closed:
+                            leftBorderInnerEdgeSegment.append(offsetPoints(self.leftBorderInnerEdge[0], offset, zoom, single = True))
+                            rightBorderInnerEdgeSegment.append(offsetPoints(self.rightBorderInnerEdge[0], offset, zoom, single = True))
 
-                    mainTrackPolygon = formPolygon(leftBorderInnerEdgeSegment, rightBorderInnerEdgeSegment)
+                        mainTrackPolygon = formPolygon(leftBorderInnerEdgeSegment, rightBorderInnerEdgeSegment)
 
-                    pygame.gfxdraw.aapolygon(screen, mainTrackPolygon, programColours["mainTrack"])
-                    pygame.gfxdraw.filled_polygon(screen, mainTrackPolygon, programColours["mainTrack"])
+                        pygame.gfxdraw.aapolygon(screen, mainTrackPolygon, programColours["mainTrack"])
+                        pygame.gfxdraw.filled_polygon(screen, mainTrackPolygon, programColours["mainTrack"])
 
             if self.edit:
                 for point in range(len(self.points) - 1):
                     if point in visiblePoints:
-                        mainPolyLeftEdgeSegment = offsetPoints(self.mainPolyLeftEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1], offset, zoom)
-                        mainPolyRightEdgeSegment = offsetPoints(self.mainPolyRightEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1], offset, zoom)
+                        if viewMode == "Normal" or viewMode == "Skeleton" or viewMode == "Curve":
+                            mainPolyLeftEdgeSegment = offsetPoints(self.mainPolyLeftEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1], offset, zoom)
+                            mainPolyRightEdgeSegment = offsetPoints(self.mainPolyRightEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1], offset, zoom)
 
-                        if (point == len(self.points) - 2) and self.closed:
-                            mainPolyLeftEdgeSegment.append(offsetPoints(self.mainPolyLeftEdge[0], offset, zoom, single = True))
-                            mainPolyRightEdgeSegment.append(offsetPoints(self.mainPolyRightEdge[0], offset, zoom, single = True))
+                            if (point == len(self.points) - 2) and self.closed:
+                                mainPolyLeftEdgeSegment.append(offsetPoints(self.mainPolyLeftEdge[0], offset, zoom, single = True))
+                                mainPolyRightEdgeSegment.append(offsetPoints(self.mainPolyRightEdge[0], offset, zoom, single = True))
 
-                        mainCurvePolygon = formPolygon(mainPolyLeftEdgeSegment, mainPolyRightEdgeSegment)
+                            mainCurvePolygon = formPolygon(mainPolyLeftEdgeSegment, mainPolyRightEdgeSegment)
 
-                        pygame.gfxdraw.aapolygon(screen, mainCurvePolygon, programColours["curve"])
-                        pygame.gfxdraw.filled_polygon(screen, mainCurvePolygon, programColours["curve"])
+                            pygame.gfxdraw.aapolygon(screen, mainCurvePolygon, programColours["curve"])
+                            pygame.gfxdraw.filled_polygon(screen, mainCurvePolygon, programColours["curve"])
 
-            # for i in offsetMainCurve:
-            #     pygame.draw.circle(screen, programColours["curve"], i, 5)
-        #self.computeCurbs(pygame, screen, offset, zoom)
+            for point in range(len(self.points) - 1):
+                if point in visiblePoints:
+                    if viewMode == "Spline Dots":
+                        centreCurveDots = offsetPoints(self.splinePoints[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1], offset, zoom)
+                        for dot in centreCurveDots:
+                            pygame.gfxdraw.aacircle(screen, int(dot[0]), int(dot[1]), 5, programColours["curve"])
+                            pygame.gfxdraw.filled_circle(screen, int(dot[0]), int(dot[1]), 5, programColours["curve"])
 
         if self.edit:
             for pointIndex in range(len(self.points)):

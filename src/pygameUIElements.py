@@ -149,7 +149,7 @@ class Label (UIElement):
     def display(self):
         self.font.render_to(self.layer.screen, (self.contextualPosX, self.contextualPosY), self.text, self.colour)
 
-class Slider (UIElement): #Use label class for label
+class Slider (UIElement):
     def __init__(self, layer, fontSize, barColour, handleColour, pos, stick, size, length, valueRange, value = 0, action = None, finishedUpdatingAction = None, show = True, layerIndex = -1):
         super().__init__(layer, pos, stick, show, layerIndex)
 
@@ -238,7 +238,7 @@ class Slider (UIElement): #Use label class for label
             if self.action is not None:
                 self.action(self.value)
 
-class Switch (UIElement): #Use label class for label
+class Switch (UIElement):
     def __init__(self, layer, pos, stick, size, value = True, action = None, show = True, disabled = False, layerIndex = -1):
         super().__init__(layer, pos, stick, show, layerIndex)
 
@@ -338,7 +338,8 @@ class Image(UIElement):
         self.transformedImage = self.layer.pygame.transform.scale_by(self.transformedImage, self.size)
         self.transformedImage = self.layer.pygame.transform.rotate(self.transformedImage, (self.angle % 360))
 
-        self.transformedImage.fill(self.colour, special_flags = self.layer.pygame.BLEND_RGB_MAX)
+        if self.colour is not None:
+            self.transformedImage.fill(self.colour, special_flags = self.layer.pygame.BLEND_RGB_MAX)
 
         imageSize = self.getSize()
         self.transformedRect = self.transformedImage.get_rect(center = (self.contextualPosX + (imageSize[0] / 2), self.contextualPosY + (imageSize[1] / 2)))
@@ -567,11 +568,91 @@ class Message(UIElement):
         else:
             self.xAction()
 
+class Dropdown(UIElement):
+    def __init__(self, layer, pos, stick, dimensions, values, index, action = None, show = True, layerIndex = -1):
+        super().__init__(layer, pos, stick, show, layerIndex)
+        self.values = values
+        self.index = index
+
+        self.action = action
+
+        self.font = layer.pygame.freetype.Font(layer.fontName, 15)
+        self.colour = (200, 200, 200)
+
+        self.width, self.height = dimensions
+        self.boundingBox = self.layer.pygame.Rect(pos, dimensions)
+
+        self.dropdownIcon = Image(layer, (self.posX - (self.width - 30), self.posY + (self.height / 2) - 13), stick, self.layer.directories["down"], 1, (30, 30, 30))
+        self.displayMenu = False
+
+        self.mouseHovering = False
+        self.hoveringItemIndex = None
+        self.pointSelected = False
+        self.stepBeforeClick = False
+
+    def update(self):
+        self.updateContextualPos()
+
+        mousePos = self.layer.pygame.mouse.get_pos()
+        self.mouseHovering = (((self.contextualPosX + self.width / 2) + ((self.width / 2) + 2) > mousePos[0] > (self.contextualPosX + self.width / 2) - ((self.width / 2) + 2)) and
+                              ((self.contextualPosY + self.height / 2) + ((self.height / 2) + 2) > mousePos[1] > (self.contextualPosY + self.height / 2) - ((self.height / 2) + 2)))
+
+        if self.displayMenu: totalHeight = len(self.values) * 22 + self.height + 5
+        else: totalHeight = self.height
+        self.boundingBox = self.layer.pygame.Rect((self.contextualPosX, self.contextualPosY), (self.width, totalHeight))
+
+        if self.mouseHovering:
+            self.colour = (75, 75, 75)
+        else:
+            self.colour = (100, 100, 100)
+
+        self.pointSelected = self.mouseHovering and self.layer.pygame.mouse.get_pressed()[0]
+        if self.pointSelected and self.stepBeforeClick:
+            if self.displayMenu:
+                self.displayMenu = False
+            else:
+                self.displayMenu = True
+
+        if self.displayMenu:
+            self.dropdownIcon.angle = 180
+            self.layer.overrideUpdateElements = [self]
+        else:
+            self.dropdownIcon.angle = 0
+            self.layer.overrideUpdateElements = None
+
+
+        if self.displayMenu:
+            self.hoveringItemIndex = None
+            for i in range(len(self.values)):
+                mouseOverItem = (((self.contextualPosX + self.width) > mousePos[0] > self.contextualPosX) and
+                                 (self.contextualPosY + ((i + 1) * 22) + self.height > mousePos[1] > self.contextualPosY + (i * 22) + self.height))
+                if mouseOverItem:
+                    self.hoveringItemIndex = i
+                    if self.layer.pygame.mouse.get_pressed()[0]:
+                        self.index = i
+                        self.displayMenu = False
+                        if self.action is not None:
+                            self.action(self.values[i])
+
+        self.stepBeforeClick = self.mouseHovering and not(self.layer.pygame.mouse.get_pressed()[0])
+
+    def display(self):
+        if self.displayMenu:
+            self.layer.pygame.draw.rect(self.layer.screen, (100, 100, 100), (self.contextualPosX, self.contextualPosY, self.width, len(self.values) * 22 + self.height + 5), border_radius = 10)
+            for i in range(len(self.values)):
+                if i == self.hoveringItemIndex:
+                    self.layer.pygame.draw.rect(self.layer.screen, (75, 75, 75), (self.contextualPosX, self.contextualPosY + (i * 22) + self.height, self.width, 22), border_radius = 10)
+                self.font.render_to(self.layer.screen, (self.contextualPosX + 10, self.contextualPosY + self.height + (22 * i) + 5), str(self.values[i]), (200, 200, 200))
+
+        self.layer.pygame.draw.rect(self.layer.screen, self.colour, (self.contextualPosX, self.contextualPosY, self.width, self.height), border_radius = 10)
+        self.font.render_to(self.layer.screen, (self.contextualPosX + 10, self.contextualPosY + (self.height / 2) - 6), str(self.values[self.index]), (200, 200, 200))
+
 class Layer:
     def __init__(self, name, number, screen, pygame, fontName, directories):
         self.name = name
         self.number = number
         self.elements = []
+        self.overrideUpdateElements = None
 
         self.directories = directories
 
@@ -596,7 +677,8 @@ class Layer:
 
         for element in self.elements:
             if element.show:
-                element.update()
+                if (self.overrideUpdateElements is not None and element in self.overrideUpdateElements) or (self.overrideUpdateElements is None):
+                    element.update()
                 element.display()
 
     def mouseOnLayer(self, mousePos):

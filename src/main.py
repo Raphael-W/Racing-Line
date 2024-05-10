@@ -43,6 +43,8 @@ setScalePoint1 = None
 setScalePoint2 = None
 realDistanceTextInput = None
 
+viewMode = "Normal"
+
 userSettingFinish = False
 finishIndex = None
 finishDir = None
@@ -70,6 +72,7 @@ directories = {"mainFont": "assets/MonoFont.ttf",
                "arrow": "assets/arrow.png",
                "undo": "assets/undo.png",
                "redo": "assets/redo.png",
+               "down": "assets/down.png",
                "trackSchema": "schemas/trackSchema.json",
                "silverstone": "assets/silverstoneReference.png"}
 
@@ -173,6 +176,10 @@ def completeFinish():
     userSettingFinish = False
     mainTrack.saved = False
 
+def setViewMode(mode):
+    global viewMode
+
+    viewMode = mode
 
 UILayer = Layer("UI", 0, screen, pygame, mainFont, directories)
 trackLayer = Layer("Track", 1, screen, pygame, mainFont, directories)
@@ -191,19 +198,22 @@ snapPointsLabel = Label(UILayer, 15, (209, 123), "SE", "Snap", programColours["w
 editMode = Switch(UILayer, (165, 95), "SE", 0.8, value = True, action = lambda: setEditStatus(editMode.value))
 editModeLabel = Label(UILayer, 15, (209, 93), "SE", "Edit", programColours["white"])
 
-changeTrackWidth = Slider(UILayer, 15, programColours["white"], programColours["controlPoint"], (224, 198), "SE", 1, 100, (20, 200), action = mainTrack.changeWidth, finishedUpdatingAction = mainTrack.changeWidthComplete, value = mainTrack.width)
-trackWidthLabel = Label(UILayer, 15, (295, 203), "SE", "Width", programColours["white"])
+viewModeDropdown = Dropdown(UILayer, (225, 195), "SE", (150, 25), ["Normal", "Skeleton", "Curve", "Spline Dots"], 0, action = setViewMode)
+viewModeLabel = Label(UILayer, 15, (330, 190), "SE", "View Mode", (200, 200, 200))
 
-changeTrackRes = Slider(UILayer, 15, programColours["white"], programColours["controlPoint"], (225, 233), "SE", 1, 100, (10, 100), action = mainTrack.changeRes, finishedUpdatingAction = mainTrack.changeResComplete, value = mainTrack.perSegRes)
-TrackResLabel = Label(UILayer, 15, (330, 238), "SE", "Track Res", programColours["white"])
+changeTrackWidth = Slider(UILayer, 15, programColours["white"], programColours["controlPoint"], (224, 228), "SE", 1, 100, (20, 200), action = mainTrack.changeWidth, finishedUpdatingAction = mainTrack.changeWidthComplete, value = mainTrack.width)
+trackWidthLabel = Label(UILayer, 15, (295, 233), "SE", "Width", programColours["white"])
 
-setFinishButton = Button(UILayer, (330, 325), "SE", (80, 60), "Set Finish", 10, (100, 100, 100), (0, -18), action = setFinish)
+changeTrackRes = Slider(UILayer, 15, programColours["white"], programColours["controlPoint"], (225, 263), "SE", 1, 100, (10, 100), action = mainTrack.changeRes, finishedUpdatingAction = mainTrack.changeResComplete, value = mainTrack.perSegRes)
+TrackResLabel = Label(UILayer, 15, (330, 268), "SE", "Track Res", programColours["white"])
+
+setFinishButton = Button(UILayer, (330, 355), "SE", (80, 60), "Set Finish", 10, (100, 100, 100), (0, -18), action = setFinish)
 startFinishImage = Image(UILayer, (setFinishButton.posX - 28, setFinishButton.posY - 10), "SE", directories["finishLine"], 1, colour = (30, 30, 30))
 
-setScaleButton = Button(UILayer, (242.5, 325), "SE", (80, 60), "Set Scale", 10, (100, 100, 100), (0, -18), action = setScale)
+setScaleButton = Button(UILayer, (242.5, 355), "SE", (80, 60), "Set Scale", 10, (100, 100, 100), (0, -18), action = setScale)
 scaleImage = Image(UILayer, (setScaleButton.posX - 28, setScaleButton.posY - 10), "SE", directories["scale"], 1, colour = (30, 30, 30))
 
-recentreButton = Button(UILayer, (155, 325), "SE", (80, 60), "Recentre", 10, (100, 100, 100), (0, -18), action = recentreFrame)
+recentreButton = Button(UILayer, (155, 355), "SE", (80, 60), "Recentre", 10, (100, 100, 100), (0, -18), action = recentreFrame)
 recentreImage = Image(UILayer, (recentreButton.posX - 27, recentreButton.posY - 10), "SE", directories["recentreButton"], 1, colour = (30, 30, 30))
 
 undoButton = Button(UILayer, (330, 95), "SE", (30, 30), "", 12, (100, 100, 100), action = mainTrack.undo)
@@ -212,7 +222,7 @@ undoIcon = Image(UILayer, (undoButton.posX - 2, undoButton.posY - 2), "SE", dire
 redoButton = Button(UILayer, (295, 95), "SE", (30, 30), "", 12, (100, 100, 100), action = mainTrack.undo)
 redoIcon = Image(UILayer, (redoButton.posX - 2, redoButton.posY - 2), "SE", directories["redo"], 0.8, colour = programColours["white"])
 
-configAccordion = Accordion(UILayer, (50, 50), "SE", (305, 435), "Untitled Track", [snapPoints, snapPointsLabel, switchEnds, switchEndsLabel, editMode, editModeLabel, changeTrackWidth, trackWidthLabel, changeTrackRes, TrackResLabel, setFinishButton, startFinishImage, setScaleButton, scaleImage, recentreButton, recentreImage, undoButton, undoIcon, redoButton, redoIcon], layerIndex = 0)
+configAccordion = Accordion(UILayer, (50, 50), "SE", (305, 455), "Untitled Track", [snapPoints, snapPointsLabel, switchEnds, switchEndsLabel, editMode, editModeLabel, changeTrackWidth, trackWidthLabel, changeTrackRes, TrackResLabel, setFinishButton, startFinishImage, setScaleButton, scaleImage, recentreButton, recentreImage, undoButton, undoIcon, redoButton, redoIcon], layerIndex = 0)
 
 trackScaleLabel = Label(UILayer, 15, (180, 30), "S", "", programColours["white"])
 scalingErrorLabel = Label(UILayer, 12, (20, 60), "S", "", (227, 65, 50))
@@ -437,10 +447,10 @@ def closeTrack():
         unsavedTrackError = Message(UILayer, "Sure?", "You currently have an unsaved file open", "Save", saveTrackFirst, "grey", "Discard", discardTrack, "red", xAction = lambda: closeError(unsavedTrackError))
     closeCount += 1
 
-saveButton = Button(UILayer, (330, 412.5), "SE", (123.75, 30), "Save", 12, (100, 100, 100), action = saveTrack)
-saveAsButton = Button(UILayer, (198.75, 412.5), "SE", (123.75, 30), "Save As", 12, (100, 100, 100), action = lambda: saveTrack(saveNewDirectory = True))
-openTrackButton = Button(UILayer, (330, 375), "SE", (123.75, 30), "Open", 12, (100, 100, 100), action = openTrack)
-newTrackButton = Button(UILayer, (198.75, 375), "SE", (123.75, 30), "New", 12, (100, 100, 100), action = newTrack)
+saveButton = Button(UILayer, (330, 442.5), "SE", (123.75, 30), "Save", 12, (100, 100, 100), action = saveTrack)
+saveAsButton = Button(UILayer, (198.75, 442.5), "SE", (123.75, 30), "Save As", 12, (100, 100, 100), action = lambda: saveTrack(saveNewDirectory = True))
+openTrackButton = Button(UILayer, (330, 405), "SE", (123.75, 30), "Open", 12, (100, 100, 100), action = openTrack)
+newTrackButton = Button(UILayer, (198.75, 405), "SE", (123.75, 30), "New", 12, (100, 100, 100), action = newTrack)
 
 configAccordion.elements += [saveButton, saveAsButton, openTrackButton, newTrackButton]
 
@@ -583,7 +593,7 @@ while running:
 
     if not(userSettingScale or userSettingFinish):
         mainTrack.update((mousePosX - offsetPosition[0]) / zoom, (mousePosY - offsetPosition[1]) / zoom, zoom, screenWidth, screenHeight, screenBorder, pygame, offsetPosition, snapPoints.value, screenRect)
-    mainTrack.draw(programColours, screen, pygame, offsetPosition, zoom, switchEnds.value, screenRect)
+    mainTrack.draw(programColours, screen, pygame, offsetPosition, zoom, switchEnds.value, screenRect, viewMode)
 
     if userSettingScale:
         transparentSurface = pygame.Surface((screenWidth, screenHeight), pygame.SRCALPHA)
