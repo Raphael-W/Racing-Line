@@ -180,6 +180,7 @@ trackLayer = Layer("Track", 1, screen, pygame, mainFont, directories)
 mouseCoordsX = Label(UILayer, 15, (100, 30), "NE", "", programColours["white"])
 mouseCoordsY = Label(UILayer, 15, (100, 50), "NE", "", programColours["white"])
 scaleLabel = Label(UILayer, 15, (127, 70), "NE", "", programColours["white"])
+fpsLabel = Label(UILayer, 15, (40, 30), "", "fps: 120", programColours["white"])
 
 switchEnds = Switch(UILayer, (165, 155), "SE", 0.8, value = False)
 switchEndsLabel = Label(UILayer, 15, (280, 153), "SE", "Switch front", programColours["white"])
@@ -254,18 +255,22 @@ def saveTrack(saveNewDirectory = False):
     trackData = {"points": points,
              "properties": properties}
 
-    validFile = True
-    if saveDirectory is None or saveNewDirectory:
+    def getFileName():
         root = tk.Tk()
         root.wm_attributes('-topmost', 1)
         root.withdraw()
-        tempDirectory = asksaveasfilename(title = "Save Track", initialfile = 'Untitled.track', defaultextension = ".track",filetypes = [("Track Files","*.track")])
+        fileSelected = asksaveasfilename(title = "Save Track", initialfile = 'Untitled.track', defaultextension = ".track", filetypes = [("Track Files", "*.track")])
+        root.destroy()
+        return fileSelected
 
+
+    validFile = True
+    if saveDirectory is None or saveNewDirectory:
+        tempDirectory = getFileName()
         if tempDirectory != '':
             validFile = os.path.isdir(os.path.dirname(tempDirectory))
         else:
             validFile = False
-        root.destroy()
     else:
         tempDirectory = saveDirectory
 
@@ -274,8 +279,9 @@ def saveTrack(saveNewDirectory = False):
             with open(tempDirectory, "w") as outputFile:
                 json.dump(trackData, outputFile, indent=4)
                 pygame.display.set_caption(os.path.splitext(os.path.basename(tempDirectory))[0] + " - " + tempDirectory)
-                mainTrack.saved = True
                 saveDirectory = tempDirectory
+                mainTrack.saved = True
+
         except Exception as error:
             Message(UILayer, "Can't Save", str(error), "OK", closeError, "grey")
             saveDirectory = None
@@ -287,52 +293,64 @@ def saveTrack(saveNewDirectory = False):
         mainTrack.saved = False
 
 def openTrack(tempDirectory = None):
-    global saveDirectory, mainTrack
+    global saveDirectory
+    def validateTrackFile(directory):
+        error = None
+        try:
+            with open(directory) as loadFile:
+                try:
+                    trackData = json.load(loadFile)
+                    validate(instance = trackData, schema = trackFileSchema)
+                except:
+                    error = "Invalid"
 
-    def openTrackSequence(valid, tempSaveDirectory):
+        except Exception as error:
+            error = error
+
+        return error
+
+    def loadTrack(directory):
         global saveDirectory
-        if valid:
-            try:
-                with open(tempSaveDirectory) as loadFile:
-                    try:
-                        trackData = json.load(loadFile)
-                        validate(instance = trackData, schema = trackFileSchema)
-                    except Exception:
-                        Message(UILayer, "Invalid File", "Please select a valid file", "OK", closeError,"grey")
-                        valid = False
-                        tempSaveDirectory = None
 
-            except Exception as error:
-                Message(UILayer, "Can't Open", str(error), "OK", closeError, "grey")
-                valid = False
-                tempSaveDirectory = None
+        validFile = validateTrackFile(directory)
+        if validFile is None:
+            with open(directory) as loadFile:
+                trackData = json.load(loadFile)
 
+                pointCoords = trackData["points"]
+                mainTrack.loadTrackPoints(pointCoords)
 
-        elif not valid and tempSaveDirectory != '':
-            Message(UILayer, "No File", "There is no file at this path", "OK", closeError, "grey")
-            tempSaveDirectory = None
+                mainTrack.computeTrack()
 
-        if valid:
-            pointCoords = trackData["points"]
-            mainTrack.loadTrackPoints(pointCoords)
+                trackProperties = trackData["properties"]
+                changeTrackWidth.updateValue(trackProperties["width"])
+                changeTrackRes.updateValue(trackProperties["trackRes"])
+                mainTrack.updateCloseStatus(trackProperties["closed"], update = False)
+                switchEnds.value = trackProperties["switchEnds"]
+                snapPoints.value = trackProperties["snap"]
+                mainTrack.scale = trackProperties["scale"]
+                mainTrack.finishIndex = trackProperties["finishIndex"]
+                mainTrack.finishDir = trackProperties["finishDir"]
 
-            mainTrack.computeTrack()
+                mainTrack.computeTrack()
 
-            trackProperties = trackData["properties"]
-            changeTrackWidth.updateValue(trackProperties["width"])
-            changeTrackRes.updateValue(trackProperties["trackRes"])
-            mainTrack.updateCloseStatus(trackProperties["closed"], update = False)
-            switchEnds.value = trackProperties["switchEnds"]
-            snapPoints.value = trackProperties["snap"]
-            mainTrack.scale = trackProperties["scale"]
-            mainTrack.finishIndex = trackProperties["finishIndex"]
-            mainTrack.finishDir = trackProperties["finishDir"]
+                saveDirectory = directory
+                recentreFrame()
 
-            mainTrack.computeTrack()
+                mainTrack.saved = True
 
-            saveDirectory = tempSaveDirectory
-            recentreFrame()
-            mainTrack.saved = True
+        elif validFile == "Invalid":
+            Message(UILayer, "Invalid File", "Please select a valid file", "OK", closeError, "grey")
+        else:
+            Message(UILayer, "Can't Open", str(validFile), "OK", closeError, "grey")
+
+    def getFileName():
+        root = tk.Tk()
+        root.withdraw()
+        root.wm_attributes('-topmost', 1)
+        fileSelected = askopenfilename(title = "Open Track", defaultextension = ".track", filetypes = [("Track Files", "*.track")])
+        root.destroy()
+        return fileSelected
 
     def closeError(sender):
         sender.close()
@@ -341,44 +359,40 @@ def openTrack(tempDirectory = None):
         global saveDirectory
         sender.close()
         saveTrack()
-        openTrackSequence(validFile, tempDirectory)
+        loadTrack(tempDirectory)
 
-        mainTrack.saved = True
     def discardTrack(sender):
         global saveDirectory
         sender.close()
-        openTrackSequence(validFile, tempDirectory)
-
-        mainTrack.saved = True
+        loadTrack(tempDirectory)
 
     if tempDirectory is None:
-        root = tk.Tk()
-        root.withdraw()
-        root.wm_attributes('-topmost', 1)
-        tempDirectory = askopenfilename(title="Open Track", defaultextension = ".track",filetypes = [("Track Files","*.track")])
-        root.destroy()
-    validFile = os.path.isfile(tempDirectory)
+        tempDirectory = getFileName()
 
-    if tempDirectory != '' and mainTrack.saved == False:
+    validDir = os.path.isfile(tempDirectory)
+    if not validDir:
+        Message(UILayer, "Invalid File", "Please select a valid file", "OK", closeError, "grey")
+
+    if tempDirectory != '' and mainTrack.saved == False and validDir:
         Message(UILayer, "Sure?", "You currently have an unsaved file open", "Save", saveTrackFirst, "grey","Discard", discardTrack, "red")
-
     else:
-        openTrackSequence(validFile, tempDirectory)
+        loadTrack(tempDirectory)
 
 def newTrack():
-    global saveDirectory, mainTrack
+    global saveDirectory
 
     def saveTrackFirst(sender):
         global saveDirectory
+
         sender.close()
         saveTrack()
         mainTrack.clear()
         recentreFrame()
 
-        mainTrack.saved = True
         saveDirectory = None
     def discardTrack(sender):
         global saveDirectory
+
         sender.close()
         mainTrack.clear()
         recentreFrame()
@@ -400,6 +414,28 @@ def newTrack():
     else:
         recentreFrame()
 
+def closeTrack():
+    global closeCount
+    def closeError(sender):
+        global closeCount
+
+        sender.close()
+        closeCount = 0
+
+    def saveTrackFirst():
+        global running
+
+        saveTrack()
+        running = False
+
+    def discardTrack(sender):
+        global running
+
+        running = False
+
+    if closeCount == 0:
+        unsavedTrackError = Message(UILayer, "Sure?", "You currently have an unsaved file open", "Save", saveTrackFirst, "grey", "Discard", discardTrack, "red", xAction = lambda: closeError(unsavedTrackError))
+    closeCount += 1
 
 saveButton = Button(UILayer, (330, 412.5), "SE", (123.75, 30), "Save", 12, (100, 100, 100), action = saveTrack)
 saveAsButton = Button(UILayer, (198.75, 412.5), "SE", (123.75, 30), "Save As", 12, (100, 100, 100), action = lambda: saveTrack(saveNewDirectory = True))
@@ -408,10 +444,10 @@ newTrackButton = Button(UILayer, (198.75, 375), "SE", (123.75, 30), "New", 12, (
 
 configAccordion.elements += [saveButton, saveAsButton, openTrackButton, newTrackButton]
 
-recentreFrame()
-
 if len(sys.argv) > 1:
     openTrack(sys.argv[1])
+
+recentreFrame()
 
 while running:
     screenWidth, screenHeight = screen.get_size()
@@ -426,40 +462,16 @@ while running:
     else:
         pivotPos = None
 
-
     for event in pygame.event.get():
+        #Handling QUIT event
         if event.type == pygame.QUIT:
             if not saved:
-                def closeError_closing(sender):
-                    global closeCount
+                closeTrack()
 
-                    sender.close()
-                    closeCount = 0
-
-                def saveTrackFirst_closing(sender):
-                    global running
-                    sender.close()
-                    saveTrack()
-                    running = False
-
-                    mainTrack.saved = True
-
-                def discardTrack_closing(sender):
-                    global running
-                    sender.close()
-                    running = False
-
-                    mainTrack.saved = True
-
-                if closeCount == 0:
-                    areYouSure_Closing = Message(UILayer, "Sure?", "You currently have an unsaved file open", "Save", saveTrackFirst_closing, "grey", "Discard", discardTrack_closing, "red", xAction = lambda: closeError_closing(areYouSure_Closing))
-                    closeCount += 1
-                else:
-                    running = False
-
-            else:
+            if saved or closeCount > 1:
                 running = False
 
+        #Adding control point
         if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (mainTrack.mouseHovering is None) and (not UILayer.mouseOnLayer((mousePosX, mousePosY))) and not (userSettingScale or userSettingFinish):
             index = -1
             if switchEnds.value:
@@ -469,55 +481,24 @@ while running:
             onLine = False
             if len(mainTrack.points) >= 2:
                 onLine, nearPointSegment, nearestPoint, nearPointIndex = mainTrack.pointOnCurve((mousePosX - offsetPosition[0]) / zoom, (mousePosY - offsetPosition[1]) / zoom, 20)
-                if onLine: index = nearPointSegment
+                if onLine:
+                    index = nearPointSegment
 
             validPlacement = (not mainTrack.closed or onLine) and mainTrack.edit
             if validPlacement:
                 mainTrack.add(ControlPoint((mousePosX - offsetPosition[0]) / zoom, (mousePosY - offsetPosition[1]) / zoom), index = index, userPerformed = True)
 
-        if userSettingScale:
-            if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (not UILayer.mouseOnLayer((mousePosX, mousePosY))):
-                if setScalePoint1 is None:
-                    setScalePoint1 = ((mousePosX - offsetPosition[0]) / zoom, (mousePosY - offsetPosition[1]) / zoom)
-                elif setScalePoint2 is None:
-                    setScalePoint2 = ((mousePosX - offsetPosition[0]) / zoom, (mousePosY - offsetPosition[1]) / zoom)
-
-                    realDistanceTextInput = TextInput(UILayer, (20, 120), "S", (180, 50), 15, "Real Distance (m)", "","m", ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '.'], enterAction = completeScaling)
-
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    if realDistanceTextInput is not None:
-                        realDistanceTextInput.close()
-                    userSettingScale = False
-
-                if realDistanceTextInput is not None:
-                    realDistanceTextInput.typeLetter(event)
-
-        if userSettingFinish:
-            if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (not UILayer.mouseOnLayer((mousePosX, mousePosY))):
-                if finishIndex is None:
-                    finishIndex = ((mousePosX - offsetPosition[0]) / zoom, (mousePosY - offsetPosition[1]) / zoom)
-                    onLine, nearPointSegment, nearestPointCoords, nearestPoint = mainTrack.pointOnCurve(finishIndex[0], finishIndex[1], (mainTrack.width / 2))
-                    if onLine:
-                        finishIndex = nearestPoint / mainTrack.perSegRes
-                    else:
-                        finishIndex = None
-
-                elif finishIndex is not None:
-                    completeFinish()
-
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    userSettingFinish = False
-
+        #Removing control point
         if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[2] and (mainTrack.mouseHovering is not None) and (not UILayer.mouseOnLayer((mousePosX, mousePosY))) and not (userSettingScale or userSettingFinish):
             index = mainTrack.mouseHovering
             if not(mainTrack.closed and ((index == 0) or (index == len(mainTrack.points) - 1))) and mainTrack.edit:
                 mainTrack.remove(index = index, userPerformed = True)
 
+        #Set offset pivot
         if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[1]:
             pivotPos = (mousePosX - offsetPosition[0], mousePosY - offsetPosition[1])
 
+        #Set offset pivot
         if event.type == pygame.MOUSEWHEEL:
             if event.y > 0:
                 if zoom < upperZoomLimit:
@@ -541,6 +522,7 @@ while running:
                     zoomDifference = (beforeZoom/zoom) - 1
                     offsetPosition = (int(offsetPosition[0] + (mousePosX - offsetPosition[0]) * zoomDifference), int(offsetPosition[1] + (mousePosY - offsetPosition[1]) * zoomDifference))
 
+        #Handling key presses
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_z and pygame.key.get_mods() & pygame.KMOD_LCTRL and not(pygame.key.get_mods() & pygame.KMOD_LSHIFT) and mainTrack.edit:
                 mainTrack.undo()
@@ -557,12 +539,51 @@ while running:
             if event.key == pygame.K_n and pygame.key.get_mods() & pygame.KMOD_LCTRL:
                 newTrack()
 
+        #Logic for setting scale
+        if userSettingScale:
+            if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (not UILayer.mouseOnLayer((mousePosX, mousePosY))):
+                if setScalePoint1 is None:
+                    setScalePoint1 = ((mousePosX - offsetPosition[0]) / zoom, (mousePosY - offsetPosition[1]) / zoom)
+                elif setScalePoint2 is None:
+                    setScalePoint2 = ((mousePosX - offsetPosition[0]) / zoom, (mousePosY - offsetPosition[1]) / zoom)
+
+                    realDistanceTextInput = TextInput(UILayer, (20, 120), "S", (180, 50), 15, "Real Distance (m)", "","m", ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '.'], enterAction = completeScaling)
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    if realDistanceTextInput is not None:
+                        realDistanceTextInput.close()
+                    userSettingScale = False
+
+                if realDistanceTextInput is not None:
+                    realDistanceTextInput.typeLetter(event)
+
+        #Logic for setting finish
+        if userSettingFinish:
+            if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (not UILayer.mouseOnLayer((mousePosX, mousePosY))):
+                if finishIndex is None:
+                    finishIndex = ((mousePosX - offsetPosition[0]) / zoom, (mousePosY - offsetPosition[1]) / zoom)
+                    onLine, nearPointSegment, nearestPointCoords, nearestPoint = mainTrack.pointOnCurve(finishIndex[0], finishIndex[1], (mainTrack.width / 2))
+                    if onLine:
+                        finishIndex = nearestPoint / mainTrack.perSegRes
+                    else:
+                        finishIndex = None
+
+                elif finishIndex is not None:
+                    completeFinish()
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    userSettingFinish = False
+
     drawGrid(offsetPosition, 50 * zoom, 2, programColours["mainGrid"])
     drawGrid(offsetPosition, 10 * zoom, 1, programColours["innerGrid"])
 
+    screenRect = pygame.Rect((0, 0), (screenWidth + 15, screenHeight + 15))
+
     if not(userSettingScale or userSettingFinish):
-        mainTrack.update((mousePosX - offsetPosition[0]) / zoom, (mousePosY - offsetPosition[1]) / zoom, zoom, screenWidth, screenHeight, screenBorder, pygame, offsetPosition, snapPoints.value)
-    mainTrack.draw(programColours, screen, pygame, offsetPosition, zoom, switchEnds.value)
+        mainTrack.update((mousePosX - offsetPosition[0]) / zoom, (mousePosY - offsetPosition[1]) / zoom, zoom, screenWidth, screenHeight, screenBorder, pygame, offsetPosition, snapPoints.value, screenRect)
+    mainTrack.draw(programColours, screen, pygame, offsetPosition, zoom, switchEnds.value, screenRect)
 
     if userSettingScale:
         transparentSurface = pygame.Surface((screenWidth, screenHeight), pygame.SRCALPHA)
@@ -664,6 +685,7 @@ while running:
     mouseCoordsX.text = ("x: " + str(int(((mousePosX * 1) - offsetPosition[0]) / zoom)))
     mouseCoordsY.text = ("y: " + str(int(((mousePosY * 1) - offsetPosition[1]) / zoom)))
     scaleLabel.text = ("view: " + str(int(zoom * 100)) + "%")
+    fpsLabel.text = ("fps: " + str(int(clock.get_fps())))
 
     if len(mainTrack.history.undoStack) == 0:
         undoButton.enabled = False
