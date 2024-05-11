@@ -606,13 +606,14 @@ class Dropdown(UIElement):
         self.hoveringItemIndex = None
         self.pointSelected = False
         self.stepBeforeClick = False
+        self.noClickBefore = False
 
     def update(self):
         self.updateContextualPos()
 
         mousePos = self.layer.pygame.mouse.get_pos()
-        self.mouseHovering = (((self.contextualPosX + self.width / 2) + ((self.width / 2) + 2) > mousePos[0] > (self.contextualPosX + self.width / 2) - ((self.width / 2) + 2)) and
-                              ((self.contextualPosY + self.height / 2) + ((self.height / 2) + 2) > mousePos[1] > (self.contextualPosY + self.height / 2) - ((self.height / 2) + 2)))
+        self.mouseHovering = (((self.contextualPosX + self.width / 2) + ((self.width / 2) + 2) > mousePos[0] >= (self.contextualPosX + self.width / 2) - ((self.width / 2) + 2)) and
+                              ((self.contextualPosY + self.height / 2) + ((self.height / 2) + 0) > mousePos[1] >= (self.contextualPosY + self.height / 2) - ((self.height / 2) + 2)))
 
         if self.displayMenu: totalHeight = len(self.values) * 22 + self.height + 5
         else: totalHeight = self.height
@@ -625,10 +626,9 @@ class Dropdown(UIElement):
 
         self.pointSelected = self.mouseHovering and self.layer.pygame.mouse.get_pressed()[0]
         if self.pointSelected and self.stepBeforeClick:
-            if self.displayMenu:
-                self.displayMenu = False
-            else:
-                self.displayMenu = True
+            self.displayMenu = not self.displayMenu
+        elif self.displayMenu and self.layer.pygame.mouse.get_pressed()[0] and self.noClickBefore and not self.boundingBox.collidepoint(mousePos):
+            self.displayMenu = False
 
         if self.displayMenu:
             self.dropdownIcon.angle = 180
@@ -641,8 +641,8 @@ class Dropdown(UIElement):
         if self.displayMenu:
             self.hoveringItemIndex = None
             for i in range(len(self.values)):
-                mouseOverItem = (((self.contextualPosX + self.width) > mousePos[0] > self.contextualPosX) and
-                                 (self.contextualPosY + ((i + 1) * 22) + self.height > mousePos[1] > self.contextualPosY + (i * 22) + self.height))
+                mouseOverItem = (((self.contextualPosX + self.width) > mousePos[0] >= self.contextualPosX) and
+                                 (self.contextualPosY + ((i + 1) * 22) + self.height > mousePos[1] >= self.contextualPosY + (i * 22) + self.height))
                 if mouseOverItem:
                     self.hoveringItemIndex = i
                     if self.layer.pygame.mouse.get_pressed()[0]:
@@ -652,6 +652,7 @@ class Dropdown(UIElement):
                             self.action(self.values[i])
 
         self.stepBeforeClick = self.mouseHovering and not(self.layer.pygame.mouse.get_pressed()[0])
+        self.noClickBefore = not(self.layer.pygame.mouse.get_pressed()[0])
 
     def display(self):
         if self.displayMenu:
