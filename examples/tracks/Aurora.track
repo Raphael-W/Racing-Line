@@ -103,7 +103,7 @@
     ],
     "properties": {
         "width": 140.6,
-        "trackRes": 100,
+        "trackRes": 45,
         "closed": true,
         "switchEnds": false,
         "snap": false,

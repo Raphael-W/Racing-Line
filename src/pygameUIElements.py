@@ -559,6 +559,26 @@ class Message(UIElement):
                                       ((self.width / 2) - 20, 30), button2Text, 15, rightButtonColour,
                                       action = lambda: button2Action(self))
 
+    def update(self):
+        self.posX = (self.layer.screenWidth / 2) - (self.width / 2)
+        self.posY = (self.layer.screenHeight / 2) - (self.height / 2)
+        self.boundingBox = self.layer.pygame.Rect(self.posX, self.posY, self.width, self.height)
+
+        self.messageBoundingBox = self.layer.pygame.Rect((self.posX, self.posY),(self.messageSize[0], self.messageSize[1]))
+        self.messageBoundingBox.center = self.boundingBox.center
+
+        self.titleBoundingBox = self.layer.pygame.Rect((self.posX, self.posY), (self.titleSize[0], self.titleSize[1]))
+        self.titleBoundingBox.center = self.boundingBox.center
+
+        self.closeButton.posX, self.closeButton.posY = (self.posX + self.width - 40, self.posY + 10)
+        self.closeImage.posX, self.closeImage.posY = (self.posX + self.width - 38, self.posY + 12)
+
+        if self.button2Text is None:
+            self.centreButton.posX, self.centreButton.posY = (self.posX + 10, (self.posY + self.height) - 40)
+        else:
+            self.leftButton.posX, self.leftButton.posY = (self.posX + 10, (self.posY + self.height) - 40)
+            self.rightButton.posX, self.rightButton.posY = (self.posX + 10 + (self.width / 2), (self.posY + self.height) - 40)
+
     def display(self):
         transparentSurface = self.layer.pygame.Surface((self.layer.screenWidth, self.layer.screenHeight), self.layer.pygame.SRCALPHA)
         self.layer.pygame.draw.rect(transparentSurface, (50, 50, 50, 200), (0, 0, self.layer.screenWidth, self.layer.screenHeight))
