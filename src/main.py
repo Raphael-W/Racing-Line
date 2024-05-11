@@ -43,7 +43,7 @@ setScalePoint1 = None
 setScalePoint2 = None
 realDistanceTextInput = None
 
-viewMode = "Normal"
+viewMode = "Track"
 
 userSettingFinish = False
 finishIndex = None
@@ -184,36 +184,43 @@ def setViewMode(mode):
 UILayer = Layer("UI", 0, screen, pygame, mainFont, directories)
 trackLayer = Layer("Track", 1, screen, pygame, mainFont, directories)
 
-mouseCoordsX = Label(UILayer, 15, (100, 30), "NE", "", programColours["white"])
-mouseCoordsY = Label(UILayer, 15, (100, 50), "NE", "", programColours["white"])
+mouseXLabel = Label(UILayer, 15, (100, 30), "NE", "", programColours["white"])
+mouseYLabel = Label(UILayer, 15, (100, 50), "NE", "", programColours["white"])
 scaleLabel = Label(UILayer, 15, (127, 70), "NE", "", programColours["white"])
 fpsLabel = Label(UILayer, 15, (40, 30), "", "fps: 120", programColours["white"])
 
-switchEnds = Switch(UILayer, (165, 155), "SE", 0.8, value = False)
+switchEndsSwitch = Switch(UILayer, (165, 155), "SE", 0.8, value = False)
 switchEndsLabel = Label(UILayer, 15, (280, 153), "SE", "Switch front", programColours["white"])
 
-snapPoints = Switch(UILayer, (165, 125), "SE", 0.8, value = False)
+snapPointsSwitch = Switch(UILayer, (165, 125), "SE", 0.8, value = False)
 snapPointsLabel = Label(UILayer, 15, (209, 123), "SE", "Snap", programColours["white"])
 
-editMode = Switch(UILayer, (165, 95), "SE", 0.8, value = True, action = lambda: setEditStatus(editMode.value))
+editModeSwitch = Switch(UILayer, (165, 95), "SE", 0.8, value = True, action = lambda: setEditStatus(editModeSwitch.value))
 editModeLabel = Label(UILayer, 15, (209, 93), "SE", "Edit", programColours["white"])
 
-viewModeDropdown = Dropdown(UILayer, (225, 195), "SE", (150, 25), ["Normal", "Skeleton", "Curve", "Spline Dots"], 0, action = setViewMode)
+viewModeDropdown = Dropdown(UILayer, (225, 195), "SE", (150, 25), ["Track", "Skeleton", "Curve", "Spline Dots"], 0, action = setViewMode)
 viewModeLabel = Label(UILayer, 15, (330, 190), "SE", "View Mode", (200, 200, 200))
 
-changeTrackWidth = Slider(UILayer, 15, programColours["white"], programColours["controlPoint"], (224, 228), "SE", 1, 100, (20, 200), action = mainTrack.changeWidth, finishedUpdatingAction = mainTrack.changeWidthComplete, value = mainTrack.width)
+trackWidthSlider = Slider(UILayer, 15, programColours["white"], programColours["controlPoint"], (224, 228), "SE", 1,
+                          100, (20, 200), value = mainTrack.width, action = mainTrack.changeWidth,
+                          finishedUpdatingAction = mainTrack.changeWidthComplete)
 trackWidthLabel = Label(UILayer, 15, (295, 233), "SE", "Width", programColours["white"])
 
-changeTrackRes = Slider(UILayer, 15, programColours["white"], programColours["controlPoint"], (225, 263), "SE", 1, 100, (10, 100), action = mainTrack.changeRes, finishedUpdatingAction = mainTrack.changeResComplete, value = mainTrack.perSegRes)
+trackResSlider = Slider(UILayer, 15, programColours["white"], programColours["controlPoint"], (225, 263), "SE", 1, 100,
+                        (10, 100), value = mainTrack.perSegRes, action = mainTrack.changeRes,
+                        finishedUpdatingAction = mainTrack.changeResComplete)
 TrackResLabel = Label(UILayer, 15, (330, 268), "SE", "Track Res", programColours["white"])
 
-setFinishButton = Button(UILayer, (330, 355), "SE", (80, 60), "Set Finish", 10, (100, 100, 100), (0, -18), action = setFinish)
+setFinishButton = Button(UILayer, (330, 355), "SE", (80, 60), "Set Finish", 10, (100, 100, 100), (0, -18),
+                         action = setFinish)
 startFinishImage = Image(UILayer, (setFinishButton.posX - 28, setFinishButton.posY - 10), "SE", directories["finishLine"], 1, colour = (30, 30, 30))
 
-setScaleButton = Button(UILayer, (242.5, 355), "SE", (80, 60), "Set Scale", 10, (100, 100, 100), (0, -18), action = setScale)
+setScaleButton = Button(UILayer, (242.5, 355), "SE", (80, 60), "Set Scale", 10, (100, 100, 100), (0, -18),
+                        action = setScale)
 scaleImage = Image(UILayer, (setScaleButton.posX - 28, setScaleButton.posY - 10), "SE", directories["scale"], 1, colour = (30, 30, 30))
 
-recentreButton = Button(UILayer, (155, 355), "SE", (80, 60), "Recentre", 10, (100, 100, 100), (0, -18), action = recentreFrame)
+recentreButton = Button(UILayer, (155, 355), "SE", (80, 60), "Recentre", 10, (100, 100, 100), (0, -18),
+                        action = recentreFrame)
 recentreImage = Image(UILayer, (recentreButton.posX - 27, recentreButton.posY - 10), "SE", directories["recentreButton"], 1, colour = (30, 30, 30))
 
 undoButton = Button(UILayer, (330, 95), "SE", (30, 30), "", 12, (100, 100, 100), action = mainTrack.undo)
@@ -222,7 +229,7 @@ undoIcon = Image(UILayer, (undoButton.posX - 2, undoButton.posY - 2), "SE", dire
 redoButton = Button(UILayer, (295, 95), "SE", (30, 30), "", 12, (100, 100, 100), action = mainTrack.undo)
 redoIcon = Image(UILayer, (redoButton.posX - 2, redoButton.posY - 2), "SE", directories["redo"], 0.8, colour = programColours["white"])
 
-configAccordion = Accordion(UILayer, (50, 50), "SE", (305, 455), "Untitled Track", [snapPoints, snapPointsLabel, switchEnds, switchEndsLabel, editMode, editModeLabel, changeTrackWidth, trackWidthLabel, changeTrackRes, TrackResLabel, setFinishButton, startFinishImage, setScaleButton, scaleImage, recentreButton, recentreImage, undoButton, undoIcon, redoButton, redoIcon], layerIndex = 0)
+configAccordion = Accordion(UILayer, (50, 50), "SE", (305, 455), "Untitled Track", [snapPointsSwitch, snapPointsLabel, switchEndsSwitch, switchEndsLabel, editModeSwitch, editModeLabel, trackWidthSlider, trackWidthLabel, trackResSlider, TrackResLabel, viewModeDropdown, viewModeLabel, setFinishButton, startFinishImage, setScaleButton, scaleImage, recentreButton, recentreImage, undoButton, undoIcon, redoButton, redoIcon], layerIndex = 0)
 
 trackScaleLabel = Label(UILayer, 15, (180, 30), "S", "", programColours["white"])
 scalingErrorLabel = Label(UILayer, 12, (20, 60), "S", "", (227, 65, 50))
@@ -256,8 +263,8 @@ def saveTrack(saveNewDirectory = False):
     properties = {"width": mainTrack.width,
                   "trackRes": mainTrack.perSegRes,
                   "closed": mainTrack.closed,
-                  "switchEnds": switchEnds.value,
-                  "snap": snapPoints.value,
+                  "switchEnds": switchEndsSwitch.value,
+                  "snap": snapPointsSwitch.value,
                   "scale": mainTrack.scale,
                   "finishIndex": mainTrack.finishIndex,
                   "finishDir": mainTrack.finishDir}
@@ -332,14 +339,14 @@ def openTrack(tempDirectory = None):
 
                 trackProperties = trackData["properties"]
 
-                changeTrackWidth.updateValue(trackProperties["width"], update = False)
+                trackWidthSlider.updateValue(trackProperties["width"], update = False)
                 mainTrack.width = trackProperties["width"]
 
-                changeTrackRes.updateValue(trackProperties["trackRes"], update = False)
+                trackResSlider.updateValue(trackProperties["trackRes"], update = False)
                 mainTrack.perSegRes = trackProperties["trackRes"]
 
-                switchEnds.value = trackProperties["switchEnds"]
-                snapPoints.value = trackProperties["snap"]
+                switchEndsSwitch.value = trackProperties["switchEnds"]
+                snapPointsSwitch.value = trackProperties["snap"]
                 mainTrack.scale = trackProperties["scale"]
                 mainTrack.finishIndex = trackProperties["finishIndex"]
                 mainTrack.finishDir = trackProperties["finishDir"]
@@ -451,7 +458,8 @@ def closeTrack():
     closeCount += 1
 
 saveButton = Button(UILayer, (330, 442.5), "SE", (123.75, 30), "Save", 12, (100, 100, 100), action = saveTrack)
-saveAsButton = Button(UILayer, (198.75, 442.5), "SE", (123.75, 30), "Save As", 12, (100, 100, 100), action = lambda: saveTrack(saveNewDirectory = True))
+saveAsButton = Button(UILayer, (198.75, 442.5), "SE", (123.75, 30), "Save As", 12, (100, 100, 100),
+                      action = lambda: saveTrack(saveNewDirectory = True))
 openTrackButton = Button(UILayer, (330, 405), "SE", (123.75, 30), "Open", 12, (100, 100, 100), action = openTrack)
 newTrackButton = Button(UILayer, (198.75, 405), "SE", (123.75, 30), "New", 12, (100, 100, 100), action = newTrack)
 
@@ -487,7 +495,7 @@ while running:
         #Adding control point
         if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (mainTrack.mouseHovering is None) and (not UILayer.mouseOnLayer((mousePosX, mousePosY))) and not (userSettingScale or userSettingFinish):
             index = -1
-            if switchEnds.value:
+            if switchEndsSwitch.value:
                 index = 0
 
             validPlacement = True
@@ -595,8 +603,8 @@ while running:
     screenRect = pygame.Rect((0, 0), (screenWidth + 15, screenHeight + 15))
 
     if not(userSettingScale or userSettingFinish):
-        mainTrack.update((mousePosX - offsetPosition[0]) / zoom, (mousePosY - offsetPosition[1]) / zoom, zoom, screenWidth, screenHeight, screenBorder, pygame, offsetPosition, snapPoints.value, screenRect)
-    mainTrack.draw(programColours, screen, pygame, offsetPosition, zoom, switchEnds.value, screenRect, viewMode)
+        mainTrack.update((mousePosX - offsetPosition[0]) / zoom, (mousePosY - offsetPosition[1]) / zoom, zoom, screenWidth, screenHeight, screenBorder, pygame, offsetPosition, snapPointsSwitch.value, screenRect)
+    mainTrack.draw(programColours, screen, pygame, offsetPosition, zoom, switchEndsSwitch.value, screenRect, viewMode)
 
     if userSettingScale:
         transparentSurface = pygame.Surface((screenWidth, screenHeight), pygame.SRCALPHA)
@@ -674,9 +682,21 @@ while running:
         finishDirIcon.angle = trackAngle + (finishDir * 180)
 
     if len(mainTrack.points) >= 2:
-        editMode.disabled = False
+        editModeSwitch.disabled = False
     else:
-        editMode.disabled = True
+        editModeSwitch.disabled = True
+
+    if not mainTrack.edit:
+        trackWidthSlider.disabled = True
+        trackResSlider.disabled = True
+        switchEndsSwitch.disabled = True
+        snapPointsSwitch.disabled = True
+
+    else:
+        trackWidthSlider.disabled = False
+        trackResSlider.disabled = False
+        switchEndsSwitch.disabled = False
+        snapPointsSwitch.disabled = False
 
     saved = mainTrack.saved
     if saved:
@@ -695,8 +715,8 @@ while running:
         pygame.display.set_caption(newCaption)
 
     lastCaption = newCaption
-    mouseCoordsX.text = ("x: " + str(int(((mousePosX * 1) - offsetPosition[0]) / zoom)))
-    mouseCoordsY.text = ("y: " + str(int(((mousePosY * 1) - offsetPosition[1]) / zoom)))
+    mouseXLabel.text = ("x: " + str(int(((mousePosX * 1) - offsetPosition[0]) / zoom)))
+    mouseYLabel.text = ("y: " + str(int(((mousePosY * 1) - offsetPosition[1]) / zoom)))
     scaleLabel.text = ("view: " + str(int(zoom * 100)) + "%")
     fpsLabel.text = ("fps: " + str(int(clock.get_fps())))
 

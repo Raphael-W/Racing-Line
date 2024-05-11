@@ -688,7 +688,7 @@ class Track:
             visiblePoints = self.findVisiblePoints(screenRect, offset, zoom)
             for point in range(len(self.points) - 1):
                 if point in visiblePoints:
-                    if viewMode == "Normal" or viewMode == "Skeleton":
+                    if viewMode == "Track" or viewMode == "Skeleton":
                         leftBorderInnerEdgeSegment = offsetPoints(self.leftBorderInnerEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1], offset, zoom)
                         leftBorderOuterEdgeSegment = offsetPoints(self.leftBorderOuterEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1], offset, zoom)
 
@@ -713,7 +713,7 @@ class Track:
 
             for point in range(len(self.points) - 1):
                 if point in visiblePoints:
-                    if viewMode == "Normal":
+                    if viewMode == "Track":
                         leftBorderInnerEdgeSegment = offsetPoints(self.leftBorderInnerEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1], offset, zoom)
                         rightBorderInnerEdgeSegment = offsetPoints(self.rightBorderInnerEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1], offset, zoom)
 
@@ -729,7 +729,7 @@ class Track:
             if self.edit or viewMode == "Curve":
                 for point in range(len(self.points) - 1):
                     if point in visiblePoints:
-                        if viewMode == "Normal" or viewMode == "Skeleton" or viewMode == "Curve":
+                        if viewMode == "Track" or viewMode == "Skeleton" or viewMode == "Curve":
                             mainPolyLeftEdgeSegment = offsetPoints(self.mainPolyLeftEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1], offset, zoom)
                             mainPolyRightEdgeSegment = offsetPoints(self.mainPolyRightEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1], offset, zoom)
 

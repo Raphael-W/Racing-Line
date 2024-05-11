@@ -63,7 +63,7 @@ class UIElement:
             self.layer.elements.remove(self)
 
 class Button (UIElement):
-    def __init__(self, layer, pos, stick, dimensions, text, fontSize, colour, textOffset = (0, 0), roundedCorners = 10, action = None, show = True, enabled = True, layerIndex = -1):
+    def __init__(self, layer, pos, stick, dimensions, text, fontSize, colour, textOffset = (0, 0), roundedCorners = 10, action = None, show = True, disabled = False, layerIndex = -1):
         super().__init__(layer, pos, stick, show, layerIndex)
         self.width = dimensions[0]
         self.height = dimensions[1]
@@ -91,12 +91,12 @@ class Button (UIElement):
                               colour[1] - (colour[1] * 0.4),
                               colour[2] - (colour[2] * 0.4))
 
-        self.enabled = enabled
+        self.disabled = disabled
 
     def update(self):
         self.updateContextualPos()
 
-        if self.enabled:
+        if not self.disabled:
             mousePos = self.layer.pygame.mouse.get_pos()
             self.mouseHovering = (((self.contextualPosX + self.width / 2) + ((self.width / 2) + 2) > mousePos[0] > (self.contextualPosX + self.width / 2) - ((self.width / 2) + 2)) and
                                   ((self.contextualPosY + self.height / 2) + ((self.height / 2) + 2) > mousePos[1] > (self.contextualPosY + self.height / 2) - ((self.height / 2) + 2)))
@@ -150,10 +150,11 @@ class Label (UIElement):
         self.font.render_to(self.layer.screen, (self.contextualPosX, self.contextualPosY), self.text, self.colour)
 
 class Slider (UIElement):
-    def __init__(self, layer, fontSize, barColour, handleColour, pos, stick, size, length, valueRange, value = 0, action = None, finishedUpdatingAction = None, show = True, layerIndex = -1):
+    def __init__(self, layer, fontSize, barColour, handleColour, pos, stick, size, length, valueRange, value = 0, action = None, finishedUpdatingAction = None, show = True, disabled = False, layerIndex = -1):
         super().__init__(layer, pos, stick, show, layerIndex)
 
         self.barColour = barColour
+        self.displayBarColour = self.barColour
 
         self.handleColour = handleColour
         self.selectedHandleColour = (handleColour[0] - (handleColour[0] * 0.4),
@@ -172,60 +173,68 @@ class Slider (UIElement):
         self.handleSelected = False
         self.handleSelectedLast = False
         self.mouseDownLast = False
-        self.handleSize = 0
+        self.handleSize = 10 * self.size
 
         self.value = value
         self.initialValue = value
         self.action = action
         self.finishedUpdatingAction = finishedUpdatingAction
 
+        self.show = show
+        self.disabled = disabled
+
     def update(self):
         self.updateContextualPos()
 
-        mouseX, mouseY = self.layer.pygame.mouse.get_pos()
-        self.handleSize = 10 * self.size
-        self.boundingBox = self.layer.pygame.Rect(self.contextualPosX + self.handleX - self.handleSize, self.contextualPosY - (self.handleSize * 0.75), self.handleSize * 2, self.handleSize * 2)
-        self.mouseHovering = (((self.contextualPosX + self.handleX) + (self.handleSize + 2) > mouseX > (self.contextualPosX + self.handleX) - (self.handleSize + 2)) and
-                              (self.contextualPosY + (self.handleSize + 2) > mouseY > self.contextualPosY - (self.handleSize + 2)))
+        if not self.disabled:
+            mouseX, mouseY = self.layer.pygame.mouse.get_pos()
+            self.handleSize = 10 * self.size
+            self.boundingBox = self.layer.pygame.Rect(self.contextualPosX + self.handleX - self.handleSize, self.contextualPosY - (self.handleSize * 0.75), self.handleSize * 2, self.handleSize * 2)
+            self.mouseHovering = (((self.contextualPosX + self.handleX) + (self.handleSize + 2) > mouseX > (self.contextualPosX + self.handleX) - (self.handleSize + 2)) and
+                                  (self.contextualPosY + (self.handleSize + 2) > mouseY > self.contextualPosY - (self.handleSize + 2)))
 
-        if self.mouseHovering or self.handleSelected:
-            self.displayColour = self.selectedHandleColour
-        else:
-            self.displayColour = self.handleColour
-
-        if not self.layer.pygame.mouse.get_pressed()[0]:
-            self.handleSelected = False
-
-        if self.handleSelected:
-            if self.action is not None:
-                self.action(self.value)
-
-            if self.contextualPosX < mouseX < (self.contextualPosX + self.length):
-                self.handleX = mouseX - self.contextualPosX
-            elif self.contextualPosX >= mouseX:
-                self.handleX = 0
+            self.displayBarColour = self.barColour
+            if self.mouseHovering or self.handleSelected:
+                self.displayColour = self.selectedHandleColour
             else:
-                self.handleX = self.length
+                self.displayColour = self.handleColour
 
-            self.value = (self.handleX / (self.length / (self.valueRange[1] - self.valueRange[0]))) + (self.valueRange[0])
+            if not self.layer.pygame.mouse.get_pressed()[0]:
+                self.handleSelected = False
 
-        if not self.handleSelected:
-            self.handleSelected = self.mouseHovering and self.layer.pygame.mouse.get_pressed()[0] and not self.mouseDownLast
+            if self.handleSelected:
+                if self.action is not None:
+                    self.action(self.value)
 
-        if self.handleSelected and not self.handleSelectedLast:
-            self.initialValue = self.value
+                if self.contextualPosX < mouseX < (self.contextualPosX + self.length):
+                    self.handleX = mouseX - self.contextualPosX
+                elif self.contextualPosX >= mouseX:
+                    self.handleX = 0
+                else:
+                    self.handleX = self.length
 
-        if not self.handleSelected and self.handleSelectedLast:
-            if self.finishedUpdatingAction is not None:
-                self.finishedUpdatingAction(self.initialValue, self)
+                self.value = (self.handleX / (self.length / (self.valueRange[1] - self.valueRange[0]))) + (self.valueRange[0])
 
-        self.mouseDownLast = self.layer.pygame.mouse.get_pressed()[0]
-        self.handleSelectedLast = self.handleSelected
+            if not self.handleSelected:
+                self.handleSelected = self.mouseHovering and self.layer.pygame.mouse.get_pressed()[0] and not self.mouseDownLast
+
+            if self.handleSelected and not self.handleSelectedLast:
+                self.initialValue = self.value
+
+            if not self.handleSelected and self.handleSelectedLast:
+                if self.finishedUpdatingAction is not None:
+                    self.finishedUpdatingAction(self.initialValue, self)
+
+            self.mouseDownLast = self.layer.pygame.mouse.get_pressed()[0]
+            self.handleSelectedLast = self.handleSelected
+        else:
+            self.displayBarColour = (120, 120, 120)
+            self.displayColour = (46, 80, 94)
 
     def display(self):
         bar = self.layer.pygame.Rect(self.contextualPosX, self.contextualPosY, self.length, 7 * self.size)
-        self.layer.pygame.draw.rect(self.layer.screen, self.barColour, bar, 0, 100)
-        self.font.render_to(self.layer.screen, (self.contextualPosX + self.length + 17, self.contextualPosY - 3), str(int(self.value)), self.barColour)
+        self.layer.pygame.draw.rect(self.layer.screen, self.displayBarColour, bar, 0, 100)
+        self.font.render_to(self.layer.screen, (self.contextualPosX + self.length + 17, self.contextualPosY - 3), str(int(self.value)), self.displayBarColour)
 
         self.layer.pygame.gfxdraw.aacircle(self.layer.screen, int(self.contextualPosX + self.handleX), int(self.contextualPosY + (7 * self.size) / 2), self.handleSize, self.displayColour)
         self.layer.pygame.gfxdraw.filled_circle(self.layer.screen, int(self.contextualPosX + self.handleX), int(self.contextualPosY + (7 * self.size) / 2), self.handleSize, self.displayColour)
@@ -439,7 +448,8 @@ class Accordion(UIElement):
         self.elements = elements + [self.titleLabel]
         self.collapse = collapse
 
-        self.collapseButton = Button(layer, (0, 0), stick, (30, 30), "", 15, (100, 100, 100), roundedCorners = 30, action = self.toggleCollapse)
+        self.collapseButton = Button(layer, (0, 0), stick, (30, 30), "", 15, (100, 100, 100), roundedCorners = 30,
+                                     action = self.toggleCollapse)
         self.collapseImage = Image(layer, (0, 0), stick, self.layer.directories["minus"], 1, colour = (200, 200, 200))
         self.expandImage = Image(layer, (0, 0), stick, self.layer.directories["plus"], 1, colour = (200, 200, 200))
 
@@ -520,7 +530,8 @@ class Message(UIElement):
         self.titleBoundingBox = self.layer.pygame.Rect((self.posX, self.posY), (self.titleSize[0], self.titleSize[1]))
         self.titleBoundingBox.center = self.boundingBox.center
 
-        self.closeButton = Button(layer, (self.posX + self.width - 40, self.posY + 10), "", (30, 30), "", 10, self.greyColour, action = self.closeButton)
+        self.closeButton = Button(layer, (self.posX + self.width - 40, self.posY + 10), "", (30, 30), "", 10,
+                                  self.greyColour, action = self.closeButton)
         self.closeImage = Image(layer, (self.posX + self.width - 38, self.posY + 12), "", self.layer.directories["cross"], 1, colour = (200, 200, 200))
 
         if button2Text is None:
@@ -528,7 +539,9 @@ class Message(UIElement):
             if self.button1Colour == "red":
                 centreButtonColour = self.redColour
 
-            self.centreButton = Button(layer, (self.posX + 10, (self.posY + self.height) - 40), "", (self.width - 20, 30), button1Text, 15, centreButtonColour, action = lambda: button1Action(self))
+            self.centreButton = Button(layer, (self.posX + 10, (self.posY + self.height) - 40), "",
+                                       (self.width - 20, 30), button1Text, 15, centreButtonColour,
+                                       action = lambda: button1Action(self))
 
         else:
             leftButtonColour = self.greyColour
@@ -539,8 +552,12 @@ class Message(UIElement):
             if self.button2Colour == "red":
                 rightButtonColour = self.redColour
 
-            self.leftButton = Button(layer, (self.posX + 10, (self.posY + self.height) - 40), "", ((self.width / 2) - 20, 30), button1Text, 15, leftButtonColour, action = lambda: button1Action(self))
-            self.rightButton = Button(layer, (self.posX + 10 + (self.width / 2), (self.posY + self.height) - 40), "",((self.width / 2) - 20, 30), button2Text, 15, rightButtonColour, action = lambda: button2Action(self))
+            self.leftButton = Button(layer, (self.posX + 10, (self.posY + self.height) - 40), "",
+                                     ((self.width / 2) - 20, 30), button1Text, 15, leftButtonColour,
+                                     action = lambda: button1Action(self))
+            self.rightButton = Button(layer, (self.posX + 10 + (self.width / 2), (self.posY + self.height) - 40), "",
+                                      ((self.width / 2) - 20, 30), button2Text, 15, rightButtonColour,
+                                      action = lambda: button2Action(self))
 
     def display(self):
         transparentSurface = self.layer.pygame.Surface((self.layer.screenWidth, self.layer.screenHeight), self.layer.pygame.SRCALPHA)
