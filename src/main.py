@@ -226,7 +226,7 @@ recentreImage = Image(UILayer, (recentreButton.posX - 27, recentreButton.posY - 
 undoButton = Button(UILayer, (330, 95), "SE", (30, 30), "", 12, (100, 100, 100), action = mainTrack.undo)
 undoIcon = Image(UILayer, (undoButton.posX - 2, undoButton.posY - 2), "SE", directories["undo"], 0.8, colour = programColours["white"])
 
-redoButton = Button(UILayer, (295, 95), "SE", (30, 30), "", 12, (100, 100, 100), action = mainTrack.undo)
+redoButton = Button(UILayer, (295, 95), "SE", (30, 30), "", 12, (100, 100, 100), action = mainTrack.redo)
 redoIcon = Image(UILayer, (redoButton.posX - 2, redoButton.posY - 2), "SE", directories["redo"], 0.8, colour = programColours["white"])
 
 configAccordion = Accordion(UILayer, (50, 50), "SE", (305, 455), "Untitled Track", [snapPointsSwitch, snapPointsLabel, switchEndsSwitch, switchEndsLabel, editModeSwitch, editModeLabel, trackWidthSlider, trackWidthLabel, trackResSlider, TrackResLabel, viewModeDropdown, viewModeLabel, setFinishButton, startFinishImage, setScaleButton, scaleImage, recentreButton, recentreImage, undoButton, undoIcon, redoButton, redoIcon], layerIndex = 0)
@@ -721,17 +721,17 @@ while running:
     fpsLabel.text = ("fps: " + str(int(clock.get_fps())))
 
     if len(mainTrack.history.undoStack) == 0:
-        undoButton.enabled = False
+        undoButton.disabled = True
         undoIcon.colour = (90, 90, 90)
     else:
-        undoButton.enabled = True
+        undoButton.disabled = False
         undoIcon.colour = programColours["white"]
 
     if len(mainTrack.history.redoStack) == 0:
-        redoButton.enabled = False
+        redoButton.disabled = True
         redoIcon.colour = (90, 90, 90)
     else:
-        redoButton.enabled = True
+        redoButton.disabled = False
         redoIcon.colour = programColours["white"]
 
     if mainTrack.scale is not None:
