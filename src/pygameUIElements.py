@@ -392,6 +392,30 @@ class TextInput(UIElement):
                 self.showTypingBar = not self.showTypingBar
                 self.timeAtFlash = time.time()
 
+        for letter in self.layer.events:
+            if letter.type == 768: #int version of 'pygame.KEYDOWN'
+                letterUni = letter.unicode
+                if letterUni in self.characterWhitelist:
+
+                    self.timeAtFlash = time.time()
+                    self.showTypingBar = True
+
+                    self.text = self.text[:self.cursorIndex] + letterUni + self.text[self.cursorIndex:]
+                    self.cursorIndex += 1
+
+                if letter.key == self.layer.pygame.K_BACKSPACE:
+                    self.text = self.text[:self.cursorIndex - 1] + self.text[self.cursorIndex:]
+
+                if letter.key == self.layer.pygame.K_RIGHT:
+                    self.cursorIndex += 1
+
+                if letter.key == self.layer.pygame.K_LEFT:
+                    self.cursorIndex -= 1
+
+                if letter.key == self.layer.pygame.K_RETURN:
+                    if self.enterAction is not None:
+                        self.enterAction(self.text)
+
     def display(self):
         transparentSurface = self.layer.pygame.Surface((self.width, self.height), self.layer.pygame.SRCALPHA)
         self.layer.pygame.draw.rect(transparentSurface, (100, 100, 100, 100), (0, 0, self.width, self.height), border_radius = 15)
@@ -412,27 +436,6 @@ class TextInput(UIElement):
             textWidth = self.font.get_rect(self.text[:self.cursorIndex]).width
             self.layer.pygame.draw.line(self.layer.screen, (200, 200, 200), (self.contextualPosX + 10 + textWidth, self.contextualPosY + 15), (self.contextualPosX + 10 + textWidth, self.contextualPosY - 15 + self.height), 2)
 
-    def typeLetter(self, letter):
-        self.timeAtFlash = time.time()
-        self.showTypingBar = True
-
-        letterUni = letter.unicode
-        if letterUni in self.characterWhitelist:
-            self.text = self.text[:self.cursorIndex] + letterUni + self.text[self.cursorIndex:]
-            self.cursorIndex += 1
-
-        if letter.key == self.layer.pygame.K_BACKSPACE:
-            self.text = self.text[:self.cursorIndex - 1] + self.text[self.cursorIndex:]
-
-        if letter.key == self.layer.pygame.K_RIGHT:
-            self.cursorIndex += 1
-
-        if letter.key == self.layer.pygame.K_LEFT:
-            self.cursorIndex -= 1
-
-        if letter.key == self.layer.pygame.K_RETURN:
-            if self.enterAction is not None:
-                self.enterAction(self.text)
 
 class Accordion(UIElement):
     def __init__(self, layer, pos, stick, dimensions, title, elements, collapse = False, show = True, layerIndex = -1):
@@ -707,6 +710,8 @@ class Layer:
         self.screenWidth = 0
         self.screenHeight = 0
 
+        self.events = []
+
     def add(self, element):
         insertIndex = element.layerIndex
         if insertIndex < 0:
@@ -714,11 +719,12 @@ class Layer:
 
         self.elements.insert(insertIndex, element)
 
-    def display(self, screenWidth, screenHeight, offset = (0, 0), zoom = 1):
+    def display(self, screenWidth, screenHeight, events, offset = (0, 0), zoom = 1):
         self.screenWidth = screenWidth
         self.screenHeight = screenHeight
         self.offset = offset
         self.zoom = zoom
+        self.events = events
 
         for element in self.elements:
             if element.show:

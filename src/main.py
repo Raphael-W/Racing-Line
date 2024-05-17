@@ -54,7 +54,7 @@ class Scene:
     def update(self):
         screen.fill((20, 20, 20))
 
-    def handleEvent(self, event):
+    def handleEvents(self, events):
         pass
 
 class SceneManager:
@@ -76,14 +76,15 @@ class SceneManager:
         if len(self.scenes) > 0:
             self.scenes[self.currentScene].update()
 
-    def distributeEvent(self, event):
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_TAB:
-                self.currentScene = (self.currentScene + 1) % len(self.scenes)
-                self.changeSceneDropdown.index = self.currentScene
+    def distributeEvents(self, events):
+        for event in events:
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_TAB:
+                    self.currentScene = (self.currentScene + 1) % len(self.scenes)
+                    self.changeSceneDropdown.index = self.currentScene
 
-        elif len(self.scenes) > 0:
-            self.scenes[self.currentScene].handleEvent(event)
+        if len(self.scenes) > 0:
+            self.scenes[self.currentScene].handleEvents(events)
 
     def getSceneNames(self):
         return [scene.name for scene in self.scenes]
@@ -123,6 +124,8 @@ class TrackEditor (Scene):
         self.closeCount = 0
         self.newCaption = None
         self.lastCaption = None
+
+        self.events = []
 
         self.colours = {"background": (20, 20, 20),
                         "curve": (128, 128, 128),
@@ -492,118 +495,120 @@ class TrackEditor (Scene):
             unsavedTrackError = Message(self.UILayer, "Sure?", "You currently have an unsaved file open", "Save", saveTrackFirst, "grey", "Discard", discardTrack, "red", xAction = lambda: closeError(unsavedTrackError))
         self.closeCount += 1
 
-    def handleEvent(self, event):
+    def handleEvents(self, events):
         global running
 
-        if event.type == pygame.QUIT:
-            if not self.mainTrack.saved:
-                self.closeTrack()
+        self.events = events
+        for event in events:
+            if event.type == pygame.QUIT:
+                if not self.mainTrack.saved:
+                    self.closeTrack()
 
-            if self.mainTrack.saved or self.closeCount > 1:
-                running = False
+                if self.mainTrack.saved or self.closeCount > 1:
+                    running = False
 
-        #Adding control point
-        if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (self.mainTrack.mouseHovering is None) and (not self.UILayer.mouseOnLayer((self.mousePosX, self.mousePosY))) and (not programUI.mouseOnLayer((self.mousePosX, self.mousePosY))) and not (self.userSettingScale or self.userSettingFinish):
-            index = -1
-            if self.switchEndsSwitch.value:
-                index = 0
+            #Adding control point
+            if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (self.mainTrack.mouseHovering is None) and (not self.UILayer.mouseOnLayer((self.mousePosX, self.mousePosY))) and (not programUI.mouseOnLayer((self.mousePosX, self.mousePosY))) and not (self.userSettingScale or self.userSettingFinish):
+                index = -1
+                if self.switchEndsSwitch.value:
+                    index = 0
 
-            onLine = False
-            if len(self.mainTrack.points) >= 2:
-                onLine, nearPointSegment, nearestPoint, nearPointIndex = self.mainTrack.pointOnCurve((self.mousePosX - self.offsetPosition[0]) / self.zoom, (self.mousePosY - self.offsetPosition[1]) / self.zoom, 20)
-                if onLine:
-                    index = nearPointSegment
-
-            validPlacement = (not self.mainTrack.closed or onLine) and self.mainTrack.edit
-            if validPlacement:
-                self.mainTrack.add(ControlPoint((self.mousePosX - self.offsetPosition[0]) / self.zoom, (self.mousePosY - self.offsetPosition[1]) / self.zoom), index = index, userPerformed = True)
-
-        #Removing control point
-        if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[2] and (self.mainTrack.mouseHovering is not None) and (not self.UILayer.mouseOnLayer((self.mousePosX, self.mousePosY))) and (not programUI.mouseOnLayer((self.mousePosX, self.mousePosY))) and not (self.userSettingScale or self.userSettingFinish):
-            index = self.mainTrack.mouseHovering
-            if not(self.mainTrack.closed and ((index == 0) or (index == len(self.mainTrack.points) - 1))) and self.mainTrack.edit:
-                self.mainTrack.remove(index = index, userPerformed = True)
-
-        #Set offset pivot
-        if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[1]:
-            self.pivotPos = (self.mousePosX - self.offsetPosition[0], self.mousePosY - self.offsetPosition[1])
-
-        #Set offset pivot
-        if event.type == pygame.MOUSEWHEEL:
-            if event.y > 0:
-                if self.zoom < self.upperZoomLimit:
-                    beforeZoom = self.zoom
-                    self.zoom *= 1 + self.zoomIncrement
-
-                    if self.zoom > self.upperZoomLimit:
-                        self.zoom = self.upperZoomLimit
-
-                    zoomDifference = (self.zoom/beforeZoom) - 1
-                    self.offsetPosition = (int(self.offsetPosition[0] - (self.mousePosX - self.offsetPosition[0]) * zoomDifference), int(self.offsetPosition[1] - (self.mousePosY - self.offsetPosition[1]) * zoomDifference))
-
-            elif event.y < 0:
-                if self.zoom > self.lowerZoomLimit:
-                    beforeZoom = self.zoom
-                    self.zoom *= 1 - self.zoomIncrement
-
-                    if self.zoom < self.lowerZoomLimit:
-                        self.zoom = self.lowerZoomLimit
-
-                    zoomDifference = (beforeZoom/self.zoom) - 1
-                    self.offsetPosition = (int(self.offsetPosition[0] + (self.mousePosX - self.offsetPosition[0]) * zoomDifference), int(self.offsetPosition[1] + (self.mousePosY - self.offsetPosition[1]) * zoomDifference))
-
-        #Handling key presses
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_z and pygame.key.get_mods() & pygame.KMOD_LCTRL and not(pygame.key.get_mods() & pygame.KMOD_LSHIFT) and self.mainTrack.edit:
-                self.mainTrack.undo()
-
-            if event.key == pygame.K_z and pygame.key.get_mods() & pygame.KMOD_LCTRL and pygame.key.get_mods() & pygame.KMOD_LSHIFT and self.mainTrack.edit:
-                self.mainTrack.redo()
-
-            if event.key == pygame.K_s and pygame.key.get_mods() & pygame.KMOD_LCTRL:
-                self.saveTrack()
-
-            if event.key == pygame.K_o and pygame.key.get_mods() & pygame.KMOD_LCTRL:
-                self.openTrack()
-
-            if event.key == pygame.K_n and pygame.key.get_mods() & pygame.KMOD_LCTRL:
-                self.newTrack()
-
-        #Logic for setting scale
-        if self.userSettingScale:
-            if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (not self.UILayer.mouseOnLayer((self.mousePosX, self.mousePosY))) and (not programUI.mouseOnLayer((self.mousePosX, self.mousePosY))):
-                if self.setScalePoint1 is None:
-                    self.setScalePoint1 = ((self.mousePosX - self.offsetPosition[0]) / self.zoom, (self.mousePosY - self.offsetPosition[1]) / self.zoom)
-                elif self.setScalePoint2 is None:
-                    self.setScalePoint2 = ((self.mousePosX - self.offsetPosition[0]) / self.zoom, (self.mousePosY - self.offsetPosition[1]) / self.zoom)
-                    self.realDistanceTextInput.show = True
-
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    if self.realDistanceTextInput is not None:
-                        self.realDistanceTextInput.close()
-                    self.userSettingScale = False
-
-                if self.realDistanceTextInput is not None:
-                    self.realDistanceTextInput.typeLetter(event)
-
-        #Logic for setting finish
-        if self.userSettingFinish:
-            if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (not self.UILayer.mouseOnLayer((self.mousePosX, self.mousePosY))) and (not programUI.mouseOnLayer((self.mousePosX, self.mousePosY))):
-                if self.finishIndex is None:
-                    self.finishIndex = ((self.mousePosX - self.offsetPosition[0]) / self.zoom, (self.mousePosY - self.offsetPosition[1]) / self.zoom)
-                    onLine, nearPointSegment, nearestPointCoords, nearestPoint = self.mainTrack.pointOnCurve(self.finishIndex[0], self.finishIndex[1], (self.mainTrack.width / 2))
+                onLine = False
+                if len(self.mainTrack.points) >= 2:
+                    onLine, nearPointSegment, nearestPoint, nearPointIndex = self.mainTrack.pointOnCurve((self.mousePosX - self.offsetPosition[0]) / self.zoom, (self.mousePosY - self.offsetPosition[1]) / self.zoom, 20)
                     if onLine:
-                        self.finishIndex = nearestPoint / self.mainTrack.perSegRes
-                    else:
-                        self.finishIndex = None
+                        index = nearPointSegment
 
-                elif self.finishIndex is not None:
-                    self.completeFinish()
+                validPlacement = (not self.mainTrack.closed or onLine) and self.mainTrack.edit
+                if validPlacement:
+                    self.mainTrack.add(ControlPoint((self.mousePosX - self.offsetPosition[0]) / self.zoom, (self.mousePosY - self.offsetPosition[1]) / self.zoom), index = index, userPerformed = True)
 
+            #Removing control point
+            if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[2] and (self.mainTrack.mouseHovering is not None) and (not self.UILayer.mouseOnLayer((self.mousePosX, self.mousePosY))) and (not programUI.mouseOnLayer((self.mousePosX, self.mousePosY))) and not (self.userSettingScale or self.userSettingFinish):
+                index = self.mainTrack.mouseHovering
+                if not(self.mainTrack.closed and ((index == 0) or (index == len(self.mainTrack.points) - 1))) and self.mainTrack.edit:
+                    self.mainTrack.remove(index = index, userPerformed = True)
+
+            #Set offset pivot
+            if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[1]:
+                self.pivotPos = (self.mousePosX - self.offsetPosition[0], self.mousePosY - self.offsetPosition[1])
+
+            #Set offset pivot
+            if event.type == pygame.MOUSEWHEEL:
+                if event.y > 0:
+                    if self.zoom < self.upperZoomLimit:
+                        beforeZoom = self.zoom
+                        self.zoom *= 1 + self.zoomIncrement
+
+                        if self.zoom > self.upperZoomLimit:
+                            self.zoom = self.upperZoomLimit
+
+                        zoomDifference = (self.zoom/beforeZoom) - 1
+                        self.offsetPosition = (int(self.offsetPosition[0] - (self.mousePosX - self.offsetPosition[0]) * zoomDifference), int(self.offsetPosition[1] - (self.mousePosY - self.offsetPosition[1]) * zoomDifference))
+
+                elif event.y < 0:
+                    if self.zoom > self.lowerZoomLimit:
+                        beforeZoom = self.zoom
+                        self.zoom *= 1 - self.zoomIncrement
+
+                        if self.zoom < self.lowerZoomLimit:
+                            self.zoom = self.lowerZoomLimit
+
+                        zoomDifference = (beforeZoom/self.zoom) - 1
+                        self.offsetPosition = (int(self.offsetPosition[0] + (self.mousePosX - self.offsetPosition[0]) * zoomDifference), int(self.offsetPosition[1] + (self.mousePosY - self.offsetPosition[1]) * zoomDifference))
+
+            #Handling key presses
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    self.userSettingFinish = False
+                if event.key == pygame.K_z and pygame.key.get_mods() & pygame.KMOD_LCTRL and not(pygame.key.get_mods() & pygame.KMOD_LSHIFT) and self.mainTrack.edit:
+                    self.mainTrack.undo()
+
+                if event.key == pygame.K_z and pygame.key.get_mods() & pygame.KMOD_LCTRL and pygame.key.get_mods() & pygame.KMOD_LSHIFT and self.mainTrack.edit:
+                    self.mainTrack.redo()
+
+                if event.key == pygame.K_s and pygame.key.get_mods() & pygame.KMOD_LCTRL:
+                    self.saveTrack()
+
+                if event.key == pygame.K_o and pygame.key.get_mods() & pygame.KMOD_LCTRL:
+                    self.openTrack()
+
+                if event.key == pygame.K_n and pygame.key.get_mods() & pygame.KMOD_LCTRL:
+                    self.newTrack()
+
+            #Logic for setting scale
+            if self.userSettingScale:
+                if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (not self.UILayer.mouseOnLayer((self.mousePosX, self.mousePosY))) and (not programUI.mouseOnLayer((self.mousePosX, self.mousePosY))):
+                    if self.setScalePoint1 is None:
+                        self.setScalePoint1 = ((self.mousePosX - self.offsetPosition[0]) / self.zoom, (self.mousePosY - self.offsetPosition[1]) / self.zoom)
+                    elif self.setScalePoint2 is None:
+                        self.setScalePoint2 = ((self.mousePosX - self.offsetPosition[0]) / self.zoom, (self.mousePosY - self.offsetPosition[1]) / self.zoom)
+                        self.realDistanceTextInput.show = True
+
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        if self.realDistanceTextInput is not None:
+                            self.realDistanceTextInput.close()
+                        self.userSettingScale = False
+
+                    # if self.realDistanceTextInput is not None:
+                    #     self.realDistanceTextInput.typeLetter(event)
+
+            #Logic for setting finish
+            if self.userSettingFinish:
+                if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (not self.UILayer.mouseOnLayer((self.mousePosX, self.mousePosY))) and (not programUI.mouseOnLayer((self.mousePosX, self.mousePosY))):
+                    if self.finishIndex is None:
+                        self.finishIndex = ((self.mousePosX - self.offsetPosition[0]) / self.zoom, (self.mousePosY - self.offsetPosition[1]) / self.zoom)
+                        onLine, nearPointSegment, nearestPointCoords, nearestPoint = self.mainTrack.pointOnCurve(self.finishIndex[0], self.finishIndex[1], (self.mainTrack.width / 2))
+                        if onLine:
+                            self.finishIndex = nearestPoint / self.mainTrack.perSegRes
+                        else:
+                            self.finishIndex = None
+
+                    elif self.finishIndex is not None:
+                        self.completeFinish()
+
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        self.userSettingFinish = False
 
     def update(self):
         self.screenWidth, self.screenHeight = screen.get_size()
@@ -777,8 +782,8 @@ class TrackEditor (Scene):
         else:
             self.trackScaleLabel.text = ""
 
-        self.trackLayer.display(self.screenWidth, self.screenHeight, self.offsetPosition, self.zoom)
-        self.UILayer.display(self.screenWidth, self.screenHeight)
+        self.trackLayer.display(self.screenWidth, self.screenHeight, self.events, self.offsetPosition, self.zoom)
+        self.UILayer.display(self.screenWidth, self.screenHeight, self.events)
 
 firstTrack = TrackEditor()
 secondTrack = TrackEditor()
@@ -791,11 +796,10 @@ ProgramSceneManager.addScene(secondTrack, "Second Track")
 while running:
     screenWidth, screenHeight = screen.get_size()
 
-    for pygameEvent in pygame.event.get():
-        ProgramSceneManager.distributeEvent(pygameEvent)
+    ProgramSceneManager.distributeEvents(pygame.event.get())
 
     ProgramSceneManager.updateCurrentScene()
-    programUI.display(screenWidth, screenHeight)
+    programUI.display(screenWidth, screenHeight, [])
 
     pygame.display.flip()
     clock.tick(120) #Refresh Rate
