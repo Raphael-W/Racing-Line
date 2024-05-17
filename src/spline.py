@@ -102,7 +102,10 @@ class ControlPoint:
         pygame.gfxdraw.filled_circle(screen, newPos[0], newPos[1], self.size, colour)
 
 class Track:
-    def __init__(self, resolution, points = []):
+    def __init__(self, resolution, points = None):
+        if points is None:
+            points = []
+
         self.points = points
         self.splinePoints = []
         self.history = History()
@@ -131,7 +134,7 @@ class Track:
 
         self.width = 100
 
-        for point in points:
+        for point in self.points:
             self.points.append(ControlPoint(point[0], point[1]))
 
         self.saved = True

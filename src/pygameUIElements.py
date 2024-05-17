@@ -606,10 +606,10 @@ class Message(UIElement):
             self.xAction()
 
 class Dropdown(UIElement):
-    def __init__(self, layer, pos, stick, dimensions, values, index, action = None, show = True, layerIndex = -1):
+    def __init__(self, layer, pos, stick, dimensions, values, itemIndex, action = None, show = True, layerIndex = -1):
         super().__init__(layer, pos, stick, show, layerIndex)
         self.values = values
-        self.index = index
+        self.index = itemIndex
 
         self.action = action
 
@@ -619,7 +619,7 @@ class Dropdown(UIElement):
         self.width, self.height = dimensions
         self.boundingBox = self.layer.pygame.Rect(pos, dimensions)
 
-        self.dropdownIcon = Image(layer, (self.posX - (self.width - 30), self.posY + (self.height / 2) - 13), stick, self.layer.directories["down"], 1, (30, 30, 30))
+        self.dropdownIcon = Image(layer, (0, 0), "", self.layer.directories["down"], 1, (30, 30, 30), show)
         self.displayMenu = False
 
         self.mouseHovering = False
@@ -630,6 +630,8 @@ class Dropdown(UIElement):
 
     def update(self):
         self.updateContextualPos()
+
+        self.dropdownIcon.posX, self.dropdownIcon.posY = (self.contextualPosX + (self.width - 30), self.contextualPosY + (self.height / 2) - 13)
 
         mousePos = self.layer.pygame.mouse.get_pos()
         self.mouseHovering = (((self.contextualPosX + self.width / 2) + ((self.width / 2) + 2) > mousePos[0] >= (self.contextualPosX + self.width / 2) - ((self.width / 2) + 2)) and
@@ -685,10 +687,11 @@ class Dropdown(UIElement):
         self.layer.pygame.draw.rect(self.layer.screen, self.colour, (self.contextualPosX, self.contextualPosY, self.width, self.height), border_radius = 10)
         self.font.render_to(self.layer.screen, (self.contextualPosX + 10, self.contextualPosY + (self.height / 2) - 6), str(self.values[self.index]), (200, 200, 200))
 
+    def getCurrent(self):
+        return self.values[self.index]
+
 class Layer:
-    def __init__(self, name, number, screen, pygame, fontName, directories):
-        self.name = name
-        self.number = number
+    def __init__(self, screen, pygame, fontName, directories):
         self.elements = []
         self.overrideUpdateElements = None
 
@@ -705,7 +708,11 @@ class Layer:
         self.screenHeight = 0
 
     def add(self, element):
-        self.elements.insert(element.layerIndex, element)
+        insertIndex = element.layerIndex
+        if insertIndex < 0:
+            insertIndex = len(self.elements)
+
+        self.elements.insert(insertIndex, element)
 
     def display(self, screenWidth, screenHeight, offset = (0, 0), zoom = 1):
         self.screenWidth = screenWidth
