@@ -23,12 +23,6 @@
         "closed": {
           "type": "boolean"
         },
-        "switchEnds": {
-          "type": "boolean"
-        },
-        "snap": {
-          "type": "boolean"
-        },
         "scale": {
           "type": [
             "number",
@@ -52,8 +46,6 @@
         "width",
         "trackRes",
         "closed",
-        "switchEnds",
-        "snap",
         "scale",
         "finishIndex",
         "finishDir"

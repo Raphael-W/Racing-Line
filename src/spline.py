@@ -108,7 +108,6 @@ class Track:
 
         self.points = points
         self.splinePoints = []
-        self.history = History()
 
         self.mainPolyLeftEdge = []
         self.mainPolyRightEdge = []
@@ -138,11 +137,12 @@ class Track:
             self.points.append(ControlPoint(point[0], point[1]))
 
         self.saved = True
+        self.history = History(self)
 
     def clear(self):
         self.points = []
         self.splinePoints = []
-        self.history = History()
+        self.history = History(self)
 
         self.mainPolyLeftEdge = []
         self.mainPolyRightEdge = []
@@ -168,6 +168,24 @@ class Track:
         self.clear()
         for point in pointCoords:
             self.add(ControlPoint(point[0], point[1]), update = False)
+
+    def getSaveState(self):
+        points = self.returnPointCoords()
+        properties = {"width"      : self.width,
+                      "trackRes"   : self.perSegRes,
+                      "closed"     : self.closed,
+                      "scale"      : self.scale,
+                      "finishIndex": self.finishIndex,
+                      "finishDir"  : self.finishDir}
+
+        return {"points"    : points,
+                "properties": properties}
+
+    def save(self):
+        self.history.saveTrack()
+
+    def isSaved(self):
+        return self.history.saved
 
     def changeWidth(self, value):
         self.width = value
@@ -329,6 +347,7 @@ class Track:
                 elif action.command == "SET FINISH":
                     self.finishIndex = action.params[0][0]
                     self.finishDir = action.params[0][1]
+        self.history.checkIfSaved()
 
     def redo(self):
         actions = self.history.redo()
@@ -356,6 +375,7 @@ class Track:
                 elif action.command == "SET FINISH":
                     self.finishIndex = action.params[1][0]
                     self.finishDir = action.params[1][1]
+        self.history.checkIfSaved()
 
     def returnPointCoords(self):
         pointCoords = []

@@ -249,8 +249,6 @@
         "width": 20.0,
         "trackRes": 20,
         "closed": true,
-        "switchEnds": false,
-        "snap": false,
         "scale": 0.633530530257855,
         "finishIndex": 46.0,
         "finishDir": false

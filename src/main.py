@@ -270,7 +270,6 @@ class TrackEditor (Scene):
                 self.mainTrack.scale = actualDistance / screenDistance
                 self.realDistanceTextInput.show = False
                 self.userSettingScale = False
-                self.mainTrack.saved = False
                 self.mainTrack.calculateLength()
                 self.scalingErrorLabel.text = ""
                 self.mainTrack.history.addAction("SET SCALE", [scaleBefore, self.mainTrack.scale])
@@ -287,7 +286,6 @@ class TrackEditor (Scene):
         self.mainTrack.finishDir = self.finishDir
 
         self.userSettingFinish = False
-        self.mainTrack.saved = False
 
     def setViewMode(self, mode):
         self.viewMode = mode
@@ -313,18 +311,7 @@ class TrackEditor (Scene):
         def closeError(sender):
             sender.close()
 
-        points = self.mainTrack.returnPointCoords()
-        properties = {"width": self.mainTrack.width,
-                      "trackRes": self.mainTrack.perSegRes,
-                      "closed": self.mainTrack.closed,
-                      "switchEnds": self.switchEndsSwitch.value,
-                      "snap": self.snapPointsSwitch.value,
-                      "scale": self.mainTrack.scale,
-                      "finishIndex": self.mainTrack.finishIndex,
-                      "finishDir": self.mainTrack.finishDir}
-
-        trackData = {"points": points,
-                     "properties": properties}
+        trackData = self.mainTrack.getSaveState()
 
         def getFileName():
             root = tk.Tk()
@@ -350,17 +337,15 @@ class TrackEditor (Scene):
                     json.dump(trackData, outputFile, indent=4)
                     pygame.display.set_caption(os.path.splitext(os.path.basename(tempDirectory))[0] + " - " + tempDirectory)
                     self.saveDirectory = tempDirectory
-                    self.mainTrack.saved = True
+                    self.mainTrack.save()
 
             except Exception as error:
                 Message(self.UILayer, "Can't Save", str(error), "OK", closeError, "grey")
                 self.saveDirectory = None
-                self.mainTrack.saved = False
 
         elif not validFile and tempDirectory != '':
             Message(self.UILayer, "Can't Save", "Please select a valid directory", "OK", closeError, "grey")
             self.saveDirectory = None
-            self.mainTrack.saved = False
 
     def openTrack(self, tempDirectory = None):
         def validateTrackFile(directory):
@@ -395,8 +380,6 @@ class TrackEditor (Scene):
                     self.trackResSlider.updateValue(trackProperties["trackRes"], update = False)
                     self.mainTrack.perSegRes = trackProperties["trackRes"]
 
-                    self.switchEndsSwitch.value = trackProperties["switchEnds"]
-                    self.snapPointsSwitch.value = trackProperties["snap"]
                     self.mainTrack.scale = trackProperties["scale"]
                     self.mainTrack.finishIndex = trackProperties["finishIndex"]
                     self.mainTrack.finishDir = trackProperties["finishDir"]
@@ -406,8 +389,6 @@ class TrackEditor (Scene):
 
                     self.saveDirectory = directory
                     self.recentreFrame()
-
-                    self.mainTrack.saved = True
 
             elif validFile == "Invalid":
                 Message(self.UILayer, "Invalid File", "Please select a valid file", "OK", closeError, "grey")
@@ -441,7 +422,7 @@ class TrackEditor (Scene):
         if not validDir:
             Message(self.UILayer, "Invalid File", "Please select a valid file", "OK", closeError, "grey")
 
-        if tempDirectory != '' and self.mainTrack.saved == False and validDir:
+        if tempDirectory != '' and self.mainTrack.isSaved() == False and validDir:
             Message(self.UILayer, "Sure?", "You currently have an unsaved file open", "Save", saveTrackFirst, "grey","Discard", discardTrack, "red")
         else:
             loadTrack(tempDirectory)
@@ -459,10 +440,9 @@ class TrackEditor (Scene):
             self.mainTrack.clear()
             self.recentreFrame()
 
-            self.mainTrack.saved = True
             self.saveDirectory = None
 
-        if not self.mainTrack.saved:
+        if not self.mainTrack.isSaved():
             Message(self.UILayer, "Sure?", "You currently have an unsaved file open", "Save", saveTrackFirst, "grey", "Discard", discardTrack, "red")
 
         elif self.saveDirectory is not None:
@@ -470,7 +450,6 @@ class TrackEditor (Scene):
             self.mainTrack.clear()
             self.recentreFrame()
 
-            self.mainTrack.saved = True
             self.saveDirectory = None
 
         else:
@@ -501,10 +480,10 @@ class TrackEditor (Scene):
         self.events = events
         for event in events:
             if event.type == pygame.QUIT:
-                if not self.mainTrack.saved:
+                if not self.mainTrack.isSaved():
                     self.closeTrack()
 
-                if self.mainTrack.saved or self.closeCount > 1:
+                if self.mainTrack.isSaved() or self.closeCount > 1:
                     running = False
 
             #Adding control point
@@ -729,8 +708,7 @@ class TrackEditor (Scene):
             self.switchEndsSwitch.disabled = False
             self.snapPointsSwitch.disabled = False
 
-        saved = self.mainTrack.saved
-        if saved:
+        if self.mainTrack.isSaved():
             saveCharacter = ""
         else:
             saveCharacter = "*"

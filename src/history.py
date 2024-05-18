@@ -33,10 +33,14 @@ class Stack:
         return outputText
 
 class History:
-    def __init__(self):
+    def __init__(self, track):
         self.undoStack = Stack()
         self.redoStack = Stack()
         self.currentActionID = 0
+
+        self.track = track
+        self.saved = True
+        self.saveState = self.track.getSaveState()
 
     def addAction(self, command, params, group = False):
         if not group:
@@ -45,6 +49,17 @@ class History:
         action = Action(command, params, self.currentActionID)
         self.undoStack.push(action)
         self.redoStack.clear()
+        self.checkIfSaved()
+
+    def checkIfSaved(self):
+        if self.track.getSaveState() == self.saveState:
+            self.saved = True
+        else:
+            self.saved = False
+
+    def saveTrack(self):
+        self.saveState = self.track.getSaveState()
+        self.saved = True
 
     def undo(self):
         if len(self.undoStack) > 0:
