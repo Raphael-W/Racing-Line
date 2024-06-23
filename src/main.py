@@ -151,31 +151,33 @@ class TrackEditor (Scene):
 
         # ------------ CONFIG ACCORDION ------------
 
-        self.saveButton = Button(self.UILayer, (330, 442.5), "SE", (123.75, 30), "Save", 12, (100, 100, 100), action = self.saveTrack)
-        self.saveAsButton = Button(self.UILayer, (198.75, 442.5), "SE", (123.75, 30), "Save As", 12, (100, 100, 100), action = lambda: self.saveTrack(saveNewDirectory = True))
-        self.openTrackButton = Button(self.UILayer, (330, 405), "SE", (123.75, 30), "Open", 12, (100, 100, 100), action = self.openTrack)
-        self.newTrackButton = Button(self.UILayer, (198.75, 405), "SE", (123.75, 30), "New", 12, (100, 100, 100), action = self.newTrack)
+        self.saveButton = Button(self.UILayer, (330, 492.5), "SE", (123.75, 30), "Save", 12, (100, 100, 100), action = self.saveTrack)
+        self.saveAsButton = Button(self.UILayer, (198.75, 492.5), "SE", (123.75, 30), "Save As", 12, (100, 100, 100), action = lambda: self.saveTrack(saveNewDirectory = True))
+        self.openTrackButton = Button(self.UILayer, (330, 455), "SE", (123.75, 30), "Open", 12, (100, 100, 100), action = self.openTrack)
+        self.newTrackButton = Button(self.UILayer, (198.75, 455), "SE", (123.75, 30), "New", 12, (100, 100, 100), action = self.newTrack)
 
-        self.setFinishButton = Button(self.UILayer, (330, 355), "SE", (80, 60), "Set Finish", 10, (100, 100, 100), (0, -18), action = self.setFinish)
+        self.setFinishButton = Button(self.UILayer, (330, 410), "SE", (80, 60), "Set Finish", 10, (100, 100, 100), (0, -18), action = self.setFinish)
         self.setFinishImage = Image(self.UILayer, (self.setFinishButton.posX - 28, self.setFinishButton.posY - 10), "SE", directories["finishLine"], 1, colour = (30, 30, 30))
 
-        self.setScaleButton = Button(self.UILayer, (242.5, 355), "SE", (80, 60), "Set Scale", 10, (100, 100, 100), (0, -18), action = self.setScale)
+        self.setScaleButton = Button(self.UILayer, (242.5, 410), "SE", (80, 60), "Set Scale", 10, (100, 100, 100), (0, -18), action = self.setScale)
         self.scaleImage = Image(self.UILayer, (self.setScaleButton.posX - 28, self.setScaleButton.posY - 10), "SE", directories["scale"], 1, colour = (30, 30, 30))
 
-        self.recentreButton = Button(self.UILayer, (155, 355), "SE", (80, 60), "Recentre", 10, (100, 100, 100), (0, -18), action = self.recentreFrame)
+        self.recentreButton = Button(self.UILayer, (155, 410), "SE", (80, 60), "Recentre", 10, (100, 100, 100), (0, -18), action = self.recentreFrame)
         self.recentreImage = Image(self.UILayer, (self.recentreButton.posX - 27, self.recentreButton.posY - 10), "SE", directories["recentreButton"], 1, colour = (30, 30, 30))
 
-        self.trackWidthSlider = Slider(self.UILayer, 15, self.colours["white"], self.colours["controlPoint"],(224, 228), "SE", 1, 100, (10, 30), value = self.mainTrack.width, action = self.mainTrack.changeWidth, finishedUpdatingAction = self.mainTrack.changeWidthComplete)
-        self.trackWidthLabel = Label(self.UILayer, 15, (295, 233), "SE", "Width", self.colours["white"])
+        self.setReferenceImageButton = Button(self.UILayer, (330, 335), "SE", (255, 30), "Set Reference Image", 12, (100, 100, 100), textOffset = (0, -1), action = None)
 
-        self.trackResSlider = Slider(self.UILayer, 15, self.colours["white"], self.colours["controlPoint"], (225, 263), "SE", 1, 100, (10, 100), value = self.mainTrack.perSegRes, action = self.mainTrack.changeRes, finishedUpdatingAction = self.mainTrack.changeResComplete)
-        self.trackResLabel = Label(self.UILayer, 15, (330, 268), "SE", "Track Res", self.colours["white"])
+        self.trackResSlider = Slider(self.UILayer, 15, self.colours["white"], self.colours["controlPoint"], (225, 278), "SE", 1, 100, (10, 100), value = self.mainTrack.perSegRes, action = self.mainTrack.changeRes, finishedUpdatingAction = self.mainTrack.changeResComplete)
+        self.trackResLabel = Label(self.UILayer, 15, (330, 283), "SE", "Track Res", self.colours["white"])
 
-        self.switchEndsSwitch = Switch(self.UILayer, (165, 155), "SE", 0.8, value = False)
-        self.switchEndsLabel = Label(self.UILayer, 15, (280, 153), "SE", "Switch front", self.colours["white"])
+        self.trackWidthSlider = Slider(self.UILayer, 15, self.colours["white"], self.colours["controlPoint"],(224, 243), "SE", 1, 100, (10, 30), value = self.mainTrack.width, action = self.mainTrack.changeWidth, finishedUpdatingAction = self.mainTrack.changeWidthComplete)
+        self.trackWidthLabel = Label(self.UILayer, 15, (295, 248), "SE", "Width", self.colours["white"])
 
-        self.snapPointsSwitch = Switch(self.UILayer, (165, 125), "SE", 0.8, value = False)
-        self.snapPointsLabel = Label(self.UILayer, 15, (209, 123), "SE", "Snap", self.colours["white"])
+        self.antialiasingSwitch = Switch(self.UILayer, (165, 175), "SE", 0.8, value = False)
+        self.antialiasingLabel = Label(self.UILayer, 15, (281, 173), "SE", "Antialiasing", self.colours["white"])
+
+        self.switchEndsSwitch = Switch(self.UILayer, (165, 125), "SE", 0.8, value = False)
+        self.switchEndsLabel = Label(self.UILayer, 15, (280, 123), "SE", "Switch front", self.colours["white"])
 
         self.editModeSwitch = Switch(self.UILayer, (165, 95), "SE", 0.8, value = True, action = lambda: self.setEditStatus(self.editModeSwitch.value))
         self.editModeLabel = Label(self.UILayer, 15, (209, 93), "SE", "Edit", self.colours["white"])
@@ -186,19 +188,20 @@ class TrackEditor (Scene):
         self.redoButton = Button(self.UILayer, (295, 95), "SE", (30, 30), "", 12, (100, 100, 100), action = self.mainTrack.redo)
         self.redoIcon = Image(self.UILayer, (self.redoButton.posX - 2, self.redoButton.posY - 2), "SE", directories["redo"], 0.8, colour = self.colours["white"])
 
-        self.viewModeDropdown = Dropdown(self.UILayer, (225, 195), "SE", (150, 25),["Track", "Skeleton", "Curve", "Spline Dots"], 0, action = self.setViewMode)
-        self.viewModeLabel = Label(self.UILayer, 15, (330, 190), "SE", "View Mode", (200, 200, 200))
+        self.viewModeDropdown = Dropdown(self.UILayer, (225, 210), "SE", (150, 25),["Track", "Skeleton", "Curve", "Spline Dots"], 0, action = self.setViewMode)
+        self.viewModeLabel = Label(self.UILayer, 15, (330, 205), "SE", "View Mode", (200, 200, 200))
 
-        self.configAccordion = Accordion(self.UILayer, (50, 50), "SE", (305, 455), "Untitled Track",
+        self.configAccordion = Accordion(self.UILayer, (50, 50), "SE", (305, 505), "Untitled Track",
                                          [self.saveButton, self.saveAsButton, self.openTrackButton, self.newTrackButton,
                                           self.setFinishButton, self.setFinishImage, self.setScaleButton,
                                           self.scaleImage, self.recentreButton, self.recentreImage,
-                                          self.trackWidthSlider, self.trackWidthLabel, self.trackResSlider,
-                                          self.trackResLabel, self.viewModeDropdown, self.viewModeLabel,
-                                          self.switchEndsSwitch, self.switchEndsLabel, self.snapPointsSwitch,
-                                          self.snapPointsLabel, self.editModeSwitch, self.editModeLabel,
-                                          self.undoButton, self.undoIcon, self.redoButton, self.redoIcon],
-                                         layerIndex = 0)
+                                          self.setReferenceImageButton, self.trackResSlider,
+                                          self.trackResLabel, self.trackWidthSlider, self.trackWidthLabel,
+                                          self.viewModeDropdown, self.viewModeLabel, self.antialiasingSwitch,
+                                          self.antialiasingLabel, self.switchEndsSwitch, self.switchEndsLabel,
+                                          self.editModeSwitch, self.editModeLabel, self.undoButton, self.undoIcon,
+                                          self.redoButton, self.redoIcon],
+                                          layerIndex = 0)
 
         self.trackScaleLabel = Label(self.UILayer, 15, (180, 30), "S", "", self.colours["white"])
         self.scalingErrorLabel = Label(self.UILayer, 12, (20, 60), "S", "", (227, 65, 50))
@@ -613,8 +616,9 @@ class TrackEditor (Scene):
         screenRect = pygame.Rect((0, 0), (self.screenWidth + 15, self.screenHeight + 15))
 
         if not (self.userSettingScale or self.userSettingFinish):
-            self.mainTrack.update((self.mousePosX - self.offsetPosition[0]) / self.zoom, (self.mousePosY - self.offsetPosition[1]) / self.zoom, self.zoom, self.screenWidth, self.screenHeight, self.screenBorder, pygame, self.offsetPosition, self.snapPointsSwitch.value, screenRect)
-        self.mainTrack.draw(self.colours, screen, pygame, self.offsetPosition, self.zoom, self.switchEndsSwitch.value, screenRect, self.viewMode)
+            self.mainTrack.update((self.mousePosX - self.offsetPosition[0]) / self.zoom, (self.mousePosY - self.offsetPosition[1]) / self.zoom, self.zoom, self.screenWidth, self.screenHeight, self.screenBorder, pygame, self.offsetPosition, screenRect)
+        self.mainTrack.draw(self.colours, screen, pygame, self.switchEndsSwitch.value, self.viewMode,
+                            self.antialiasingSwitch.value)
 
         if self.userSettingScale:
             transparentSurface = pygame.Surface((self.screenWidth, self.screenHeight), pygame.SRCALPHA)
@@ -705,13 +709,11 @@ class TrackEditor (Scene):
             self.trackWidthSlider.disabled = True
             self.trackResSlider.disabled = True
             self.switchEndsSwitch.disabled = True
-            self.snapPointsSwitch.disabled = True
 
         else:
             self.trackWidthSlider.disabled = False
             self.trackResSlider.disabled = False
             self.switchEndsSwitch.disabled = False
-            self.snapPointsSwitch.disabled = False
 
         if self.mainTrack.isSaved():
             saveCharacter = ""
@@ -768,13 +770,8 @@ class TrackEditor (Scene):
         self.trackLayer.display(self.screenWidth, self.screenHeight, self.events, self.offsetPosition, self.zoom)
         self.UILayer.display(self.screenWidth, self.screenHeight, self.events)
 
-firstTrack = TrackEditor()
-secondTrack = TrackEditor()
-emptyScene = Scene()
-
 ProgramSceneManager = SceneManager()
-ProgramSceneManager.addScene(firstTrack, "First Track")
-ProgramSceneManager.addScene(secondTrack, "Second Track")
+ProgramSceneManager.addScene(TrackEditor(), "Track Editor")
 
 while running:
     screenWidth, screenHeight = screen.get_size()

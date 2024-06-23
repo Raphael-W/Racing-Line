@@ -59,7 +59,7 @@ class ControlPoint:
         self.posY = newPos[1]
 
     #Calculates whether mouse is hovering, and whether user has selected point
-    def update(self, mousePosX, mousePosY, zoom, screenWidth, screenHeight, screenBorder, pygame, offset, snap):
+    def update(self, mousePosX, mousePosY, zoom, screenWidth, screenHeight, screenBorder, pygame, offset):
         zoomedSize = self.size / zoom
         self.mouseHovering = ((self.posX + (zoomedSize + 2) > mousePosX > self.posX - (zoomedSize + 2)) and
                                (self.posY + (zoomedSize + 2) > mousePosY > self.posY - (zoomedSize + 2)))
@@ -75,15 +75,12 @@ class ControlPoint:
             if self.posAtClick is not None:
                 self.posAtRelease = self.getPos()
 
-        if snap: roundValue = -1
-        else: roundValue = 0
-
         if self.pointSelected:
             if (screenBorder - offset[0]) / zoom < mousePosX < (screenWidth - screenBorder - offset[0]) / zoom:
-                self.posX = round(mousePosX, roundValue)
+                self.posX = mousePosX
 
             if (screenBorder - offset[1]) / zoom < mousePosY < (screenHeight - screenBorder - offset[1]) / zoom:
-                self.posY = round(mousePosY, roundValue)
+                self.posY = mousePosY
 
         if not self.pointSelected:
             self.pointSelected = (self.mouseHovering and pygame.mouse.get_pressed()[0] and not self.mouseDownLast)
@@ -684,7 +681,7 @@ class Track:
 
         return [closedStatusBefore, self.closed]
 
-    def update(self, mousePosX, mousePosY, zoom, screenWidth, screenHeight, screenBorder, pygame, offset, snap, screenRect):
+    def update(self, mousePosX, mousePosY, zoom, screenWidth, screenHeight, screenBorder, pygame, offset, screenRect):
         self.pointsSelected = [[self.points[point], point] for point in range(len(self.points)) if self.points[point].pointSelected]
 
         for point in range(len(self.pointsSelected)):
@@ -705,7 +702,7 @@ class Track:
         for pointIndex in range(len(self.points)):
             point = self.points[pointIndex]
             if screenRect.collidepoint(offsetPoints(point.getPos(), offset, zoom, True)):
-                point.update(mousePosX, mousePosY, zoom, screenWidth, screenHeight, screenBorder, pygame, offset, snap)
+                point.update(mousePosX, mousePosY, zoom, screenWidth, screenHeight, screenBorder, pygame, offset)
                 if (point.posAtClick is not None) and (point.posAtRelease is not None) and (point.posAtClick != point.posAtRelease):
                     self.history.addAction("MOVE POINT", [pointIndex, point.posAtClick, point.posAtRelease], group = groupMove)
                     groupMove = True
@@ -755,36 +752,41 @@ class Track:
                 visiblePoints.append(point)
         return visiblePoints
 
-    def draw(self, programColours, screen, pygame, offset, zoom, switchFront, screenRect, viewMode):
+    def draw(self, programColours, screen, pygame, switchFront, viewMode, antialiasing):
         if len(self.points) >= 2:
             if viewMode == "Track" or viewMode == "Skeleton":
                 for point in range(len(self.points) - 1):
                     leftTrackEdgePolygon = formPolygon(self.__offset_leftBorderInnerEdge, self.__offset_leftBorderOuterEdge, slice((point * self.perSegRes), ((point + 1) * self.perSegRes) + 1), ((point == len(self.points) - 2) and self.closed))
                     rightTrackEdgePolygon = formPolygon(self.__offset_rightBorderInnerEdge, self.__offset_rightBorderOuterEdge, slice((point * self.perSegRes), ((point + 1) * self.perSegRes) + 1), ((point == len(self.points) - 2) and self.closed))
 
-                    #pygame.gfxdraw.aapolygon(screen, leftTrackEdgePolygon, programColours["white"])
+                    if antialiasing:
+                        pygame.gfxdraw.aapolygon(screen, leftTrackEdgePolygon, programColours["white"])
                     pygame.gfxdraw.filled_polygon(screen, leftTrackEdgePolygon, programColours["white"])
 
-                    #pygame.gfxdraw.aapolygon(screen, rightTrackEdgePolygon, programColours["white"])
+                    if antialiasing:
+                        pygame.gfxdraw.aapolygon(screen, rightTrackEdgePolygon, programColours["white"])
                     pygame.gfxdraw.filled_polygon(screen, rightTrackEdgePolygon, programColours["white"])
 
             if viewMode == "Track":
                 for point in range(len(self.points) - 1):
                     mainTrackPolygon = formPolygon(self.__offset_leftBorderInnerEdge, self.__offset_rightBorderInnerEdge, slice((point * self.perSegRes), ((point + 1) * self.perSegRes) + 1), ((point == len(self.points) - 2) and self.closed))
 
-                    #pygame.gfxdraw.aapolygon(screen, mainTrackPolygon, programColours["mainTrack"])
+                    if antialiasing:
+                        pygame.gfxdraw.aapolygon(screen, mainTrackPolygon, programColours["mainTrack"])
                     pygame.gfxdraw.filled_polygon(screen, mainTrackPolygon, programColours["mainTrack"])
 
             if (self.edit and (viewMode == "Track" or viewMode == "Skeleton")) or viewMode == "Curve":
                 for point in range(len(self.points) - 1):
                     mainCurvePolygon = formPolygon(self.__offset_mainPolyLeftEdge, self.__offset_mainPolyRightEdge, slice((point * self.perSegRes), ((point + 1) * self.perSegRes) + 1), ((point == len(self.points) - 2) and self.closed))
 
-                    #pygame.gfxdraw.aapolygon(screen, mainCurvePolygon, programColours["curve"])
+                    if antialiasing:
+                        pygame.gfxdraw.aapolygon(screen, mainCurvePolygon, programColours["curve"])
                     pygame.gfxdraw.filled_polygon(screen, mainCurvePolygon, programColours["curve"])
 
             if viewMode == "Spline Dots":
                 for dot in self.__offset_splinePoints:
-                    pygame.gfxdraw.aacircle(screen, int(dot[0]), int(dot[1]), 5, programColours["curve"])
+                    if antialiasing:
+                        pygame.gfxdraw.aacircle(screen, int(dot[0]), int(dot[1]), 5, programColours["curve"])
                     pygame.gfxdraw.filled_circle(screen, int(dot[0]), int(dot[1]), 5, programColours["curve"])
 
         if self.edit:
@@ -796,4 +798,4 @@ class Track:
                 else:
                     colour = programColours["controlPoint"]
 
-                point.draw(colour, screen, pygame, self.offsetValue, self.zoomValue)
+                point.draw(colour, screen, pygame, self.offsetValue, self.zoomValue, )
