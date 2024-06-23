@@ -23,12 +23,6 @@
         "closed": {
           "type": "boolean"
         },
-        "scale": {
-          "type": [
-            "number",
-            "null"
-          ]
-        },
         "finishIndex": {
           "type": [
             "number",
@@ -46,7 +40,6 @@
         "width",
         "trackRes",
         "closed",
-        "scale",
         "finishIndex",
         "finishDir"
       ]
