@@ -169,7 +169,7 @@ class Slider (UIElement):
         self.valueRange = valueRange
 
         self.mouseHovering = False
-        self.handleX = ((self.length / (self.valueRange[1] - self.valueRange[0])) * value)  - (self.valueRange[0] / 2)
+        self.handleX = (self.length / (self.valueRange[1] - self.valueRange[0])) * (value - self.valueRange[0])
         self.handleSelected = False
         self.handleSelectedLast = False
         self.mouseDownLast = False

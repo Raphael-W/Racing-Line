@@ -29,18 +29,18 @@ pygame.event.set_allowed([pygame.QUIT, pygame.KEYDOWN, pygame.MOUSEBUTTONDOWN])
 running = True
 
 executionDir = os.path.dirname(os.path.dirname(__file__))
-directories = {"mainFont": "assets/MonoFont.ttf",
-               "trackSchema": "schemas/trackSchema.json",
-               "recentreButton": "assets/aim.png",
-               "finishLine": "assets/flag.png",
-               "scale": "assets/scale.png",
-               "minus": "assets/minus.png",
-               "plus": "assets/plus.png",
-               "cross": "assets/cross.png",
-               "arrow": "assets/arrow.png",
-               "undo": "assets/undo.png",
-               "redo": "assets/redo.png",
-               "down": "assets/down.png"}
+directories = {"mainFont": "assets/fonts/MonoFont.ttf",
+               "trackSchema": "assets/schemas/trackSchema.json",
+               "recentreButton": "assets/icons/aim.png",
+               "finishLine": "assets/icons/flag.png",
+               "scale": "assets/icons/scale.png",
+               "minus": "assets/icons/minus.png",
+               "plus": "assets/icons/plus.png",
+               "cross": "assets/icons/cross.png",
+               "arrow": "assets/icons/arrow.png",
+               "undo": "assets/icons/undo.png",
+               "redo": "assets/icons/redo.png",
+               "down": "assets/icons/down.png"}
 
 directories = {item: os.path.normpath(os.path.join(executionDir, directory)) for (item, directory) in directories.items()}
 
@@ -165,10 +165,10 @@ class TrackEditor (Scene):
         self.recentreButton = Button(self.UILayer, (155, 355), "SE", (80, 60), "Recentre", 10, (100, 100, 100), (0, -18), action = self.recentreFrame)
         self.recentreImage = Image(self.UILayer, (self.recentreButton.posX - 27, self.recentreButton.posY - 10), "SE", directories["recentreButton"], 1, colour = (30, 30, 30))
 
-        self.trackWidthSlider = Slider(self.UILayer, 15, self.colours["white"], self.colours["controlPoint"], (224, 228), "SE", 1, 100, (20, 200), value = self.mainTrack.width, action = self.mainTrack.changeWidth, finishedUpdatingAction = self.mainTrack.changeWidthComplete)
+        self.trackWidthSlider = Slider(self.UILayer, 15, self.colours["white"], self.colours["controlPoint"],(224, 228), "SE", 1, 100, (10, 30), value = self.mainTrack.width, action = self.mainTrack.changeWidth, finishedUpdatingAction = self.mainTrack.changeWidthComplete)
         self.trackWidthLabel = Label(self.UILayer, 15, (295, 233), "SE", "Width", self.colours["white"])
 
-        self.trackResSlider = Slider(self.UILayer, 15, self.colours["white"], self.colours["controlPoint"], (225, 263), "SE",1, 100, (10, 100), value = self.mainTrack.perSegRes, action = self.mainTrack.changeRes, finishedUpdatingAction = self.mainTrack.changeResComplete)
+        self.trackResSlider = Slider(self.UILayer, 15, self.colours["white"], self.colours["controlPoint"], (225, 263), "SE", 1, 100, (10, 100), value = self.mainTrack.perSegRes, action = self.mainTrack.changeRes, finishedUpdatingAction = self.mainTrack.changeResComplete)
         self.trackResLabel = Label(self.UILayer, 15, (330, 268), "SE", "Track Res", self.colours["white"])
 
         self.switchEndsSwitch = Switch(self.UILayer, (165, 155), "SE", 0.8, value = False)
@@ -260,19 +260,20 @@ class TrackEditor (Scene):
             actualDistance = None
             self.scalingErrorLabel.text = "Please enter a valid number"
 
-        scaleBefore = self.mainTrack.scale
-
         if actualDistance is not None:
             if actualDistance == 0:
                 self.scalingErrorLabel.text = "Please enter a number greater than 0"
             else:
                 screenDistance = pointDistance(self.setScalePoint1, self.setScalePoint2)
-                self.mainTrack.scale = actualDistance / screenDistance
+                trackScale = actualDistance / screenDistance
+                self.mainTrack.scalePoints(trackScale * (1 / self.mainTrack.scale))
                 self.realDistanceTextInput.show = False
                 self.userSettingScale = False
                 self.mainTrack.calculateLength()
                 self.scalingErrorLabel.text = ""
-                self.mainTrack.history.addAction("SET SCALE", [scaleBefore, self.mainTrack.scale])
+                self.mainTrack.history.addAction("SET SCALE", [trackScale])
+
+                self.recentreFrame()
 
     def setFinish(self):
         self.userSettingFinish = True
@@ -358,8 +359,8 @@ class TrackEditor (Scene):
                     except:
                         error = "Invalid"
 
-            except Exception as error:
-                error = error
+            except Exception as errorMessage:
+                error = errorMessage
 
             return error
 
@@ -380,7 +381,6 @@ class TrackEditor (Scene):
                     self.trackResSlider.updateValue(trackProperties["trackRes"], update = False)
                     self.mainTrack.perSegRes = trackProperties["trackRes"]
 
-                    self.mainTrack.scale = trackProperties["scale"]
                     self.mainTrack.finishIndex = trackProperties["finishIndex"]
                     self.mainTrack.finishDir = trackProperties["finishDir"]
                     self.mainTrack.updateCloseStatus(trackProperties["closed"], update = False)
@@ -418,14 +418,15 @@ class TrackEditor (Scene):
         if tempDirectory is None:
             tempDirectory = getFileName()
 
-        validDir = os.path.isfile(tempDirectory)
-        if not validDir:
-            Message(self.UILayer, "Invalid File", "Please select a valid file", "OK", closeError, "grey")
+        if tempDirectory != '':
+            validDir = os.path.isfile(tempDirectory)
+            if not validDir:
+                Message(self.UILayer, "Invalid File", "Please select a valid file", "OK", closeError, "grey")
 
-        if tempDirectory != '' and self.mainTrack.isSaved() == False and validDir:
-            Message(self.UILayer, "Sure?", "You currently have an unsaved file open", "Save", saveTrackFirst, "grey","Discard", discardTrack, "red")
-        else:
-            loadTrack(tempDirectory)
+            if tempDirectory != '' and self.mainTrack.isSaved() == False and validDir:
+                Message(self.UILayer, "Sure?", "You currently have an unsaved file open", "Save", saveTrackFirst, "grey","Discard", discardTrack, "red")
+            else:
+                loadTrack(tempDirectory)
 
     def newTrack(self):
         def saveTrackFirst(sender):
@@ -539,10 +540,16 @@ class TrackEditor (Scene):
             #Handling key presses
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_z and pygame.key.get_mods() & pygame.KMOD_LCTRL and not(pygame.key.get_mods() & pygame.KMOD_LSHIFT) and self.mainTrack.edit:
-                    self.mainTrack.undo()
+                    undoActions = self.mainTrack.undo()
+                    for action in undoActions:
+                        if action.command == "SET SCALE":
+                            self.recentreFrame()
 
                 if event.key == pygame.K_z and pygame.key.get_mods() & pygame.KMOD_LCTRL and pygame.key.get_mods() & pygame.KMOD_LSHIFT and self.mainTrack.edit:
-                    self.mainTrack.redo()
+                    redoAction = self.mainTrack.redo()
+                    for action in redoAction:
+                        if action.command == "SET SCALE":
+                            self.recentreFrame()
 
                 if event.key == pygame.K_s and pygame.key.get_mods() & pygame.KMOD_LCTRL:
                     self.saveTrack()
@@ -561,15 +568,12 @@ class TrackEditor (Scene):
                     elif self.setScalePoint2 is None:
                         self.setScalePoint2 = ((self.mousePosX - self.offsetPosition[0]) / self.zoom, (self.mousePosY - self.offsetPosition[1]) / self.zoom)
                         self.realDistanceTextInput.show = True
+                        self.realDistanceTextInput.text = ""
 
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
-                        if self.realDistanceTextInput is not None:
-                            self.realDistanceTextInput.close()
+                        self.realDistanceTextInput.show = False
                         self.userSettingScale = False
-
-                    # if self.realDistanceTextInput is not None:
-                    #     self.realDistanceTextInput.typeLetter(event)
 
             #Logic for setting finish
             if self.userSettingFinish:
@@ -590,6 +594,8 @@ class TrackEditor (Scene):
                         self.userSettingFinish = False
 
     def update(self):
+        self.mainTrack.updateOffsetValues(self.offsetPosition, self.zoom)
+
         self.screenWidth, self.screenHeight = screen.get_size()
         self.mousePosX = pygame.mouse.get_pos()[0]
         self.mousePosY = pygame.mouse.get_pos()[1]
@@ -602,8 +608,7 @@ class TrackEditor (Scene):
         else:
             self.pivotPos = None
 
-        self.drawGrid(self.offsetPosition, 50 * self.zoom, 2, self.colours["mainGrid"])
-        self.drawGrid(self.offsetPosition, 10 * self.zoom, 1, self.colours["innerGrid"])
+        self.drawGrid(self.offsetPosition, 50 * self.zoom, 1, self.colours["innerGrid"])
 
         screenRect = pygame.Rect((0, 0), (self.screenWidth + 15, self.screenHeight + 15))
 

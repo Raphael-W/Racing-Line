@@ -43,7 +43,7 @@ class ControlPoint:
         self.size = self.baseSize
 
         self.new = True
-        self.pointSelected = False
+        self.pointSelected = True
         self.mouseHovering = False
         self.mouseDownLast = False
 
@@ -86,7 +86,7 @@ class ControlPoint:
                 self.posY = round(mousePosY, roundValue)
 
         if not self.pointSelected:
-            self.pointSelected = self.mouseHovering and pygame.mouse.get_pressed()[0] and not self.mouseDownLast
+            self.pointSelected = (self.mouseHovering and pygame.mouse.get_pressed()[0] and not self.mouseDownLast)
 
         if self.pointSelected and not self.mouseDownLast and not self.new:
             self.posAtClick = self.getPos()
@@ -109,14 +109,30 @@ class Track:
         self.points = points
         self.splinePoints = []
 
-        self.mainPolyLeftEdge = []
-        self.mainPolyRightEdge = []
+        #Visual Track Points
+        self.__mainPolyLeftEdge = []
+        self.__mainPolyRightEdge = []
 
-        self.leftBorderInnerEdge = []
-        self.leftBorderOuterEdge = []
+        self.__leftBorderInnerEdge = []
+        self.__leftBorderOuterEdge = []
 
-        self.rightBorderInnerEdge = []
-        self.rightBorderOuterEdge = []
+        self.__rightBorderInnerEdge = []
+        self.__rightBorderOuterEdge = []
+
+        #Cached, offset - Visual Track Points
+        self.__offset_mainPolyLeftEdge = []
+        self.__offset_mainPolyRightEdge = []
+
+        self.__offset_leftBorderInnerEdge = []
+        self.__offset_leftBorderOuterEdge = []
+
+        self.__offset_rightBorderInnerEdge = []
+        self.__offset_rightBorderOuterEdge = []
+
+        self.__offset_splinePoints = []
+
+        self.offsetValue = (0, 0)
+        self.zoomValue = 1
 
         self.pointsSelected = []
         self.mouseHovering = None
@@ -125,18 +141,18 @@ class Track:
         self.edit = True
 
         self.perSegRes = resolution
-        self.scale = None
-        self.length = None
+        self.scale = 0.2
+
+        self.length = 0
 
         self.finishIndex = None
         self.finishDir = None
 
-        self.width = 100
+        self.width = 12
 
         for point in self.points:
             self.points.append(ControlPoint(point[0], point[1]))
 
-        self.saved = True
         self.history = History(self)
 
     def clear(self):
@@ -144,25 +160,37 @@ class Track:
         self.splinePoints = []
         self.history = History(self)
 
-        self.mainPolyLeftEdge = []
-        self.mainPolyRightEdge = []
+        #Visual Track Points
+        self.__mainPolyLeftEdge = []
+        self.__mainPolyRightEdge = []
 
-        self.leftBorderInnerEdge = []
-        self.leftBorderOuterEdge = []
+        self.__leftBorderInnerEdge = []
+        self.__leftBorderOuterEdge = []
 
-        self.rightBorderInnerEdge = []
-        self.rightBorderOuterEdge = []
+        self.__rightBorderInnerEdge = []
+        self.__rightBorderOuterEdge = []
 
-        self.width = 100
+        #Cached, offset - Visual Track Points
+        self.__offset_mainPolyLeftEdge = []
+        self.__offset_mainPolyRightEdge = []
 
-        self.scale = None
-        self.length = None
+        self.__offset_leftBorderInnerEdge = []
+        self.__offset_leftBorderOuterEdge = []
+
+        self.__offset_rightBorderInnerEdge = []
+        self.__offset_rightBorderOuterEdge = []
+
+        self.__offset_splinePoints = []
+
+        self.width = 12
+
+        self.scale = 0.2
+        self.length = 0
 
         self.finishIndex = None
         self.finishDir = None
 
         self.closed = False
-        self.saved = False
 
     def loadTrackPoints(self, pointCoords):
         self.clear()
@@ -174,7 +202,6 @@ class Track:
         properties = {"width"      : self.width,
                       "trackRes"   : self.perSegRes,
                       "closed"     : self.closed,
-                      "scale"      : self.scale,
                       "finishIndex": self.finishIndex,
                       "finishDir"  : self.finishDir}
 
@@ -191,16 +218,12 @@ class Track:
         self.width = value
         self.computeTrackEdges()
 
-        self.saved = False
-
     def changeWidthComplete(self, initialValue, slider):
         self.history.addAction("CHANGE WIDTH", [initialValue, self.width, slider])
 
     def changeRes(self, value):
         self.perSegRes = int(value)
         self.computeTrack()
-
-        self.saved = False
 
     def changeResComplete(self, initialValue, slider):
         self.history.addAction("CHANGE RESOLUTION", [initialValue, self.perSegRes, slider])
@@ -211,6 +234,12 @@ class Track:
             for point in range(len(self.splinePoints) - 1):
                 self.length += pointDistance(self.splinePoints[point], self.splinePoints[point + 1]) * self.scale
 
+    def scalePoints(self, scale):
+        for point in self.points:
+            newPosition = (point.posX * scale, point.posY * scale)
+            point.move(newPosition)
+        self.computeTrack()
+
     def updateCloseStatus(self, value, update = False):
         if self.closed is not value:
             self.closed = value
@@ -218,7 +247,28 @@ class Track:
                 self.computeSpline(updatePoints = [0])
                 self.computeTrackEdges(updatePoints = [0])
 
-            self.saved = False
+    def updateOffsetValues(self, offset, zoom):
+        offsetChanged = False
+        if (offset != self.offsetValue) or (zoom != self.zoomValue):
+            offsetChanged = True
+
+        self.offsetValue = offset
+        self.zoomValue = zoom
+
+        if offsetChanged:
+            self.offsetTrackEdges()
+
+    def offsetTrackEdges(self, updatePoints = [], updateRange = []):
+        self.__offset_mainPolyLeftEdge = offsetPoints(self.__mainPolyLeftEdge, self.offsetValue, self.zoomValue)
+        self.__offset_mainPolyRightEdge = offsetPoints(self.__mainPolyRightEdge, self.offsetValue, self.zoomValue)
+
+        self.__offset_leftBorderInnerEdge = offsetPoints(self.__leftBorderInnerEdge, self.offsetValue, self.zoomValue)
+        self.__offset_leftBorderOuterEdge = offsetPoints(self.__leftBorderOuterEdge, self.offsetValue, self.zoomValue)
+
+        self.__offset_rightBorderInnerEdge = offsetPoints(self.__rightBorderInnerEdge, self.offsetValue, self.zoomValue)
+        self.__offset_rightBorderOuterEdge = offsetPoints(self.__rightBorderOuterEdge, self.offsetValue, self.zoomValue)
+
+        self.__offset_splinePoints = offsetPoints(self.splinePoints, self.offsetValue, self.zoomValue)
 
     #Checks if current mouse pos crosses the spline (for inserting points)
     def pointOnCurve(self, pointX, pointY, margin):
@@ -256,31 +306,30 @@ class Track:
 
             if index > 0:
                 self.splinePoints = self.splinePoints[:((index - 1) * self.perSegRes):] + ([''] * self.perSegRes) + self.splinePoints[((index - 1) * self.perSegRes):]
-                self.mainPolyLeftEdge = self.mainPolyLeftEdge[:((index - 1) * self.perSegRes):] + ([''] * self.perSegRes) + self.mainPolyLeftEdge[((index - 1) * self.perSegRes):]
-                self.mainPolyRightEdge = self.mainPolyRightEdge[:((index - 1) * self.perSegRes):] + ([''] * self.perSegRes) + self.mainPolyRightEdge[((index - 1) * self.perSegRes):]
 
-                self.leftBorderInnerEdge = self.leftBorderInnerEdge[:((index - 1) * self.perSegRes)] + ([''] * self.perSegRes) + self.leftBorderInnerEdge[((index - 1) * self.perSegRes):]
-                self.leftBorderOuterEdge = self.leftBorderOuterEdge[:((index - 1) * self.perSegRes)] + ([''] * self.perSegRes) + self.leftBorderOuterEdge[((index - 1) * self.perSegRes):]
+                self.__mainPolyLeftEdge = self.__offset_mainPolyLeftEdge = self.__mainPolyLeftEdge[:((index - 1) * self.perSegRes):] + ([''] * self.perSegRes) + self.__mainPolyLeftEdge[((index - 1) * self.perSegRes):]
+                self.__mainPolyRightEdge = self.__offset_mainPolyRightEdge = self.__mainPolyRightEdge[:((index - 1) * self.perSegRes):] + ([''] * self.perSegRes) + self.__mainPolyRightEdge[((index - 1) * self.perSegRes):]
 
-                self.rightBorderInnerEdge = self.rightBorderInnerEdge[:((index - 1) * self.perSegRes)] + ([''] * self.perSegRes) + self.rightBorderInnerEdge[((index - 1) * self.perSegRes):]
-                self.rightBorderOuterEdge = self.rightBorderOuterEdge[:((index - 1) * self.perSegRes)] + ([''] * self.perSegRes) + self.rightBorderOuterEdge[((index - 1) * self.perSegRes):]
+                self.__leftBorderInnerEdge = self.__offset_leftBorderInnerEdge = self.__leftBorderInnerEdge[:((index - 1) * self.perSegRes)] + ([''] * self.perSegRes) + self.__leftBorderInnerEdge[((index - 1) * self.perSegRes):]
+                self.__leftBorderOuterEdge = self.__offset_leftBorderOuterEdge = self.__leftBorderOuterEdge[:((index - 1) * self.perSegRes)] + ([''] * self.perSegRes) + self.__leftBorderOuterEdge[((index - 1) * self.perSegRes):]
+
+                self.__rightBorderInnerEdge = self.__offset_rightBorderInnerEdge = self.__rightBorderInnerEdge[:((index - 1) * self.perSegRes)] + ([''] * self.perSegRes) + self.__rightBorderInnerEdge[((index - 1) * self.perSegRes):]
+                self.__rightBorderOuterEdge = self.__offset_rightBorderOuterEdge = self.__rightBorderOuterEdge[:((index - 1) * self.perSegRes)] + ([''] * self.perSegRes) + self.__rightBorderOuterEdge[((index - 1) * self.perSegRes):]
 
             else:
                 self.splinePoints = ([''] * self.perSegRes) + self.splinePoints
-                self.mainPolyLeftEdge = ([''] * self.perSegRes) + self.mainPolyLeftEdge
-                self.mainPolyRightEdge = ([''] * self.perSegRes) + self.mainPolyRightEdge
 
-                self.leftBorderInnerEdge = ([''] * self.perSegRes) + self.leftBorderInnerEdge
-                self.leftBorderOuterEdge = ([''] * self.perSegRes) + self.leftBorderOuterEdge
+                self.__mainPolyLeftEdge = self.__offset_mainPolyLeftEdge = ([''] * self.perSegRes) + self.__mainPolyLeftEdge
+                self.__mainPolyRightEdge = self.__offset_mainPolyRightEdge = ([''] * self.perSegRes) + self.__mainPolyRightEdge
 
-                self.rightBorderInnerEdge = ([''] * self.perSegRes) + self.rightBorderInnerEdge
-                self.rightBorderOuterEdge = ([''] * self.perSegRes) + self.rightBorderOuterEdge
+                self.__leftBorderInnerEdge = self.__offset_leftBorderInnerEdge = ([''] * self.perSegRes) + self.__leftBorderInnerEdge
+                self.__leftBorderOuterEdge = self.__offset_leftBorderOuterEdge = ([''] * self.perSegRes) + self.__leftBorderOuterEdge
+
+                self.__rightBorderInnerEdge = self.__offset_rightBorderInnerEdge = ([''] * self.perSegRes) + self.__rightBorderInnerEdge
+                self.__rightBorderOuterEdge = self.__offset_rightBorderOuterEdge = ([''] * self.perSegRes) + self.__rightBorderOuterEdge
 
         if update:
-            self.computeSpline(updatePoints = [index])
-            self.computeTrackEdges(updatePoints = [index])
-
-        self.saved = False
+            self.computeTrack(updatePoints = [index])
 
     def remove(self, index = -1, update = True, userPerformed = False):
         if index == -1:
@@ -297,29 +346,30 @@ class Track:
 
             if index > 0:
                 self.splinePoints = self.splinePoints[:((index - 1) * self.perSegRes):] + self.splinePoints[(index * self.perSegRes):]
-                self.mainPolyLeftEdge = self.mainPolyLeftEdge[:((index - 1) * self.perSegRes):] + self.mainPolyLeftEdge[(index * self.perSegRes):]
-                self.mainPolyRightEdge = self.mainPolyRightEdge[:((index - 1) * self.perSegRes):] + self.mainPolyRightEdge[(index * self.perSegRes):]
 
-                self.leftBorderInnerEdge = self.leftBorderInnerEdge[:((index - 1) * self.perSegRes)] + self.leftBorderInnerEdge[(index * self.perSegRes):]
-                self.leftBorderOuterEdge = self.leftBorderOuterEdge[:((index - 1) * self.perSegRes)] + self.leftBorderOuterEdge[(index * self.perSegRes):]
+                self.__mainPolyLeftEdge = self.__offset_mainPolyLeftEdge = self.__mainPolyLeftEdge[:((index - 1) * self.perSegRes):] + self.__mainPolyLeftEdge[(index * self.perSegRes):]
+                self.__mainPolyRightEdge = self.__offset_mainPolyRightEdge = self.__mainPolyRightEdge[:((index - 1) * self.perSegRes):] + self.__mainPolyRightEdge[(index * self.perSegRes):]
 
-                self.rightBorderInnerEdge = self.rightBorderInnerEdge[:((index - 1) * self.perSegRes)] + self.rightBorderInnerEdge[(index * self.perSegRes):]
-                self.rightBorderOuterEdge = self.rightBorderOuterEdge[:((index - 1) * self.perSegRes)] + self.rightBorderOuterEdge[(index * self.perSegRes):]
+                self.__leftBorderInnerEdge = self.__offset_leftBorderInnerEdge = self.__leftBorderInnerEdge[:((index - 1) * self.perSegRes)] + self.__leftBorderInnerEdge[(index * self.perSegRes):]
+                self.__leftBorderOuterEdge = self.__offset_leftBorderOuterEdge = self.__leftBorderOuterEdge[:((index - 1) * self.perSegRes)] + self.__leftBorderOuterEdge[(index * self.perSegRes):]
+
+                self.__rightBorderInnerEdge = self.__offset_rightBorderInnerEdge = self.__rightBorderInnerEdge[:((index - 1) * self.perSegRes)] + self.__rightBorderInnerEdge[(index * self.perSegRes):]
+                self.__rightBorderOuterEdge = self.__offset_rightBorderOuterEdge = self.__rightBorderOuterEdge[:((index - 1) * self.perSegRes)] + self.__rightBorderOuterEdge[(index * self.perSegRes):]
+
             else:
                 self.splinePoints = self.splinePoints[((index + 1) * self.perSegRes):]
-                self.mainPolyLeftEdge = self.mainPolyLeftEdge[((index + 1) * self.perSegRes):]
-                self.mainPolyRightEdge = self.mainPolyRightEdge[((index + 1) * self.perSegRes):]
 
-                self.leftBorderInnerEdge = self.leftBorderInnerEdge[((index + 1) * self.perSegRes):]
-                self.leftBorderOuterEdge = self.leftBorderOuterEdge[((index + 1) * self.perSegRes):]
+                self.__mainPolyLeftEdge = self.__offset_mainPolyLeftEdge = self.__mainPolyLeftEdge[((index + 1) * self.perSegRes):]
+                self.__mainPolyRightEdge = self.__offset_mainPolyRightEdge = self.__mainPolyRightEdge[((index + 1) * self.perSegRes):]
 
-                self.rightBorderInnerEdge = self.rightBorderInnerEdge[((index + 1) * self.perSegRes):]
-                self.rightBorderOuterEdge = self.rightBorderOuterEdge[((index + 1) * self.perSegRes):]
+                self.__leftBorderInnerEdge = self.__offset_leftBorderInnerEdge = self.__leftBorderInnerEdge[((index + 1) * self.perSegRes):]
+                self.__leftBorderOuterEdge = self.__offset_leftBorderOuterEdge = self.__leftBorderOuterEdge[((index + 1) * self.perSegRes):]
+
+                self.__rightBorderInnerEdge = self.__offset_rightBorderInnerEdge = self.__rightBorderInnerEdge[((index + 1) * self.perSegRes):]
+                self.__rightBorderOuterEdge = self.__offset_rightBorderOuterEdge = self.__rightBorderOuterEdge[((index + 1) * self.perSegRes):]
 
             if update:
                 self.computeTrack(updatePoints = [index])
-
-            self.saved = False
 
     def undo(self):
         actions = self.history.undo()
@@ -342,12 +392,13 @@ class Track:
                     self.changeRes(action.params[0])
                     action.params[2].updateValue(self.perSegRes)
                 elif action.command == "SET SCALE":
-                    self.scale = action.params[0]
+                    self.scalePoints(1 / (action.params[0] * (1 / self.scale)))
                     self.calculateLength()
                 elif action.command == "SET FINISH":
                     self.finishIndex = action.params[0][0]
                     self.finishDir = action.params[0][1]
         self.history.checkIfSaved()
+        return actions
 
     def redo(self):
         actions = self.history.redo()
@@ -370,12 +421,13 @@ class Track:
                     self.changeRes(action.params[1])
                     action.params[2].updateValue(self.perSegRes)
                 elif action.command == "SET SCALE":
-                    self.scale = action.params[1]
+                    self.scalePoints(action.params[1] * (1 / self.scale))
                     self.calculateLength()
                 elif action.command == "SET FINISH":
                     self.finishIndex = action.params[1][0]
                     self.finishDir = action.params[1][1]
         self.history.checkIfSaved()
+        return actions
 
     def returnPointCoords(self):
         pointCoords = []
@@ -438,7 +490,6 @@ class Track:
                 self.splinePoints = ([''] * resolution)
 
             for updateRange in updateRanges:
-                self.saved = False
                 for tInt in range(*updateRange):
                     t = tInt / resolution
                     self.splinePoints[tInt] = (calculateSpline(self.returnPointCoords(), t))
@@ -488,26 +539,28 @@ class Track:
             if len(updatePoints) == 0:
                 updateRanges = [(0, resolution)]
 
-                self.mainPolyLeftEdge = ([''] * resolution)
-                self.mainPolyRightEdge = ([''] * resolution)
+                self.__mainPolyLeftEdge = self.__offset_mainPolyLeftEdge = ([''] * resolution)
+                self.__mainPolyRightEdge = self.__offset_mainPolyRightEdge = ([''] * resolution)
 
-                self.leftBorderInnerEdge = ([''] * resolution)
-                self.leftBorderOuterEdge = ([''] * resolution)
+                self.__leftBorderInnerEdge = self.__offset_leftBorderInnerEdge = ([''] * resolution)
+                self.__leftBorderOuterEdge = self.__offset_leftBorderOuterEdge = ([''] * resolution)
 
-                self.rightBorderInnerEdge = ([''] * resolution)
-                self.rightBorderOuterEdge = ([''] * resolution)
+                self.__rightBorderInnerEdge = self.__offset_rightBorderInnerEdge = ([''] * resolution)
+                self.__rightBorderOuterEdge = self.__offset_rightBorderOuterEdge = ([''] * resolution)
 
             for updateRange in updateRanges:
-                self.saved = False
                 for point in range(*updateRange):
-                    self.mainPolyLeftEdge[point] = calculateSide(self.splinePoints, point, 5)
-                    self.mainPolyRightEdge[point] = calculateSide(self.splinePoints, point, -5)
+                    self.__mainPolyLeftEdge[point] = self.__offset_mainPolyLeftEdge[point] = calculateSide(self.splinePoints, point, 5)
+                    self.__mainPolyRightEdge[point] = self.__offset_mainPolyRightEdge[point] = calculateSide(self.splinePoints, point, -5)
 
-                    self.leftBorderInnerEdge[point] = calculateSide(self.splinePoints, point, self.width)
-                    self.leftBorderOuterEdge[point] = calculateSide(self.splinePoints, point, self.width + 20)
+                    self.__leftBorderInnerEdge[point] = self.__offset_leftBorderInnerEdge[point] = calculateSide(self.splinePoints, point, (self.width * 5))
+                    self.__leftBorderOuterEdge[point] = self.__offset_leftBorderOuterEdge[point] = calculateSide(self.splinePoints, point, (self.width * 5) + 20)
 
-                    self.rightBorderInnerEdge[point] = calculateSide(self.splinePoints, point, -self.width)
-                    self.rightBorderOuterEdge[point] = calculateSide(self.splinePoints, point, -(self.width + 20))
+                    self.__rightBorderInnerEdge[point] = self.__offset_rightBorderInnerEdge[point] = calculateSide(self.splinePoints, point, -(self.width * 5))
+                    self.__rightBorderOuterEdge[point] = self.__offset_rightBorderOuterEdge[point] = calculateSide(self.splinePoints, point, -((self.width * 5) + 20))
+
+
+            self.offsetTrackEdges()
 
     def computeTrack(self, updatePoints = []):
         self.computeSpline(updatePoints = updatePoints)
@@ -590,35 +643,31 @@ class Track:
                 for dot in range(*curbRange):
                     pygame.draw.circle(screen, (252, 186, 3), splinePoints[dot], 5)
 
-            self.saved = False
-
     def deKink(self):
         extendedSplinePoints = extendPointsBack(self.splinePoints)
 
         updateRange = (0, len(self.splinePoints))
-        nonKinkCoordLeftInner = self.leftBorderInnerEdge[0]
-        nonKinkCoordLeftOuter = self.leftBorderOuterEdge[0]
+        nonKinkCoordLeftInner = self.__leftBorderInnerEdge[0]
+        nonKinkCoordLeftOuter = self.__leftBorderOuterEdge[0]
 
-        nonKinkCoordRightInner = self.rightBorderInnerEdge[0]
-        nonKinkCoordRightOuter = self.rightBorderOuterEdge[0]
+        nonKinkCoordRightInner = self.__rightBorderInnerEdge[0]
+        nonKinkCoordRightOuter = self.__rightBorderOuterEdge[0]
 
         for seg in range(*updateRange):
-            detectionRange = (max(seg - (2 * self.perSegRes), 0), min(seg + (2 * self.perSegRes), len(self.leftBorderInnerEdge)))
-            if findKink(self.leftBorderInnerEdge[seg], extendedSplinePoints[detectionRange[0]: detectionRange[1]], self.width):
-                self.leftBorderInnerEdge[seg] = nonKinkCoordLeftInner
-                self.leftBorderOuterEdge[seg] = nonKinkCoordLeftOuter
+            detectionRange = (max(seg - (2 * self.perSegRes), 0), min(seg + (2 * self.perSegRes), len(self.__leftBorderInnerEdge)))
+            if findKink(self.__leftBorderInnerEdge[seg], extendedSplinePoints[detectionRange[0]: detectionRange[1]], self.width):
+                self.__leftBorderInnerEdge[seg] = nonKinkCoordLeftInner
+                self.__leftBorderOuterEdge[seg] = nonKinkCoordLeftOuter
             else:
-                nonKinkCoordLeftInner = self.leftBorderInnerEdge[seg]
-                nonKinkCoordLeftOuter = self.leftBorderOuterEdge[seg]
+                nonKinkCoordLeftInner = self.__leftBorderInnerEdge[seg]
+                nonKinkCoordLeftOuter = self.__leftBorderOuterEdge[seg]
 
-            if findKink(self.rightBorderInnerEdge[seg], extendedSplinePoints[detectionRange[0]: detectionRange[1]], self.width):
-                self.rightBorderInnerEdge[seg] = nonKinkCoordRightInner
-                self.rightBorderOuterEdge[seg] = nonKinkCoordRightOuter
+            if findKink(self.__rightBorderInnerEdge[seg], extendedSplinePoints[detectionRange[0]: detectionRange[1]], self.width):
+                self.__rightBorderInnerEdge[seg] = nonKinkCoordRightInner
+                self.__rightBorderOuterEdge[seg] = nonKinkCoordRightOuter
             else:
-                nonKinkCoordRightInner = self.rightBorderInnerEdge[seg]
-                nonKinkCoordRightOuter = self.rightBorderOuterEdge[seg]
-
-        self.saved = False
+                nonKinkCoordRightInner = self.__rightBorderInnerEdge[seg]
+                nonKinkCoordRightOuter = self.__rightBorderOuterEdge[seg]
 
     def shouldTrackBeClosed(self):
         pointCoords = self.returnPointCoords()
@@ -696,9 +745,9 @@ class Track:
         visiblePoints = []
         for point in range(len(self.points) - 1):
             pointVisible = True
-            leftOuterVisibility = isVisible(self.leftBorderOuterEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1])
+            leftOuterVisibility = isVisible(self.__leftBorderOuterEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1])
             if not leftOuterVisibility:
-                rightOuterVisibility = isVisible(self.rightBorderOuterEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1])
+                rightOuterVisibility = isVisible(self.__rightBorderOuterEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1])
                 if not rightOuterVisibility:
                     pointVisible = False
 
@@ -708,79 +757,43 @@ class Track:
 
     def draw(self, programColours, screen, pygame, offset, zoom, switchFront, screenRect, viewMode):
         if len(self.points) >= 2:
-            visiblePoints = self.findVisiblePoints(screenRect, offset, zoom)
-            for point in range(len(self.points) - 1):
-                if point in visiblePoints:
-                    if viewMode == "Track" or viewMode == "Skeleton":
-                        leftBorderInnerEdgeSegment = offsetPoints(self.leftBorderInnerEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1], offset, zoom)
-                        leftBorderOuterEdgeSegment = offsetPoints(self.leftBorderOuterEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1], offset, zoom)
-
-                        rightBorderInnerEdgeSegment = offsetPoints(self.rightBorderInnerEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1], offset, zoom)
-                        rightBorderOuterEdgeSegment = offsetPoints(self.rightBorderOuterEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1], offset, zoom)
-
-                        if (point == len(self.points) - 2) and self.closed:
-                            leftBorderInnerEdgeSegment.append(offsetPoints(self.leftBorderInnerEdge[0], offset, zoom, single = True))
-                            leftBorderOuterEdgeSegment.append(offsetPoints(self.leftBorderOuterEdge[0], offset, zoom, single = True))
-
-                            rightBorderInnerEdgeSegment.append(offsetPoints(self.rightBorderInnerEdge[0], offset, zoom, single = True))
-                            rightBorderOuterEdgeSegment.append(offsetPoints(self.rightBorderOuterEdge[0], offset, zoom, single = True))
-
-                        leftTrackEdgePolygon = formPolygon(leftBorderInnerEdgeSegment, leftBorderOuterEdgeSegment)
-                        rightTrackEdgePolygon = formPolygon(rightBorderInnerEdgeSegment, rightBorderOuterEdgeSegment)
-
-                        pygame.gfxdraw.aapolygon(screen, leftTrackEdgePolygon, programColours["white"])
-                        pygame.gfxdraw.filled_polygon(screen, leftTrackEdgePolygon, programColours["white"])
-
-                        pygame.gfxdraw.aapolygon(screen, rightTrackEdgePolygon, programColours["white"])
-                        pygame.gfxdraw.filled_polygon(screen, rightTrackEdgePolygon, programColours["white"])
-
-            for point in range(len(self.points) - 1):
-                if point in visiblePoints:
-                    if viewMode == "Track":
-                        leftBorderInnerEdgeSegment = offsetPoints(self.leftBorderInnerEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1], offset, zoom)
-                        rightBorderInnerEdgeSegment = offsetPoints(self.rightBorderInnerEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1], offset, zoom)
-
-                        if (point == len(self.points) - 2) and self.closed:
-                            leftBorderInnerEdgeSegment.append(offsetPoints(self.leftBorderInnerEdge[0], offset, zoom, single = True))
-                            rightBorderInnerEdgeSegment.append(offsetPoints(self.rightBorderInnerEdge[0], offset, zoom, single = True))
-
-                        mainTrackPolygon = formPolygon(leftBorderInnerEdgeSegment, rightBorderInnerEdgeSegment)
-
-                        pygame.gfxdraw.aapolygon(screen, mainTrackPolygon, programColours["mainTrack"])
-                        pygame.gfxdraw.filled_polygon(screen, mainTrackPolygon, programColours["mainTrack"])
-
-            if self.edit or viewMode == "Curve":
+            if viewMode == "Track" or viewMode == "Skeleton":
                 for point in range(len(self.points) - 1):
-                    if point in visiblePoints:
-                        if viewMode == "Track" or viewMode == "Skeleton" or viewMode == "Curve":
-                            mainPolyLeftEdgeSegment = offsetPoints(self.mainPolyLeftEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1], offset, zoom)
-                            mainPolyRightEdgeSegment = offsetPoints(self.mainPolyRightEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1], offset, zoom)
+                    leftTrackEdgePolygon = formPolygon(self.__offset_leftBorderInnerEdge, self.__offset_leftBorderOuterEdge, slice((point * self.perSegRes), ((point + 1) * self.perSegRes) + 1), ((point == len(self.points) - 2) and self.closed))
+                    rightTrackEdgePolygon = formPolygon(self.__offset_rightBorderInnerEdge, self.__offset_rightBorderOuterEdge, slice((point * self.perSegRes), ((point + 1) * self.perSegRes) + 1), ((point == len(self.points) - 2) and self.closed))
 
-                            if (point == len(self.points) - 2) and self.closed:
-                                mainPolyLeftEdgeSegment.append(offsetPoints(self.mainPolyLeftEdge[0], offset, zoom, single = True))
-                                mainPolyRightEdgeSegment.append(offsetPoints(self.mainPolyRightEdge[0], offset, zoom, single = True))
+                    #pygame.gfxdraw.aapolygon(screen, leftTrackEdgePolygon, programColours["white"])
+                    pygame.gfxdraw.filled_polygon(screen, leftTrackEdgePolygon, programColours["white"])
 
-                            mainCurvePolygon = formPolygon(mainPolyLeftEdgeSegment, mainPolyRightEdgeSegment)
+                    #pygame.gfxdraw.aapolygon(screen, rightTrackEdgePolygon, programColours["white"])
+                    pygame.gfxdraw.filled_polygon(screen, rightTrackEdgePolygon, programColours["white"])
 
-                            pygame.gfxdraw.aapolygon(screen, mainCurvePolygon, programColours["curve"])
-                            pygame.gfxdraw.filled_polygon(screen, mainCurvePolygon, programColours["curve"])
+            if viewMode == "Track":
+                for point in range(len(self.points) - 1):
+                    mainTrackPolygon = formPolygon(self.__offset_leftBorderInnerEdge, self.__offset_rightBorderInnerEdge, slice((point * self.perSegRes), ((point + 1) * self.perSegRes) + 1), ((point == len(self.points) - 2) and self.closed))
 
-            for point in range(len(self.points) - 1):
-                if point in visiblePoints:
-                    if viewMode == "Spline Dots":
-                        centreCurveDots = offsetPoints(self.splinePoints[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1], offset, zoom)
-                        for dot in centreCurveDots:
-                            pygame.gfxdraw.aacircle(screen, int(dot[0]), int(dot[1]), 5, programColours["curve"])
-                            pygame.gfxdraw.filled_circle(screen, int(dot[0]), int(dot[1]), 5, programColours["curve"])
+                    #pygame.gfxdraw.aapolygon(screen, mainTrackPolygon, programColours["mainTrack"])
+                    pygame.gfxdraw.filled_polygon(screen, mainTrackPolygon, programColours["mainTrack"])
+
+            if (self.edit and (viewMode == "Track" or viewMode == "Skeleton")) or viewMode == "Curve":
+                for point in range(len(self.points) - 1):
+                    mainCurvePolygon = formPolygon(self.__offset_mainPolyLeftEdge, self.__offset_mainPolyRightEdge, slice((point * self.perSegRes), ((point + 1) * self.perSegRes) + 1), ((point == len(self.points) - 2) and self.closed))
+
+                    #pygame.gfxdraw.aapolygon(screen, mainCurvePolygon, programColours["curve"])
+                    pygame.gfxdraw.filled_polygon(screen, mainCurvePolygon, programColours["curve"])
+
+            if viewMode == "Spline Dots":
+                for dot in self.__offset_splinePoints:
+                    pygame.gfxdraw.aacircle(screen, int(dot[0]), int(dot[1]), 5, programColours["curve"])
+                    pygame.gfxdraw.filled_circle(screen, int(dot[0]), int(dot[1]), 5, programColours["curve"])
 
         if self.edit:
             for pointIndex in range(len(self.points)):
                 point = self.points[pointIndex]
 
-                if screenRect.collidepoint(offsetPoints(point.getPos(), offset, zoom, True)):
-                    if (not switchFront and pointIndex == len(self.points) - 1) or (switchFront and pointIndex == 0) or (self.closed and ((pointIndex == 0) or (pointIndex == len(self.points) - 1))):
-                        colour = programColours["frontControlPoint"]
-                    else:
-                        colour = programColours["controlPoint"]
+                if (not switchFront and pointIndex == len(self.points) - 1) or (switchFront and pointIndex == 0) or (self.closed and ((pointIndex == 0) or (pointIndex == len(self.points) - 1))):
+                    colour = programColours["frontControlPoint"]
+                else:
+                    colour = programColours["controlPoint"]
 
-                    point.draw(colour, screen, pygame, offset, zoom)
+                point.draw(colour, screen, pygame, self.offsetValue, self.zoomValue)

@@ -83,5 +83,11 @@ def calculateSide(points, pointIndex, width):
 
     return sideX, sideY
 
-def formPolygon(leftSide, rightSide):
-     return leftSide + list(reversed(rightSide))
+def formPolygon(leftSide, rightSide, selectRange, close = False):
+    newLeftSide = leftSide[selectRange]
+    newRightSide = rightSide[selectRange]
+    if close:
+        newLeftSide += [leftSide[0]]
+        newRightSide += [rightSide[0]]
+
+    return newLeftSide + list(reversed(newRightSide))
