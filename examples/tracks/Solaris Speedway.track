@@ -54,7 +54,7 @@
         ]
     ],
     "properties": {
-        "width": 100,
+        "width": 14.0,
         "trackRes": 20,
         "closed": true,
         "finishIndex": 6.4,

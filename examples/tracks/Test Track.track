@@ -82,10 +82,9 @@
         ]
     ],
     "properties": {
-        "width": 100,
+        "width": 15.0,
         "trackRes": 52,
         "closed": true,
-        "scale": 0.1066727271811054,
         "finishIndex": 17.5,
         "finishDir": false
     }

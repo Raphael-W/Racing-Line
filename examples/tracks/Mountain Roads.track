@@ -70,10 +70,10 @@
         ]
     ],
     "properties": {
-        "width": 100,
+        "width": 15.6,
         "trackRes": 52,
         "closed": true,
-        "finishIndex": 0.057692307692307696,
+        "finishIndex": 0.05769230769230749,
         "finishDir": true
     }
 }
