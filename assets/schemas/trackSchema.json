@@ -34,14 +34,16 @@
             "boolean",
             "null"
           ]
-        }
+        },
+        "referenceImage": {}
       },
       "required": [
         "width",
         "trackRes",
         "closed",
         "finishIndex",
-        "finishDir"
+        "finishDir",
+        "referenceImage"
       ]
     }
   },

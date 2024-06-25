@@ -1,6 +1,8 @@
 from utils import *
 from history import *
 
+import base64
+
 def findKink(point, linePoints, width):
     width = width / 2
 
@@ -95,8 +97,9 @@ class ControlPoint:
         newPos = offsetPoints((self.posX, self.posY), offset, zoom, single = True)
         newPos = [int(point) for point in newPos]
 
-        pygame.gfxdraw.aacircle(screen, newPos[0], newPos[1], self.size, colour)
-        pygame.gfxdraw.filled_circle(screen, newPos[0], newPos[1], self.size, colour)
+        if checkIfOnscreen(newPos, screen.get_size()):
+            pygame.gfxdraw.aacircle(screen, newPos[0], newPos[1], self.size, colour)
+            pygame.gfxdraw.filled_circle(screen, newPos[0], newPos[1], self.size, colour)
 
 class Track:
     def __init__(self, resolution, points = None):
@@ -145,6 +148,8 @@ class Track:
         self.finishIndex = None
         self.finishDir = None
 
+        self.referenceImageDir = None
+
         self.width = 12
 
         for point in self.points:
@@ -187,6 +192,8 @@ class Track:
         self.finishIndex = None
         self.finishDir = None
 
+        self.referenceImageDir = None
+
         self.closed = False
 
     def loadTrackPoints(self, pointCoords):
@@ -195,12 +202,18 @@ class Track:
             self.add(ControlPoint(point[0], point[1]), update = False)
 
     def getSaveState(self):
+        referenceImageData = None
+        if self.referenceImageDir is not None:
+            with open(self.referenceImageDir, "rb") as img_file:
+                referenceImageData = base64.b64encode(img_file.read()).decode('utf-8')
+
         points = self.returnPointCoords()
         properties = {"width"      : self.width,
                       "trackRes"   : self.perSegRes,
                       "closed"     : self.closed,
                       "finishIndex": self.finishIndex,
-                      "finishDir"  : self.finishDir}
+                      "finishDir"  : self.finishDir,
+                      "referenceImage": referenceImageData}
 
         return {"points"    : points,
                 "properties": properties}
@@ -368,8 +381,7 @@ class Track:
             if update:
                 self.computeTrack(updatePoints = [index])
 
-    def undo(self):
-        actions = self.history.undo()
+    def undo(self, actions):
         for action in actions:
             if action is not None:
                 if action.command == "ADD POINT":
@@ -397,8 +409,7 @@ class Track:
         self.history.checkIfSaved()
         return actions
 
-    def redo(self):
-        actions = self.history.redo()
+    def redo(self, actions):
         for action in actions:
             if action is not None:
                 if action.command == "ADD POINT":
@@ -418,7 +429,7 @@ class Track:
                     self.changeRes(action.params[1])
                     action.params[2].updateValue(self.perSegRes)
                 elif action.command == "SET SCALE":
-                    self.scalePoints(action.params[1] * (1 / self.scale))
+                    self.scalePoints(action.params[0] * (1 / self.scale))
                     self.calculateLength()
                 elif action.command == "SET FINISH":
                     self.finishIndex = action.params[1][0]
@@ -798,4 +809,4 @@ class Track:
                 else:
                     colour = programColours["controlPoint"]
 
-                point.draw(colour, screen, pygame, self.offsetValue, self.zoomValue, )
+                point.draw(colour, screen, pygame, self.offsetValue, self.zoomValue)

@@ -242,7 +242,7 @@ class Slider (UIElement):
     def updateValue(self, value, update = True):
         if self.valueRange[0] <= value <= self.valueRange[1]:
             self.value = value
-            self.handleX = ((self.length / (self.valueRange[1] - self.valueRange[0])) * value) - (self.valueRange[0] / 2)
+            self.handleX = (self.length / (self.valueRange[1] - self.valueRange[0])) * (value - self.valueRange[0])
 
             if self.action is not None and update:
                 self.action(self.value)
@@ -359,6 +359,11 @@ class Image(UIElement):
 
     def getSize(self):
         return self.boundingBox.size
+
+    def updateImage(self, newDir):
+        self.imageDir = newDir
+        self.image = self.layer.pygame.image.load(self.imageDir).convert_alpha()
+        self.boundingBox = self.image.get_rect()
 
 class TextInput(UIElement):
     def __init__(self, layer, pos, stick, dimensions, fontSize, placeholder = "", text = "", suffix = "", characterWhitelist = (), enterAction = None, show = True, layerIndex = -1):

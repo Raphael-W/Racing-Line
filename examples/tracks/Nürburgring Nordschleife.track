@@ -1458,6 +1458,7 @@
         "trackRes": 10,
         "closed": true,
         "finishIndex": 360.5,
-        "finishDir": false
+        "finishDir": false,
+        "referenceImage": null
     }
 }

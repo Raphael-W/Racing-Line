@@ -91,3 +91,6 @@ def formPolygon(leftSide, rightSide, selectRange, close = False):
         newRightSide += [rightSide[0]]
 
     return newLeftSide + list(reversed(newRightSide))
+
+def checkIfOnscreen(pos, screenDimensions):
+    return (0 <= pos[0] <= screenDimensions[0]) and (0 <= pos[1] <= screenDimensions[1])

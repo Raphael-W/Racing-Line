@@ -11,6 +11,11 @@ import tkinter as tk
 import os
 import sys
 
+import PIL.Image
+from io import BytesIO
+import base64
+from watchpoints import watch
+
 from pygameUIElements import *
 from spline import *
 
@@ -40,7 +45,10 @@ directories = {"mainFont": "assets/fonts/MonoFont.ttf",
                "arrow": "assets/icons/arrow.png",
                "undo": "assets/icons/undo.png",
                "redo": "assets/icons/redo.png",
-               "down": "assets/icons/down.png"}
+               "down": "assets/icons/down.png",
+               "bin": "assets/icons/bin.png",
+               "hide": "assets/icons/hide.png",
+               "show": "assets/icons/show.png"}
 
 directories = {item: os.path.normpath(os.path.join(executionDir, directory)) for (item, directory) in directories.items()}
 
@@ -125,6 +133,12 @@ class TrackEditor (Scene):
         self.newCaption = None
         self.lastCaption = None
 
+        self.referenceImage = None
+        self.referenceImageZoom = 1
+        self.referenceImageRect = None
+        self.scaledReferenceImage = None
+        self.referenceImageVisibility = True
+
         self.events = []
 
         self.colours = {"background": (20, 20, 20),
@@ -165,7 +179,13 @@ class TrackEditor (Scene):
         self.recentreButton = Button(self.UILayer, (155, 410), "SE", (80, 60), "Recentre", 10, (100, 100, 100), (0, -18), action = self.recentreFrame)
         self.recentreImage = Image(self.UILayer, (self.recentreButton.posX - 27, self.recentreButton.posY - 10), "SE", directories["recentreButton"], 1, colour = (30, 30, 30))
 
-        self.setReferenceImageButton = Button(self.UILayer, (330, 335), "SE", (255, 30), "Set Reference Image", 12, (100, 100, 100), textOffset = (0, -1), action = None)
+        self.setReferenceImageButton = Button(self.UILayer, (330, 335), "SE", (185, 30), "Set Reference Image", 12, (100, 100, 100), textOffset = (0, -1), action = self.setReferenceImage)
+
+        self.removeReferenceImageButton = Button(self.UILayer, (105, 335), "SE", (30, 30), "", 12, (66, 41, 41), action = self.clearReferenceImage)
+        self.removeReferenceImageIcon = Image(self.UILayer, (self.removeReferenceImageButton.posX - 1, self.removeReferenceImageButton.posY - 1), "SE", directories["bin"], 0.7, colour = (200, 200, 200))
+
+        self.hideReferenceImageButton = Button(self.UILayer, (140, 335), "SE", (30, 30), "", 12, (100, 100, 100), action = self.toggleReferenceImageVisibility)
+        self.hideReferenceImageIcon = Image(self.UILayer, (self.hideReferenceImageButton.posX - 1, self.hideReferenceImageButton.posY - 1), "SE", directories["hide"], 0.7, colour = (200, 200, 200))
 
         self.trackResSlider = Slider(self.UILayer, 15, self.colours["white"], self.colours["controlPoint"], (225, 278), "SE", 1, 100, (10, 100), value = self.mainTrack.perSegRes, action = self.mainTrack.changeRes, finishedUpdatingAction = self.mainTrack.changeResComplete)
         self.trackResLabel = Label(self.UILayer, 15, (330, 283), "SE", "Track Res", self.colours["white"])
@@ -182,10 +202,10 @@ class TrackEditor (Scene):
         self.editModeSwitch = Switch(self.UILayer, (165, 95), "SE", 0.8, value = True, action = lambda: self.setEditStatus(self.editModeSwitch.value))
         self.editModeLabel = Label(self.UILayer, 15, (209, 93), "SE", "Edit", self.colours["white"])
 
-        self.undoButton = Button(self.UILayer, (330, 95), "SE", (30, 30), "", 12, (100, 100, 100), action = self.mainTrack.undo)
+        self.undoButton = Button(self.UILayer, (330, 95), "SE", (30, 30), "", 12, (100, 100, 100), action = self.undo)
         self.undoIcon = Image(self.UILayer, (self.undoButton.posX - 2, self.undoButton.posY - 2), "SE", directories["undo"], 0.8, colour = self.colours["white"])
 
-        self.redoButton = Button(self.UILayer, (295, 95), "SE", (30, 30), "", 12, (100, 100, 100), action = self.mainTrack.redo)
+        self.redoButton = Button(self.UILayer, (295, 95), "SE", (30, 30), "", 12, (100, 100, 100), action = self.redo)
         self.redoIcon = Image(self.UILayer, (self.redoButton.posX - 2, self.redoButton.posY - 2), "SE", directories["redo"], 0.8, colour = self.colours["white"])
 
         self.viewModeDropdown = Dropdown(self.UILayer, (225, 210), "SE", (150, 25),["Track", "Skeleton", "Curve", "Spline Dots"], 0, action = self.setViewMode)
@@ -195,7 +215,9 @@ class TrackEditor (Scene):
                                          [self.saveButton, self.saveAsButton, self.openTrackButton, self.newTrackButton,
                                           self.setFinishButton, self.setFinishImage, self.setScaleButton,
                                           self.scaleImage, self.recentreButton, self.recentreImage,
-                                          self.setReferenceImageButton, self.trackResSlider,
+                                          self.setReferenceImageButton, self.removeReferenceImageButton,
+                                          self.removeReferenceImageIcon, self.hideReferenceImageButton,
+                                          self.hideReferenceImageIcon,self.trackResSlider,
                                           self.trackResLabel, self.trackWidthSlider, self.trackWidthLabel,
                                           self.viewModeDropdown, self.viewModeLabel, self.antialiasingSwitch,
                                           self.antialiasingLabel, self.switchEndsSwitch, self.switchEndsLabel,
@@ -270,6 +292,7 @@ class TrackEditor (Scene):
                 screenDistance = pointDistance(self.setScalePoint1, self.setScalePoint2)
                 trackScale = actualDistance / screenDistance
                 self.mainTrack.scalePoints(trackScale * (1 / self.mainTrack.scale))
+                self.scaleReferenceImage(trackScale * (1 / self.mainTrack.scale))
                 self.realDistanceTextInput.show = False
                 self.userSettingScale = False
                 self.mainTrack.calculateLength()
@@ -293,6 +316,67 @@ class TrackEditor (Scene):
 
     def setViewMode(self, mode):
         self.viewMode = mode
+
+    def setReferenceImage(self, imageDirectory = None, userPerformed = True):
+        def openImage(directory):
+            imageError = validateImageFile(directory)
+            if imageError is None:
+                if userPerformed:
+                    self.mainTrack.history.addAction("SET REFERENCE IMAGE", [directory, self.mainTrack.referenceImageDir])
+                self.mainTrack.referenceImageDir = directory
+                self.referenceImage = pygame.image.load(directory)
+                self.scaledReferenceImage = self.referenceImage
+                self.referenceImageRect = self.referenceImage.get_rect()
+
+            else:
+                Message(self.UILayer, "Invalid File", imageError, "OK", closeError, "grey")
+        def validateImageFile(directory):
+            error = None
+            try:
+                PIL.Image.open(directory)
+
+            except Exception as errorMessage:
+                error = errorMessage
+
+            return error
+        def getFileName():
+            root = tk.Tk()
+            root.withdraw()
+            root.wm_attributes('-topmost', 1)
+            imageExtensions = r"*.png *.jpeg *.jpg *.ppm *.gif *.tiff *.bmp"
+            fileSelected = askopenfilename(title = "Open Image", filetypes = [("Images", imageExtensions)])
+            root.destroy()
+            return fileSelected
+
+        def closeError(sender):
+            sender.close()
+
+        if imageDirectory is None:
+            tempDirectory = getFileName()
+            if tempDirectory != '':
+                validDir = os.path.isfile(tempDirectory)
+                if not validDir:
+                    Message(self.UILayer, "Invalid File", "Please select a valid file", "OK", closeError, "grey")
+                else:
+                    openImage(tempDirectory)
+
+        else:
+            openImage(imageDirectory)
+
+    def scaleReferenceImage(self, scaleFactor):
+        if self.mainTrack.referenceImageDir is not None:
+            self.referenceImageZoom *= scaleFactor
+            self.scaledReferenceImage = pygame.transform.scale_by(self.referenceImage, (self.zoom * self.referenceImageZoom))
+
+    def toggleReferenceImageVisibility(self):
+        self.referenceImageVisibility = not self.referenceImageVisibility
+        if self.referenceImageVisibility:
+            self.hideReferenceImageIcon.updateImage(directories["hide"])
+        else:
+            self.hideReferenceImageIcon.updateImage(directories["show"])
+
+    def clearReferenceImage(self):
+        self.mainTrack.referenceImageDir = None
 
     def drawGrid(self, offset, frequency, lineWidth, lineColor):
         columns = math.ceil(self.screenWidth / frequency)
@@ -388,6 +472,18 @@ class TrackEditor (Scene):
                     self.mainTrack.finishDir = trackProperties["finishDir"]
                     self.mainTrack.updateCloseStatus(trackProperties["closed"], update = False)
 
+                    if trackProperties["referenceImage"] is not None:
+                        referenceImageData = PIL.Image.open(BytesIO(base64.b64decode(trackProperties["referenceImage"])))
+                        referenceImageSaveDir = os.path.normpath(os.path.join(executionDir, "temp"))
+
+                        if not os.path.exists(referenceImageSaveDir):
+                            os.makedirs(referenceImageSaveDir)
+
+                        referenceImageSaveDir = os.path.normpath(os.path.join(executionDir, "temp/referenceImage.png"))
+                        referenceImageData.save(referenceImageSaveDir)
+                        self.mainTrack.referenceImageDir = referenceImageSaveDir
+                        self.setReferenceImage(referenceImageSaveDir)
+
                     self.mainTrack.computeTrack()
 
                     self.saveDirectory = directory
@@ -478,6 +574,35 @@ class TrackEditor (Scene):
             unsavedTrackError = Message(self.UILayer, "Sure?", "You currently have an unsaved file open", "Save", saveTrackFirst, "grey", "Discard", discardTrack, "red", xAction = lambda: closeError(unsavedTrackError))
         self.closeCount += 1
 
+    def undo(self):
+        undoActions = self.mainTrack.history.undo()
+        for action in undoActions:
+            if action.command == "SET REFERENCE IMAGE":
+                self.mainTrack.referenceImageDir = action.params[1]
+                if self.mainTrack.referenceImageDir is not None:
+                    self.setReferenceImage(self.mainTrack.referenceImageDir, userPerformed = False)
+
+        undoActions = self.mainTrack.undo(undoActions)
+        for action in undoActions:
+            if action.command == "SET SCALE":
+                self.scaleReferenceImage(1 / (action.params[0] * (1 / self.mainTrack.scale)))
+                self.recentreFrame()
+
+    def redo(self):
+        redoActions = self.mainTrack.history.redo()
+        for action in redoActions:
+            if action.command == "SET REFERENCE IMAGE":
+                self.mainTrack.referenceImageDir = action.params[0]
+                if self.mainTrack.referenceImageDir is not None:
+                    self.setReferenceImage(self.mainTrack.referenceImageDir, userPerformed = False)
+
+        redoActions = self.mainTrack.redo(redoActions)
+        for action in redoActions:
+            if action.command == "SET SCALE":
+                self.scaleReferenceImage(action.params[0] * (1 / self.mainTrack.scale))
+                self.recentreFrame()
+
+
     def handleEvents(self, events):
         global running
 
@@ -529,6 +654,9 @@ class TrackEditor (Scene):
                         zoomDifference = (self.zoom/beforeZoom) - 1
                         self.offsetPosition = (int(self.offsetPosition[0] - (self.mousePosX - self.offsetPosition[0]) * zoomDifference), int(self.offsetPosition[1] - (self.mousePosY - self.offsetPosition[1]) * zoomDifference))
 
+                        if self.mainTrack.referenceImageDir is not None:
+                            self.scaledReferenceImage = pygame.transform.scale_by(self.referenceImage, (self.zoom * self.referenceImageZoom))
+
                 elif event.y < 0:
                     if self.zoom > self.lowerZoomLimit:
                         beforeZoom = self.zoom
@@ -540,19 +668,16 @@ class TrackEditor (Scene):
                         zoomDifference = (beforeZoom/self.zoom) - 1
                         self.offsetPosition = (int(self.offsetPosition[0] + (self.mousePosX - self.offsetPosition[0]) * zoomDifference), int(self.offsetPosition[1] + (self.mousePosY - self.offsetPosition[1]) * zoomDifference))
 
+                        if self.mainTrack.referenceImageDir is not None:
+                            self.scaledReferenceImage = pygame.transform.scale_by(self.referenceImage, (self.zoom * self.referenceImageZoom))
+
             #Handling key presses
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_z and pygame.key.get_mods() & pygame.KMOD_LCTRL and not(pygame.key.get_mods() & pygame.KMOD_LSHIFT) and self.mainTrack.edit:
-                    undoActions = self.mainTrack.undo()
-                    for action in undoActions:
-                        if action.command == "SET SCALE":
-                            self.recentreFrame()
+                    self.undo()
 
                 if event.key == pygame.K_z and pygame.key.get_mods() & pygame.KMOD_LCTRL and pygame.key.get_mods() & pygame.KMOD_LSHIFT and self.mainTrack.edit:
-                    redoAction = self.mainTrack.redo()
-                    for action in redoAction:
-                        if action.command == "SET SCALE":
-                            self.recentreFrame()
+                    self.redo()
 
                 if event.key == pygame.K_s and pygame.key.get_mods() & pygame.KMOD_LCTRL:
                     self.saveTrack()
@@ -615,10 +740,14 @@ class TrackEditor (Scene):
 
         screenRect = pygame.Rect((0, 0), (self.screenWidth + 15, self.screenHeight + 15))
 
+        if (self.mainTrack.referenceImageDir is not None) and self.referenceImageVisibility:
+            self.referenceImageRect = self.scaledReferenceImage.get_rect(center = self.offsetPosition)
+            screen.blit(self.scaledReferenceImage, self.referenceImageRect)
+
         if not (self.userSettingScale or self.userSettingFinish):
             self.mainTrack.update((self.mousePosX - self.offsetPosition[0]) / self.zoom, (self.mousePosY - self.offsetPosition[1]) / self.zoom, self.zoom, self.screenWidth, self.screenHeight, self.screenBorder, pygame, self.offsetPosition, screenRect)
-        self.mainTrack.draw(self.colours, screen, pygame, self.switchEndsSwitch.value, self.viewMode,
-                            self.antialiasingSwitch.value)
+
+        self.mainTrack.draw(self.colours, screen, pygame, self.switchEndsSwitch.value, self.viewMode, self.antialiasingSwitch.value)
 
         if self.userSettingScale:
             transparentSurface = pygame.Surface((self.screenWidth, self.screenHeight), pygame.SRCALPHA)
