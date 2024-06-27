@@ -84,6 +84,7 @@ class SceneManager:
         if len(self.scenes) > 0:
             self.scenes[self.currentScene].update()
 
+    #Events are passed from main loop to current scene
     def distributeEvents(self, events):
         for event in events:
             if event.type == pygame.KEYDOWN:
@@ -199,9 +200,6 @@ class TrackEditor (Scene):
         self.switchEndsSwitch = Switch(self.UILayer, (165, 125), "SE", 0.8, value = False)
         self.switchEndsLabel = Label(self.UILayer, 15, (280, 123), "SE", "Switch front", self.colours["white"])
 
-        self.editModeSwitch = Switch(self.UILayer, (165, 95), "SE", 0.8, value = True, action = lambda: self.setEditStatus(self.editModeSwitch.value))
-        self.editModeLabel = Label(self.UILayer, 15, (209, 93), "SE", "Edit", self.colours["white"])
-
         self.undoButton = Button(self.UILayer, (330, 95), "SE", (30, 30), "", 12, (100, 100, 100), action = self.undo)
         self.undoIcon = Image(self.UILayer, (self.undoButton.posX - 2, self.undoButton.posY - 2), "SE", directories["undo"], 0.8, colour = self.colours["white"])
 
@@ -221,7 +219,7 @@ class TrackEditor (Scene):
                                           self.trackResLabel, self.trackWidthSlider, self.trackWidthLabel,
                                           self.viewModeDropdown, self.viewModeLabel, self.antialiasingSwitch,
                                           self.antialiasingLabel, self.switchEndsSwitch, self.switchEndsLabel,
-                                          self.editModeSwitch, self.editModeLabel, self.undoButton, self.undoIcon,
+                                          self.undoButton, self.undoIcon,
                                           self.redoButton, self.redoIcon],
                                           layerIndex = 0)
 
@@ -235,14 +233,6 @@ class TrackEditor (Scene):
 
         if len(sys.argv) > 1:
             self.openTrack(sys.argv[1])
-
-    def setEditStatus(self, value):
-        self.mainTrack.edit = value
-        if not value:
-            self.mainTrack.computeTrack()
-            self.mainTrack.deKink()
-        else:
-            self.mainTrack.computeTrack()
 
     def recentreFrame(self):
         minX = minY = float('inf')
@@ -631,14 +621,14 @@ class TrackEditor (Scene):
                     if onLine:
                         index = nearPointSegment
 
-                validPlacement = (not self.mainTrack.closed or onLine) and self.mainTrack.edit
+                validPlacement = (not self.mainTrack.closed or onLine)
                 if validPlacement:
                     self.mainTrack.add(ControlPoint((self.mousePosX - self.offsetPosition[0]) / self.zoom, (self.mousePosY - self.offsetPosition[1]) / self.zoom), index = index, userPerformed = True)
 
             #Removing control point
             if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[2] and (self.mainTrack.mouseHovering is not None) and (not self.UILayer.mouseOnLayer((self.mousePosX, self.mousePosY))) and (not programUI.mouseOnLayer((self.mousePosX, self.mousePosY))) and not (self.userSettingScale or self.userSettingFinish):
                 index = self.mainTrack.mouseHovering
-                if not(self.mainTrack.closed and ((index == 0) or (index == len(self.mainTrack.points) - 1))) and self.mainTrack.edit:
+                if not(self.mainTrack.closed and ((index == 0) or (index == len(self.mainTrack.points) - 1))):
                     self.mainTrack.remove(index = index, userPerformed = True)
 
             #Set offset pivot
@@ -677,10 +667,10 @@ class TrackEditor (Scene):
 
             #Handling key presses
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_z and pygame.key.get_mods() & pygame.KMOD_LCTRL and not(pygame.key.get_mods() & pygame.KMOD_LSHIFT) and self.mainTrack.edit:
+                if event.key == pygame.K_z and pygame.key.get_mods() & pygame.KMOD_LCTRL and not(pygame.key.get_mods() & pygame.KMOD_LSHIFT):
                     self.undo()
 
-                if event.key == pygame.K_z and pygame.key.get_mods() & pygame.KMOD_LCTRL and pygame.key.get_mods() & pygame.KMOD_LSHIFT and self.mainTrack.edit:
+                if event.key == pygame.K_z and pygame.key.get_mods() & pygame.KMOD_LCTRL and pygame.key.get_mods() & pygame.KMOD_LSHIFT:
                     self.redo()
 
                 if event.key == pygame.K_s and pygame.key.get_mods() & pygame.KMOD_LCTRL:
@@ -832,21 +822,6 @@ class TrackEditor (Scene):
             self.finishDirIcon.posX, self.finishDirIcon.posY = (
             arrowPos[0] - (finishDirIconSize[0] / 2), arrowPos[1] - (finishDirIconSize[1] / 2))
             self.finishDirIcon.angle = trackAngle + (self.finishDir * 180)
-
-        if len(self.mainTrack.points) >= 2:
-            self.editModeSwitch.disabled = False
-        else:
-            self.editModeSwitch.disabled = True
-
-        if not self.mainTrack.edit:
-            self.trackWidthSlider.disabled = True
-            self.trackResSlider.disabled = True
-            self.switchEndsSwitch.disabled = True
-
-        else:
-            self.trackWidthSlider.disabled = False
-            self.trackResSlider.disabled = False
-            self.switchEndsSwitch.disabled = False
 
         if self.mainTrack.isSaved():
             saveCharacter = ""
