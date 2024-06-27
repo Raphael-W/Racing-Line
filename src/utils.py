@@ -8,6 +8,7 @@ def pointDistance(point1, point2):
 
     return math.sqrt(((y2 - y1) ** 2) + ((x1 - x2) ** 2))
 
+#Calculate gradient of line, formed by 2 points
 def gradient(point1, point2):
     x1, y1 = point1
     x2, y2 = point2
@@ -15,6 +16,7 @@ def gradient(point1, point2):
         return 0
     return (y2 - y1) / (x2 - x1)
 
+#Calculate the angle between 3 points
 def angle(point1, point2, point3):
     distance12 = pointDistance(point1, point2)
     distance23 = pointDistance(point2, point3)
@@ -27,6 +29,7 @@ def angle(point1, point2, point3):
 
     return angleDegrees
 
+#Finds the shortest distance between a point and a line
 def lineToPointDistance(lineA, lineB, point):
     lineA = np.array(lineA)
     lineB = np.array(lineB)
@@ -40,6 +43,7 @@ def lineToPointDistance(lineA, lineB, point):
     projection = lineA + t * (lineB - lineA)
     return pointDistance(point, projection), projection
 
+#Extends a list of points back by taking the length and gradient of the last segment and inserting it at the end
 def extendPointsBack(points):
     xExtBack= (points[-1][0] - points[-2][0])
     yExtBack = (points[-1][1] - points[-2][1])
@@ -49,6 +53,7 @@ def extendPointsBack(points):
 
     return extendedSplinePoints
 
+#Extends a list of points forward by taking the length and gradient of the last segment and inserting it at the end
 def extendPointsFront(points):
     xExtFront = (points[1][0] - points[0][0])
     yExtFront = (points[1][1] - points[0][1])
@@ -58,6 +63,7 @@ def extendPointsFront(points):
 
     return extendedSplinePoints
 
+#Offsets a list of points, or a singular point
 def offsetPoints(points, offset, zoom, single = False, reverse = False):
     if not reverse:
         if not single:
@@ -70,6 +76,7 @@ def offsetPoints(points, offset, zoom, single = False, reverse = False):
         else:
             return (points[0] - offset[0]) / zoom, (points[1] - offset[1]) / zoom
 
+#Calculates a point, a certain distance away from another point
 def calculateSide(points, pointIndex, width):
     width = width / 2
     points = extendPointsBack(points)
@@ -83,6 +90,7 @@ def calculateSide(points, pointIndex, width):
 
     return sideX, sideY
 
+#Used to combine two sides of a polygon (in the form of a list of points), to make one shape
 def formPolygon(leftSide, rightSide, selectRange, close = False):
     newLeftSide = leftSide[selectRange]
     newRightSide = rightSide[selectRange]
@@ -92,5 +100,6 @@ def formPolygon(leftSide, rightSide, selectRange, close = False):
 
     return newLeftSide + list(reversed(newRightSide))
 
+#Checks whether a given point is on the screen
 def checkIfOnscreen(pos, screenDimensions):
     return (0 <= pos[0] <= screenDimensions[0]) and (0 <= pos[1] <= screenDimensions[1])

@@ -13,8 +13,6 @@ import sys
 
 import PIL.Image
 from io import BytesIO
-import base64
-from watchpoints import watch
 
 from pygameUIElements import *
 from spline import *
@@ -50,6 +48,7 @@ directories = {"mainFont": "assets/fonts/MonoFont.ttf",
                "hide": "assets/icons/hide.png",
                "show": "assets/icons/show.png"}
 
+#Makes above relative paths absolute
 directories = {item: os.path.normpath(os.path.join(executionDir, directory)) for (item, directory) in directories.items()}
 
 mainFont = directories["mainFont"]
@@ -234,6 +233,7 @@ class TrackEditor (Scene):
         if len(sys.argv) > 1:
             self.openTrack(sys.argv[1])
 
+    #Fit track to screen, in the middle
     def recentreFrame(self):
         minX = minY = float('inf')
         maxX = maxY = float('-inf')
@@ -268,6 +268,7 @@ class TrackEditor (Scene):
         self.setScalePoint1 = None
         self.setScalePoint2 = None
 
+    #Asks user for actual distance of scale, and sets scale accordingly
     def completeScaling(self, text):
         try:
             actualDistance = float(text)
@@ -296,6 +297,7 @@ class TrackEditor (Scene):
         self.finishIndex = None
         self.finishDir = None
 
+    #Sets finish line index
     def completeFinish(self):
         self.mainTrack.history.addAction("SET FINISH", [[self.mainTrack.finishIndex, self.mainTrack.finishDir], [self.finishIndex, self.finishDir]])
 
@@ -307,6 +309,7 @@ class TrackEditor (Scene):
     def setViewMode(self, mode):
         self.viewMode = mode
 
+    #Allows user to choose reference image. Image is checked before being placed
     def setReferenceImage(self, imageDirectory = None, userPerformed = True):
         def openImage(directory):
             imageError = validateImageFile(directory)
@@ -354,6 +357,7 @@ class TrackEditor (Scene):
         else:
             openImage(imageDirectory)
 
+    #Adjust scale of reference image to match scale of track
     def scaleReferenceImage(self, scaleFactor = 1):
         if self.mainTrack.referenceImageDir is not None:
             self.referenceImageScale *= scaleFactor
@@ -369,6 +373,7 @@ class TrackEditor (Scene):
     def clearReferenceImage(self):
         self.mainTrack.referenceImageDir = None
 
+    #Algorithm to draw make background a grid
     def drawGrid(self, offset, frequency, lineWidth, lineColor):
         columns = math.ceil(self.screenWidth / frequency)
         rows = math.ceil(self.screenHeight / frequency)
@@ -386,6 +391,7 @@ class TrackEditor (Scene):
             y = line * frequency + offset[1]
             pygame.draw.line(screen, lineColor, (0, y), (self.screenWidth, y), lineWidth)
 
+    #Saves track to directory specified by user.
     def saveTrack(self, saveNewDirectory = False):
         def closeError(sender):
             sender.close()
@@ -427,6 +433,7 @@ class TrackEditor (Scene):
             Message(self.UILayer, "Can't Save", "Please select a valid directory", "OK", closeError, "grey")
             self.saveDirectory = None
 
+    #Opens track from specific directory specified by user. Track is checked first
     def openTrack(self, tempDirectory = None):
         def validateTrackFile(directory):
             error = None
@@ -521,6 +528,7 @@ class TrackEditor (Scene):
             else:
                 loadTrack(tempDirectory)
 
+    #Clears current track, asks user before clearing
     def newTrack(self):
         def saveTrackFirst(sender):
             sender.close()
@@ -568,6 +576,7 @@ class TrackEditor (Scene):
             unsavedTrackError = Message(self.UILayer, "Sure?", "You currently have an unsaved file open", "Save", saveTrackFirst, "grey", "Discard", discardTrack, "red", xAction = lambda: closeError(unsavedTrackError))
         self.closeCount += 1
 
+    #Undoes previous action
     def undo(self):
         undoActions = self.mainTrack.history.undo()
         for action in undoActions:
@@ -582,6 +591,7 @@ class TrackEditor (Scene):
                 self.scaleReferenceImage(1 / (action.params[0] * (1 / self.mainTrack.scale)))
                 self.recentreFrame()
 
+    #Redoes previously undone action
     def redo(self):
         redoActions = self.mainTrack.history.redo()
         for action in redoActions:
@@ -596,7 +606,7 @@ class TrackEditor (Scene):
                 self.scaleReferenceImage(action.params[0] * (1 / self.mainTrack.scale))
                 self.recentreFrame()
 
-
+    #Where all the events are passed to be processed
     def handleEvents(self, events):
         global running
 
@@ -724,6 +734,7 @@ class TrackEditor (Scene):
 
         screen.fill(self.colours["background"])
 
+        #Allows screen to be moved around pivot
         if pygame.mouse.get_pressed()[1]:
             if self.pivotPos is not None:
                 self.offsetPosition = (self.mousePosX - self.pivotPos[0], self.mousePosY - self.pivotPos[1])
@@ -734,6 +745,7 @@ class TrackEditor (Scene):
 
         screenRect = pygame.Rect((0, 0), (self.screenWidth + 15, self.screenHeight + 15))
 
+        #Draws reference image to screen
         if (self.mainTrack.referenceImageDir is not None) and self.referenceImageVisibility:
             self.referenceImageRect = self.scaledReferenceImage.get_rect(center = self.offsetPosition)
             screen.blit(self.scaledReferenceImage, self.referenceImageRect)
@@ -743,6 +755,7 @@ class TrackEditor (Scene):
 
         self.mainTrack.draw(self.colours, screen, pygame, self.switchEndsSwitch.value, self.viewMode, self.antialiasingSwitch.value)
 
+        #Algorithm for setting track scale - draw line between 2 mouse positions
         if self.userSettingScale:
             transparentSurface = pygame.Surface((self.screenWidth, self.screenHeight), pygame.SRCALPHA)
             pygame.draw.rect(transparentSurface, (50, 50, 50, 100), (0, 0, self.screenWidth, self.screenHeight))
@@ -766,6 +779,7 @@ class TrackEditor (Scene):
                 pygame.draw.line(screen, (200, 200, 200), lineStart_EndStop[0], lineStart_EndStop[1], 5)
                 pygame.draw.line(screen, (200, 200, 200), lineEnd_EndStop[0], lineEnd_EndStop[1], 5)
 
+        #Allows user to set whether track is clockwise or anticlockwise
         if self.userSettingFinish:
             transparentSurface = pygame.Surface((self.screenWidth, self.screenHeight), pygame.SRCALPHA)
             pygame.draw.rect(transparentSurface, (50, 50, 50, 100), (0, 0, self.screenWidth, self.screenHeight))
@@ -798,6 +812,7 @@ class TrackEditor (Scene):
             self.finishIcon.show = False
             self.finishDirIcon.show = False
 
+        #Sets visuals for track finish line setup - drawing direction arrow, finish line icon
         if self.finishIndex is not None:
             finishPointCoords = (self.mainTrack.splinePoints[int(self.finishIndex * self.mainTrack.perSegRes)])
             finishPointNeighbourCoords = (
@@ -845,6 +860,7 @@ class TrackEditor (Scene):
         self.scaleLabel.text = ("view: " + str(int(self.zoom * 100)) + "%")
         self.fpsLabel.text = ("fps: " + str(int(clock.get_fps())))
 
+        #Checks if there are any items left to undo
         if len(self.mainTrack.history.undoStack) == 0:
             self.undoButton.disabled = True
             self.undoIcon.colour = (90, 90, 90)
@@ -852,6 +868,7 @@ class TrackEditor (Scene):
             self.undoButton.disabled = False
             self.undoIcon.colour = self.colours["white"]
 
+        #Checks if there are any items left to redo
         if len(self.mainTrack.history.redoStack) == 0:
             self.redoButton.disabled = True
             self.redoIcon.colour = (90, 90, 90)
@@ -859,6 +876,7 @@ class TrackEditor (Scene):
             self.redoButton.disabled = False
             self.redoIcon.colour = self.colours["white"]
 
+        #Determines whether track length should be in m or km
         if self.mainTrack.scale is not None:
             trackScaleReduced = int((self.mainTrack.scale * 150) / self.zoom)
 
@@ -878,8 +896,15 @@ class TrackEditor (Scene):
         self.trackLayer.display(self.screenWidth, self.screenHeight, self.events, self.offsetPosition, self.zoom)
         self.UILayer.display(self.screenWidth, self.screenHeight, self.events)
 
+class CarConfigurator (Scene):
+    def __init__(self):
+        super().__init__()
+
+        pass
+
 ProgramSceneManager = SceneManager()
 ProgramSceneManager.addScene(TrackEditor(), "Track Editor")
+ProgramSceneManager.addScene(CarConfigurator(), "Car Configurator")
 
 while running:
     screenWidth, screenHeight = screen.get_size()

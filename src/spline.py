@@ -3,6 +3,7 @@ from history import *
 
 import base64
 
+#Checks if point on track gets closer to the centre than it should (indicating a kink)
 def findKink(point, linePoints, width):
     width = width / 2
 
@@ -11,7 +12,7 @@ def findKink(point, linePoints, width):
         kinkFound = kinkFound or (pointDistance(point, linePoints[pointIndex]) < (width - 1))
     return kinkFound
 
-
+#Main mathematical formula for track curve
 def calculateSpline(control_points, t):
     control_points = [control_points[1]] + control_points + [control_points[-2]]
 
@@ -35,7 +36,6 @@ def calculateSpline(control_points, t):
 
     return interpolate(p0, p1, p2, p3, t)
 
-#The class for a control point
 class ControlPoint:
     def __init__(self, posX, posY):
         self.posX = posX
@@ -56,6 +56,7 @@ class ControlPoint:
     def getPos(self):
         return self.posX, self.posY
 
+    #Move a control point to a specific location
     def move(self, newPos):
         self.posX = newPos[0]
         self.posY = newPos[1]
@@ -155,6 +156,7 @@ class Track:
 
         self.history = History(self)
 
+    #Clear track, and any settings
     def clear(self):
         self.points = []
         self.splinePoints = []
@@ -194,11 +196,13 @@ class Track:
 
         self.closed = False
 
+    #Called when opening tracks from a save file, and is used to load in the track and its data
     def loadTrackPoints(self, pointCoords):
         self.clear()
         for point in pointCoords:
             self.add(ControlPoint(point[0], point[1]), update = False)
 
+    #Collects relevant data about track and combines it into a dictionary used for saving
     def getSaveState(self):
         referenceImageData = None
         if self.referenceImageDir is not None:
@@ -226,6 +230,7 @@ class Track:
         self.width = value
         self.computeTrackEdges()
 
+    #Called when user stops setting width (lets go of track width slider)
     def changeWidthComplete(self, initialValue, slider):
         self.history.addAction("CHANGE WIDTH", [initialValue, self.width, slider])
 
@@ -233,15 +238,18 @@ class Track:
         self.perSegRes = int(value)
         self.computeTrack()
 
+    #Called when user stops setting track res (lets go of track resolution slider)
     def changeResComplete(self, initialValue, slider):
         self.history.addAction("CHANGE RESOLUTION", [initialValue, self.perSegRes, slider])
 
+    #Calculates length of track by adding length of each segment
     def calculateLength(self):
         if self.scale is not None:
             self.length = 0
             for point in range(len(self.splinePoints) - 1):
                 self.length += pointDistance(self.splinePoints[point], self.splinePoints[point + 1]) * self.scale
 
+    #Multiplies each point by scale factor
     def scalePoints(self, scale):
         for point in self.points:
             newPosition = (point.posX * scale, point.posY * scale)
@@ -255,6 +263,7 @@ class Track:
                 self.computeSpline(updatePoints = [0])
                 self.computeTrackEdges(updatePoints = [0])
 
+    #Called in game loop
     def updateOffsetValues(self, offset, zoom):
         offsetChanged = False
         if (offset != self.offsetValue) or (zoom != self.zoomValue):
@@ -266,6 +275,7 @@ class Track:
         if offsetChanged:
             self.offsetTrackEdges()
 
+    #Offsets each point that makes up track edges by current values for offset and zoom
     def offsetTrackEdges(self, updatePoints = [], updateRange = []):
         self.__offset_mainPolyLeftEdge = offsetPoints(self.__mainPolyLeftEdge, self.offsetValue, self.zoomValue)
         self.__offset_mainPolyRightEdge = offsetPoints(self.__mainPolyRightEdge, self.offsetValue, self.zoomValue)
@@ -300,13 +310,14 @@ class Track:
         else:
             return False, None, None, None
 
-    def add(self, anchorObject, index = -1, update = True, userPerformed = False):
+    #Adds new control point
+    def add(self, controlPoint, index = -1, update = True, userPerformed = False):
         if index == -1:
             index = len(self.points)
 
-        self.points.insert(index, anchorObject)
+        self.points.insert(index, controlPoint)
         if userPerformed:
-            self.history.addAction("ADD POINT", [index, anchorObject])
+            self.history.addAction("ADD POINT", [index, controlPoint])
         if len(self.points) > 1:
             if self.finishIndex is not None:
                 if index <= self.finishIndex:
@@ -339,6 +350,7 @@ class Track:
         if update:
             self.computeTrack(updatePoints = [index])
 
+    #Removes control point at index specified
     def remove(self, index = -1, update = True, userPerformed = False):
         if index == -1:
             index = len(self.points) - 1
@@ -379,6 +391,7 @@ class Track:
             if update:
                 self.computeTrack(updatePoints = [index])
 
+    #Handles undoing of track actions (control point moving, width changes etc.)
     def undo(self, actions):
         for action in actions:
             if action is not None:
@@ -407,6 +420,7 @@ class Track:
         self.history.checkIfSaved()
         return actions
 
+    #Handles redoing of previously undone actions
     def redo(self, actions):
         for action in actions:
             if action is not None:
@@ -442,6 +456,7 @@ class Track:
 
         return pointCoords
 
+    #Updates segments that make up main track curve. If no points are specified, whole track curve is updated
     def computeSpline(self, updatePoints = []):
         if len(self.points) >= 2:
             if self.closed:
@@ -508,6 +523,7 @@ class Track:
 
             self.calculateLength()
 
+    #Updates segments that make up visual track. If no points are specified, whole track is updated
     def computeTrackEdges(self, updatePoints = []):
         if len(self.points) >= 2:
             numOfSegments = len(self.points) - 1
@@ -568,10 +584,12 @@ class Track:
 
             self.offsetTrackEdges()
 
+    #Runs both computeSpline() and computeTrackEdges()
     def computeTrack(self, updatePoints = []):
         self.computeSpline(updatePoints = updatePoints)
         self.computeTrackEdges(updatePoints = updatePoints)
 
+    #UNFINISHED - Used to find where curbs should be drawn
     def computeCurbs(self, pygame, screen, offset, zoom):
         curbSpline = self.returnPointCoords()
         if self.closed:
@@ -649,6 +667,7 @@ class Track:
                 for dot in range(*curbRange):
                     pygame.draw.circle(screen, (252, 186, 3), splinePoints[dot], 5)
 
+    #Loops over every point finding where a kink starts and ends, before removing it
     def deKink(self):
         extendedSplinePoints = extendPointsBack(self.splinePoints)
 
@@ -675,6 +694,7 @@ class Track:
                 nonKinkCoordRightInner = self.__rightBorderInnerEdge[seg]
                 nonKinkCoordRightOuter = self.__rightBorderOuterEdge[seg]
 
+    #Checks whether track should be closed based off of whether end and start points are at the same positions
     def shouldTrackBeClosed(self):
         pointCoords = self.returnPointCoords()
         closedStatusBefore = self.closed
@@ -693,6 +713,7 @@ class Track:
     def update(self, mousePosX, mousePosY, zoom, screenWidth, screenHeight, screenBorder, pygame, offset, screenRect):
         self.pointsSelected = [[self.points[point], point] for point in range(len(self.points)) if self.points[point].pointSelected]
 
+        #If track is closed, then moving join will select both points. This unselects one of the points
         for point in range(len(self.pointsSelected)):
             if not(point == 0 or (((self.pointsSelected[point][1] == 0) or (self.pointsSelected[point][1] == len(self.points) - 1)) and self.closed)):
                 self.pointsSelected[point][0].pointSelected = False
@@ -707,6 +728,7 @@ class Track:
         for point in self.points:
             if point.mouseHovering: self.mouseHovering = self.points.index(point)
 
+        #Handles when control point movements begins and ends
         groupMove = False
         for pointIndex in range(len(self.points)):
             point = self.points[pointIndex]
@@ -718,6 +740,7 @@ class Track:
                     point.posAtClick = None
                     point.posAtRelease = None
 
+        #Handles when the end control point and start control point should connect
         if len(self.points) >= 5:
             snapThreshold = 50
             if self.points[0].pointSelected and (-snapThreshold <= self.points[0].posX - self.points[-1].posX <= snapThreshold) and (-snapThreshold <= self.points[0].posY - self.points[-1].posY <= snapThreshold) and not(pygame.key.get_mods() & pygame.KMOD_LSHIFT):
@@ -734,33 +757,14 @@ class Track:
         else:
             self.updateCloseStatus(value = False)
 
+        #Updates track
         if len(self.pointsSelected) > 0:
             updatePoints = [point[1] for point in self.pointsSelected]
 
             self.computeSpline(updatePoints = updatePoints)
             self.computeTrackEdges(updatePoints = updatePoints)
 
-    def findVisiblePoints(self, screenRect, offset, zoom):
-        def isVisible(points):
-            for seg in points:
-                offsetSeg = offsetPoints(seg, offset, zoom, single = True)
-                if screenRect.collidepoint(offsetSeg):
-                    return True
-            return False
-
-        visiblePoints = []
-        for point in range(len(self.points) - 1):
-            pointVisible = True
-            leftOuterVisibility = isVisible(self.__leftBorderOuterEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1])
-            if not leftOuterVisibility:
-                rightOuterVisibility = isVisible(self.__rightBorderOuterEdge[(point * self.perSegRes):((point + 1) * self.perSegRes) + 1])
-                if not rightOuterVisibility:
-                    pointVisible = False
-
-            if pointVisible:
-                visiblePoints.append(point)
-        return visiblePoints
-
+    #Main rendering algorithm for drawing track
     def draw(self, programColours, screen, pygame, switchFront, viewMode, antialiasing):
         if len(self.points) >= 2:
             if viewMode == "Track" or viewMode == "Skeleton":

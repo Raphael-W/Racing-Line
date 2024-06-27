@@ -441,7 +441,6 @@ class TextInput(UIElement):
             textWidth = self.font.get_rect(self.text[:self.cursorIndex]).width
             self.layer.pygame.draw.line(self.layer.screen, (200, 200, 200), (self.contextualPosX + 10 + textWidth, self.contextualPosY + 15), (self.contextualPosX + 10 + textWidth, self.contextualPosY - 15 + self.height), 2)
 
-
 class Accordion(UIElement):
     def __init__(self, layer, pos, stick, dimensions, title, elements, collapse = False, show = True, layerIndex = -1):
         super().__init__(layer, pos, stick, show, layerIndex)
