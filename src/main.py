@@ -134,7 +134,7 @@ class TrackEditor (Scene):
         self.lastCaption = None
 
         self.referenceImage = None
-        self.referenceImageZoom = 1
+        self.referenceImageScale = 1
         self.referenceImageRect = None
         self.scaledReferenceImage = None
         self.referenceImageVisibility = True
@@ -325,7 +325,8 @@ class TrackEditor (Scene):
                     self.mainTrack.history.addAction("SET REFERENCE IMAGE", [directory, self.mainTrack.referenceImageDir])
                 self.mainTrack.referenceImageDir = directory
                 self.referenceImage = pygame.image.load(directory)
-                self.scaledReferenceImage = self.referenceImage
+
+                self.scaleReferenceImage()
                 self.referenceImageRect = self.referenceImage.get_rect()
 
             else:
@@ -363,10 +364,10 @@ class TrackEditor (Scene):
         else:
             openImage(imageDirectory)
 
-    def scaleReferenceImage(self, scaleFactor):
+    def scaleReferenceImage(self, scaleFactor = 1):
         if self.mainTrack.referenceImageDir is not None:
-            self.referenceImageZoom *= scaleFactor
-            self.scaledReferenceImage = pygame.transform.scale_by(self.referenceImage, (self.zoom * self.referenceImageZoom))
+            self.referenceImageScale *= scaleFactor
+            self.scaledReferenceImage = pygame.transform.scale_by(self.referenceImage, (self.zoom * self.referenceImageScale))
 
     def toggleReferenceImageVisibility(self):
         self.referenceImageVisibility = not self.referenceImageVisibility
@@ -400,6 +401,7 @@ class TrackEditor (Scene):
             sender.close()
 
         trackData = self.mainTrack.getSaveState()
+        trackData["properties"]["referenceImageScale"] = self.referenceImageScale
 
         def getFileName():
             root = tk.Tk()
@@ -471,6 +473,8 @@ class TrackEditor (Scene):
                     self.mainTrack.finishIndex = trackProperties["finishIndex"]
                     self.mainTrack.finishDir = trackProperties["finishDir"]
                     self.mainTrack.updateCloseStatus(trackProperties["closed"], update = False)
+
+                    self.referenceImageScale = trackProperties["referenceImageScale"]
 
                     if trackProperties["referenceImage"] is not None:
                         referenceImageData = PIL.Image.open(BytesIO(base64.b64decode(trackProperties["referenceImage"])))
@@ -655,7 +659,7 @@ class TrackEditor (Scene):
                         self.offsetPosition = (int(self.offsetPosition[0] - (self.mousePosX - self.offsetPosition[0]) * zoomDifference), int(self.offsetPosition[1] - (self.mousePosY - self.offsetPosition[1]) * zoomDifference))
 
                         if self.mainTrack.referenceImageDir is not None:
-                            self.scaledReferenceImage = pygame.transform.scale_by(self.referenceImage, (self.zoom * self.referenceImageZoom))
+                            self.scaledReferenceImage = pygame.transform.scale_by(self.referenceImage, (self.zoom * self.referenceImageScale))
 
                 elif event.y < 0:
                     if self.zoom > self.lowerZoomLimit:
@@ -669,7 +673,7 @@ class TrackEditor (Scene):
                         self.offsetPosition = (int(self.offsetPosition[0] + (self.mousePosX - self.offsetPosition[0]) * zoomDifference), int(self.offsetPosition[1] + (self.mousePosY - self.offsetPosition[1]) * zoomDifference))
 
                         if self.mainTrack.referenceImageDir is not None:
-                            self.scaledReferenceImage = pygame.transform.scale_by(self.referenceImage, (self.zoom * self.referenceImageZoom))
+                            self.scaledReferenceImage = pygame.transform.scale_by(self.referenceImage, (self.zoom * self.referenceImageScale))
 
             #Handling key presses
             if event.type == pygame.KEYDOWN:

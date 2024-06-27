@@ -37,13 +37,17 @@
         },
         "referenceImage": {}
       },
+      "referenceImageScale": {
+        "type": "number"
+      },
       "required": [
         "width",
         "trackRes",
         "closed",
         "finishIndex",
         "finishDir",
-        "referenceImage"
+        "referenceImage",
+        "referenceImageScale"
       ]
     }
   },

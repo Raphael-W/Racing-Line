@@ -1459,6 +1459,7 @@
         "closed": true,
         "finishIndex": 360.5,
         "finishDir": false,
-        "referenceImage": null
+        "referenceImage": null,
+        "referenceImageScale": 1
     }
 }

@@ -375,6 +375,7 @@
         "closed": true,
         "finishIndex": null,
         "finishDir": null,
-        "referenceImage": null
+        "referenceImage": null,
+        "referenceImageScale": 1
     }
 }
