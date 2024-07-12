@@ -20,6 +20,9 @@ class UIElement:
     def update(self):
         pass
 
+    def alwaysUpdate(self):
+        pass
+
     def display(self):
         pass
 
@@ -167,15 +170,17 @@ class Slider (UIElement):
         self.size = size
         self.length = length
         self.valueRange = valueRange
+        self.value = value
+        if not (valueRange[0] <= value <= valueRange[1]): self.value = valueRange[0]
 
         self.mouseHovering = False
-        self.handleX = (self.length / (self.valueRange[1] - self.valueRange[0])) * (value - self.valueRange[0])
+        self.handleX = (self.length / (self.valueRange[1] - self.valueRange[0])) * (self.value - self.valueRange[0])
         self.handleSelected = False
         self.handleSelectedLast = False
         self.mouseDownLast = False
-        self.handleSize = 10 * self.size
+        self.handleSize = int(10 * self.size)
 
-        self.value = value
+
         self.initialValue = value
         self.action = action
         self.finishedUpdatingAction = finishedUpdatingAction
@@ -188,7 +193,7 @@ class Slider (UIElement):
 
         if not self.disabled:
             mouseX, mouseY = self.layer.pygame.mouse.get_pos()
-            self.handleSize = 10 * self.size
+            self.handleSize = int(10 * self.size)
             self.boundingBox = self.layer.pygame.Rect(self.contextualPosX + self.handleX - self.handleSize, self.contextualPosY - (self.handleSize * 0.75), self.handleSize * 2, self.handleSize * 2)
             self.mouseHovering = (((self.contextualPosX + self.handleX) + (self.handleSize + 2) > mouseX > (self.contextualPosX + self.handleX) - (self.handleSize + 2)) and
                                   (self.contextualPosY + (self.handleSize + 2) > mouseY > self.contextualPosY - (self.handleSize + 2)))
@@ -232,12 +237,12 @@ class Slider (UIElement):
             self.displayColour = (46, 80, 94)
 
     def display(self):
-        bar = self.layer.pygame.Rect(self.contextualPosX, self.contextualPosY, self.length, 7 * self.size)
+        bar = self.layer.pygame.Rect(self.contextualPosX, self.contextualPosY, self.length, int(7 * self.size))
         self.layer.pygame.draw.rect(self.layer.screen, self.displayBarColour, bar, 0, 100)
         self.font.render_to(self.layer.screen, (self.contextualPosX + self.length + 17, self.contextualPosY - 3), str(int(self.value)), self.displayBarColour)
 
-        self.layer.pygame.gfxdraw.aacircle(self.layer.screen, int(self.contextualPosX + self.handleX), int(self.contextualPosY + (7 * self.size) / 2), self.handleSize, self.displayColour)
-        self.layer.pygame.gfxdraw.filled_circle(self.layer.screen, int(self.contextualPosX + self.handleX), int(self.contextualPosY + (7 * self.size) / 2), self.handleSize, self.displayColour)
+        self.layer.pygame.gfxdraw.aacircle(self.layer.screen, int(self.contextualPosX + self.handleX), int(self.contextualPosY + (int(7 * self.size)) / 2), self.handleSize, self.displayColour)
+        self.layer.pygame.gfxdraw.filled_circle(self.layer.screen, int(self.contextualPosX + self.handleX), int(self.contextualPosY + (int(7 * self.size)) / 2), self.handleSize, self.displayColour)
 
     def updateValue(self, value, update = True):
         if self.valueRange[0] <= value <= self.valueRange[1]:
@@ -683,6 +688,9 @@ class Dropdown(UIElement):
         self.stepBeforeClick = self.mouseHovering and not(self.layer.pygame.mouse.get_pressed()[0])
         self.noClickBefore = not(self.layer.pygame.mouse.get_pressed()[0])
 
+    def alwaysUpdate(self):
+        self.dropdownIcon.show = self.show
+
     def display(self):
         if self.displayMenu:
             self.layer.pygame.draw.rect(self.layer.screen, (100, 100, 100), (self.contextualPosX, self.contextualPosY, self.width, len(self.values) * 22 + self.height + 5), border_radius = 10)
@@ -735,6 +743,7 @@ class Layer:
                 if (self.overrideUpdateElements is not None and element in self.overrideUpdateElements) or (self.overrideUpdateElements is None):
                     element.update()
                 element.display()
+            element.alwaysUpdate()
 
     def mouseOnLayer(self, mousePos):
         boundingBoxes = [element.returnBoundingBox() for element in self.elements if element.show]
