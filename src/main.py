@@ -16,6 +16,7 @@ from io import BytesIO
 
 from pygameUIElements import *
 from spline import *
+from car import *
 
 if os.name == "nt":
     import ctypes
@@ -27,9 +28,12 @@ pygame.init()
 pygame.display.set_caption("Racing Line Finder")
 screen = pygame.display.set_mode((1280, 720), pygame.RESIZABLE)
 clock = pygame.time.Clock()
+
 pygame.event.set_allowed([pygame.QUIT, pygame.KEYDOWN, pygame.MOUSEBUTTONDOWN])
 
 running = True
+
+deltaTime = 0
 
 executionDir = os.path.dirname(os.path.dirname(__file__))
 directories = {"mainFont": "assets/fonts/MonoFont.ttf",
@@ -47,13 +51,17 @@ directories = {"mainFont": "assets/fonts/MonoFont.ttf",
                "down": "assets/icons/down.png",
                "bin": "assets/icons/bin.png",
                "hide": "assets/icons/hide.png",
-               "show": "assets/icons/show.png"}
+               "show": "assets/icons/show.png",
+               "f1Car": "assets/sprites/f1_car.png",
+               "f1Wheel": "assets/sprites/f1_wheel.png"}
 
 #Makes above relative paths absolute
 directories = {item: os.path.normpath(os.path.join(executionDir, directory)) for (item, directory) in directories.items()}
 
 mainFont = directories["mainFont"]
 programUI = Layer(screen, pygame, mainFont, directories)
+
+fpsLabel = Label(programUI, 15, (118, 30), "NE", "", (200, 200, 200))
 
 class Scene:
     def __init__(self):
@@ -83,6 +91,7 @@ class SceneManager:
 
     def setScene(self, newScene):
         self.currentScene = self.getSceneNames().index(newScene)
+        self.changeSceneDropdown.index = self.currentScene
 
     def updateCurrentScene(self):
         if len(self.scenes) > 0:
@@ -163,7 +172,6 @@ class TrackEditor (Scene):
         with open(directories["trackSchema"]) as trackSchema:
             self.trackFileSchema = json.load(trackSchema)
 
-        self.fpsLabel = Label(self.UILayer, 15, (118, 30), "NE", "", self.colours["white"])
         self.mouseXLabel = Label(self.UILayer, 15, (100, 60), "NE", "", self.colours["white"])
         self.mouseYLabel = Label(self.UILayer, 15, (100, 80), "NE", "", self.colours["white"])
         self.scaleLabel = Label(self.UILayer, 15, (127, 100), "NE", "", self.colours["white"])
@@ -865,7 +873,6 @@ class TrackEditor (Scene):
         self.mouseXLabel.text = ("x: " + str(int(((self.mousePosX * 1) - self.offsetPosition[0]) / self.zoom)))
         self.mouseYLabel.text = ("y: " + str(int(((self.mousePosY * 1) - self.offsetPosition[1]) / self.zoom)))
         self.scaleLabel.text = ("view: " + str(int(self.zoom * 100)) + "%")
-        self.fpsLabel.text = ("fps: " + str(int(clock.get_fps())))
 
         #Checks if there are any items left to undo
         if len(self.mainTrack.history.undoStack) == 0:
@@ -903,15 +910,15 @@ class TrackEditor (Scene):
         self.trackLayer.display(self.screenWidth, self.screenHeight, self.events, self.offsetPosition, self.zoom)
         self.UILayer.display(self.screenWidth, self.screenHeight, self.events)
 
-class CarConfigurator (Scene):
+class RacingModel (Scene):
     def __init__(self, trackEditor):
         super().__init__()
         self.trackEditor = trackEditor
-        self.trackData = self.trackEditor.mainTrack
         self.screenBorder = 5
+        self.edgePoints = []
 
         self.offsetPosition = (0, 0)
-        self.zoom = 1
+        self.zoom = 2
 
         self.screenWidth = 0
         self.screenHeight = 0
@@ -925,6 +932,14 @@ class CarConfigurator (Scene):
 
         self.events = []
 
+        self.deltaTime = 0
+
+        pygame.joystick.init()
+        self.controllers = [pygame.joystick.Joystick(i) for i in range(pygame.joystick.get_count())]
+
+        self.steeringInput = 0
+        self.accelerationInput = 0
+
         self.colours = {"background": (101, 126, 51),
                         "curve": (128, 128, 128),
                         "controlPoint": (24, 150, 204),
@@ -937,6 +952,8 @@ class CarConfigurator (Scene):
         self.mainFont = directories["mainFont"]
 
         self.UILayer = Layer(screen, pygame, mainFont, directories)
+
+        self.car = Car(pygame, screen, directories)
 
         with open(directories["carSchema"]) as carSchema:
             self.trackFileSchema = json.load(carSchema)
@@ -1003,6 +1020,7 @@ class CarConfigurator (Scene):
                                           self.undoButton, self.undoIcon,
                                           self.redoButton, self.redoIcon],
                                           layerIndex = 0)
+
 
         if len(sys.argv) > 1:
             self.openTrack(sys.argv[1])
@@ -1235,6 +1253,17 @@ class CarConfigurator (Scene):
                 if self.trackEditor.mainTrack.isSaved() or self.closeCount > 1:
                     running = False
 
+            if event.type == pygame.JOYAXISMOTION:
+                self.steeringInput = pygame.joystick.Joystick(0).get_axis(0)
+                self.accelerationInput = ((pygame.joystick.Joystick(0).get_axis(5)) / 2) + 0.5
+                braking = ((pygame.joystick.Joystick(0).get_axis(4)) / 2) + 0.5
+                if braking > 0:
+                    self.accelerationInput = -braking
+
+            if event.type == pygame.JOYBUTTONDOWN:
+                if pygame.joystick.Joystick(0).get_button(2):
+                    self.car.setPosition(50, 50)
+
             # #Adding control point
             # if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (self.trackEditor.mainTrack.mouseHovering is None) and (not self.UILayer.mouseOnLayer((self.mousePosX, self.mousePosY))) and (not programUI.mouseOnLayer((self.mousePosX, self.mousePosY))) and not (self.userSettingScale or self.userSettingFinish):
             #     index = -1
@@ -1345,6 +1374,7 @@ class CarConfigurator (Scene):
 
     def update(self):
         self.trackEditor.mainTrack.updateOffsetValues(self.offsetPosition, self.zoom)
+        self.controllers = [pygame.joystick.Joystick(i) for i in range(pygame.joystick.get_count())]
 
         self.screenWidth, self.screenHeight = screen.get_size()
         self.mousePosX = pygame.mouse.get_pos()[0]
@@ -1352,24 +1382,31 @@ class CarConfigurator (Scene):
 
         screen.fill(self.colours["background"])
 
-        screenRect = pygame.Rect((0, 0), (self.screenWidth + 15, self.screenHeight + 15))
-        if self.trackEditor.mainTrack != self.trackData:
-            self.trackData.update((self.mousePosX - self.offsetPosition[0]) / self.zoom,(self.mousePosY - self.offsetPosition[1]) / self.zoom, self.zoom, self.screenWidth,self.screenHeight, self.screenBorder, pygame, self.offsetPosition, screenRect)
+        if self.edgePoints != self.trackEditor.mainTrack.getEdgePoints():
+            self.edgePoints = list(self.trackEditor.mainTrack.getEdgePoints())
+            self.trackEditor.mainTrack.deKink()
 
-        self.trackData.draw(self.colours, screen, pygame, True, "Display", True)
-
+        self.trackEditor.mainTrack.draw(self.colours, screen, pygame, True, "Display", True)
 
         self.UILayer.display(self.screenWidth, self.screenHeight, self.events)
 
+        # if (not self.trackEditor.mainTrack.closed and (len(self.trackEditor.mainTrack.points) > 1)) or (self.trackEditor.mainTrack.finishIndex is not None):
+        #     self.car.show = True
+        # else:
+        #     self.car.show = False
+
+        self.car.update(self.steeringInput, self.accelerationInput, self.offsetPosition, self.zoom, deltaTime)
+        self.car.display()
+
 
 trackEditorScene = TrackEditor()
-carConfigurationScene = CarConfigurator(trackEditorScene)
+carConfigurationScene = RacingModel(trackEditorScene)
 
 ProgramSceneManager = SceneManager()
 ProgramSceneManager.addScene(trackEditorScene, "Track Editor")
-ProgramSceneManager.addScene(carConfigurationScene, "Car Configurator")
+ProgramSceneManager.addScene(carConfigurationScene, "Racing Model")
 
-ProgramSceneManager.setScene("Track Editor")
+ProgramSceneManager.setScene("Racing Model")
 
 while running:
     screenWidth, screenHeight = screen.get_size()
@@ -1379,7 +1416,9 @@ while running:
     ProgramSceneManager.updateCurrentScene()
     programUI.display(screenWidth, screenHeight, [])
 
+    fpsLabel.text = ("fps: " + str(int(clock.get_fps())))
+
     pygame.display.flip()
-    clock.tick(120) #Refresh Rate
+    deltaTime = clock.tick(60) / 1000 #Refresh Rate
 
 pygame.quit()

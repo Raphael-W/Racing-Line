@@ -674,16 +674,21 @@ class Dropdown(UIElement):
 
         if self.displayMenu:
             self.hoveringItemIndex = None
-            for i in range(len(self.values)):
+            currentIndex = 0
+            for i in range(len(self.values) - 1):
+                if i == self.index:
+                    currentIndex += 1
+
                 mouseOverItem = (((self.contextualPosX + self.width) > mousePos[0] >= self.contextualPosX) and
                                  (self.contextualPosY + ((i + 1) * 22) + self.height > mousePos[1] >= self.contextualPosY + (i * 22) + self.height))
                 if mouseOverItem:
                     self.hoveringItemIndex = i
                     if self.layer.pygame.mouse.get_pressed()[0]:
-                        self.index = i
+                        self.index = currentIndex
                         self.displayMenu = False
                         if self.action is not None:
-                            self.action(self.values[i])
+                            self.action(self.values[currentIndex])
+                currentIndex += 1
 
         self.stepBeforeClick = self.mouseHovering and not(self.layer.pygame.mouse.get_pressed()[0])
         self.noClickBefore = not(self.layer.pygame.mouse.get_pressed()[0])
@@ -693,11 +698,16 @@ class Dropdown(UIElement):
 
     def display(self):
         if self.displayMenu:
-            self.layer.pygame.draw.rect(self.layer.screen, (100, 100, 100), (self.contextualPosX, self.contextualPosY, self.width, len(self.values) * 22 + self.height + 5), border_radius = 10)
-            for i in range(len(self.values)):
+            self.layer.pygame.draw.rect(self.layer.screen, (100, 100, 100), (self.contextualPosX, self.contextualPosY, self.width, (len(self.values) - 1) * 22 + self.height + 5), border_radius = 10)
+            currentIndex = 0
+            for i in range(len(self.values) - 1):
+                if i == self.index:
+                    currentIndex += 1
+
                 if i == self.hoveringItemIndex:
                     self.layer.pygame.draw.rect(self.layer.screen, (75, 75, 75), (self.contextualPosX, self.contextualPosY + (i * 22) + self.height, self.width, 22), border_radius = 10)
-                self.font.render_to(self.layer.screen, (self.contextualPosX + 10, self.contextualPosY + self.height + (22 * i) + 5), str(self.values[i]), (200, 200, 200))
+                self.font.render_to(self.layer.screen, (self.contextualPosX + 10, self.contextualPosY + self.height + (22 * i) + 5), str(self.values[currentIndex]), (200, 200, 200))
+                currentIndex += 1
 
         self.layer.pygame.draw.rect(self.layer.screen, self.colour, (self.contextualPosX, self.contextualPosY, self.width, self.height), border_radius = 10)
         self.font.render_to(self.layer.screen, (self.contextualPosX + 10, self.contextualPosY + (self.height / 2) - 6), str(self.values[self.index]), (200, 200, 200))

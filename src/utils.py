@@ -63,6 +63,10 @@ def extendPointsFront(points):
 
     return extendedSplinePoints
 
+#Extends a list of points at both ends by taking the length and gradient of the last segments and inserting it at the end
+def extendPoints(points):
+    return extendPointsFront(extendPointsBack(points))
+
 #Offsets a list of points, or a singular point
 def offsetPoints(points, offset, zoom, single = False, reverse = False):
     if not reverse:
@@ -103,3 +107,15 @@ def formPolygon(leftSide, rightSide, selectRange, close = False):
 #Checks whether a given point is on the screen
 def checkIfOnscreen(pos, screenDimensions):
     return (0 <= pos[0] <= screenDimensions[0]) and (0 <= pos[1] <= screenDimensions[1])
+
+#Convets meters to pixels using a scale
+def mToPix(metres, pixelInMetres):
+    return metres * (1 / pixelInMetres)
+
+def sinDeg(degrees):
+    return math.sin(degrees * math.pi / 180)
+
+def cosDeg(degrees):
+    return math.cos(degrees * math.pi / 180)
+def tanDeg(degrees):
+    return math.tan(degrees * math.pi / 180)

@@ -4,13 +4,13 @@ from history import *
 import base64
 
 #Checks if point on track gets closer to the centre than it should (indicating a kink)
-def findKink(point, linePoints, width):
+def isPointKinked(point, linePoints, width):
     width = width / 2
 
-    kinkFound = False
     for pointIndex in range(len(linePoints)):
-        kinkFound = kinkFound or (pointDistance(point, linePoints[pointIndex]) < (width - 1))
-    return kinkFound
+        if pointDistance(point, linePoints[pointIndex]) < (width - 1): return True
+
+    return False
 
 #Main mathematical formula for track curve
 def calculateSpline(control_points, t):
@@ -219,6 +219,10 @@ class Track:
 
         return {"points"    : points,
                 "properties": properties}
+
+    #Used to check whether the track has been changed
+    def getEdgePoints(self):
+        return self.__leftBorderInnerEdge
 
     def save(self):
         self.history.saveTrack()
@@ -576,10 +580,10 @@ class Track:
                     self.__mainPolyRightEdge[point] = self.__offset_mainPolyRightEdge[point] = calculateSide(self.splinePoints, point, -5)
 
                     self.__leftBorderInnerEdge[point] = self.__offset_leftBorderInnerEdge[point] = calculateSide(self.splinePoints, point, (self.width * 5))
-                    self.__leftBorderOuterEdge[point] = self.__offset_leftBorderOuterEdge[point] = calculateSide(self.splinePoints, point, (self.width * 5) + 20)
+                    self.__leftBorderOuterEdge[point] = self.__offset_leftBorderOuterEdge[point] = calculateSide(self.splinePoints, point, (self.width * 5) + 7)
 
                     self.__rightBorderInnerEdge[point] = self.__offset_rightBorderInnerEdge[point] = calculateSide(self.splinePoints, point, -(self.width * 5))
-                    self.__rightBorderOuterEdge[point] = self.__offset_rightBorderOuterEdge[point] = calculateSide(self.splinePoints, point, -((self.width * 5) + 20))
+                    self.__rightBorderOuterEdge[point] = self.__offset_rightBorderOuterEdge[point] = calculateSide(self.splinePoints, point, -((self.width * 5) + 7))
 
 
             self.offsetTrackEdges()
@@ -669,9 +673,9 @@ class Track:
 
     #Loops over every point finding where a kink starts and ends, before removing it
     def deKink(self):
-        extendedSplinePoints = extendPointsBack(self.splinePoints)
+        extendedSplinePoints = extendPoints(self.splinePoints)
 
-        updateRange = (0, len(self.splinePoints))
+        updateRange = (1, len(self.splinePoints))
         nonKinkCoordLeftInner = self.__leftBorderInnerEdge[0]
         nonKinkCoordLeftOuter = self.__leftBorderOuterEdge[0]
 
@@ -680,19 +684,21 @@ class Track:
 
         for seg in range(*updateRange):
             detectionRange = (max(seg - (2 * self.perSegRes), 0), min(seg + (2 * self.perSegRes), len(self.__leftBorderInnerEdge)))
-            if findKink(self.__leftBorderInnerEdge[seg], extendedSplinePoints[detectionRange[0]: detectionRange[1]], self.width):
+            if isPointKinked(self.__leftBorderInnerEdge[seg], extendedSplinePoints[detectionRange[0]: detectionRange[1]], (self.width * (1 / self.scale))):
                 self.__leftBorderInnerEdge[seg] = nonKinkCoordLeftInner
                 self.__leftBorderOuterEdge[seg] = nonKinkCoordLeftOuter
             else:
                 nonKinkCoordLeftInner = self.__leftBorderInnerEdge[seg]
                 nonKinkCoordLeftOuter = self.__leftBorderOuterEdge[seg]
 
-            if findKink(self.__rightBorderInnerEdge[seg], extendedSplinePoints[detectionRange[0]: detectionRange[1]], self.width):
+            if isPointKinked(self.__rightBorderInnerEdge[seg], extendedSplinePoints[detectionRange[0]: detectionRange[1]], (self.width * (1 / self.scale))):
                 self.__rightBorderInnerEdge[seg] = nonKinkCoordRightInner
                 self.__rightBorderOuterEdge[seg] = nonKinkCoordRightOuter
             else:
                 nonKinkCoordRightInner = self.__rightBorderInnerEdge[seg]
                 nonKinkCoordRightOuter = self.__rightBorderOuterEdge[seg]
+
+        self.offsetTrackEdges()
 
     #Checks whether track should be closed based off of whether end and start points are at the same positions
     def shouldTrackBeClosed(self):
@@ -799,9 +805,8 @@ class Track:
             if viewMode in ["Spline Dots"]:
                 for dot in self.__offset_splinePoints:
                     if antialiasing:
-                        pygame.gfxdraw.aacircle(screen, int(dot[0]), int(dot[1]), 5, programColours["curve"])
-                    pygame.gfxdraw.filled_circle(screen, int(dot[0]), int(dot[1]), 5, programColours["curve"])
-
+                        pygame.gfxdraw.aacircle(screen, int(dot[0]), int(dot[1]), 4, programColours["curve"])
+                    pygame.gfxdraw.filled_circle(screen, int(dot[0]), int(dot[1]), 4, programColours["curve"])
 
         if viewMode in ["Track", "Skeleton", "Curve", "Spline Dots"]:
             for pointIndex in range(len(self.points)):
