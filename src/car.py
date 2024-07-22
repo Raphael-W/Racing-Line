@@ -3,7 +3,7 @@ import math
 from utils import *
 from pygame import Vector2
 class Car:
-    def __init__(self, pygame, screen, directories):
+    def __init__(self, pygame, screen, directories, track):
         self.pygame = pygame
         self.screen = screen
 
@@ -21,12 +21,12 @@ class Car:
 
         self.maxSpeed = 500
         self.maxAcceleration = 300
-        self.maxTurningAngle = 20
+        self.maxTurningAngle = 40
         self.brakeDeceleration = 200
         self.freeDeceleration = 50
 
         self.width = mToPix(2, self.scale)
-        self.wheelBase = mToPix(1.93, self.scale)
+        self.wheelBase = mToPix(0.7, self.scale) #1.93
 
         self.carBody = None
         self.transformedCarBody = None
@@ -51,6 +51,7 @@ class Car:
         self.show = True
 
         self.directories = directories
+        self.track = track
 
     def setPosition(self, posX, posY):
         self.position = Vector2(posX, posY)
@@ -73,7 +74,7 @@ class Car:
 
             self.carSurface = self.pygame.transform.scale_by(self.carSurface, self.modelMultiplier)
             self.carSurface = self.pygame.transform.rotate(self.carSurface, self.rotation - 90)
-            surfaceRect = self.carSurface.get_rect(center = self.position * self.zoom)
+            surfaceRect = self.carSurface.get_rect(center = offsetPoints(self.position, self.offset, self.zoom, True))
 
             self.screen.blit(self.carSurface, (surfaceRect.x, surfaceRect.y))
 
@@ -122,7 +123,7 @@ class Car:
         self.velocity.x = max(min(self.velocity.x, self.maxSpeed), 0)
 
         if self.steering:
-            turningRadius = self.wheelBase / math.sin(math.radians(self.steering))
+            turningRadius = (self.wheelBase / math.sin(math.radians(self.steering))) + math.copysign(self.velocity.x / 4, self.steering)
             angularVelocity = self.velocity.x / turningRadius
         else:
             angularVelocity = 0

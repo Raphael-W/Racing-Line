@@ -224,6 +224,12 @@ class Track:
     def getEdgePoints(self):
         return self.__leftBorderInnerEdge
 
+    #Returns coordinates of start line
+    def getStartPos(self):
+        if self.finishIndex is None:
+            return None
+        return self.splinePoints[int(self.finishIndex * self.perSegRes)]
+
     def save(self):
         self.history.saveTrack()
 

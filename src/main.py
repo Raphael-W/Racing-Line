@@ -918,7 +918,7 @@ class RacingModel (Scene):
         self.edgePoints = []
 
         self.offsetPosition = (0, 0)
-        self.zoom = 2
+        self.zoom = 1
 
         self.screenWidth = 0
         self.screenHeight = 0
@@ -953,7 +953,7 @@ class RacingModel (Scene):
 
         self.UILayer = Layer(screen, pygame, mainFont, directories)
 
-        self.car = Car(pygame, screen, directories)
+        self.car = Car(pygame, screen, directories, self.trackEditor.mainTrack)
 
         with open(directories["carSchema"]) as carSchema:
             self.trackFileSchema = json.load(carSchema)
@@ -1262,7 +1262,9 @@ class RacingModel (Scene):
 
             if event.type == pygame.JOYBUTTONDOWN:
                 if pygame.joystick.Joystick(0).get_button(2):
-                    self.car.setPosition(50, 50)
+                    startPos = self.trackEditor.mainTrack.getStartPos()
+                    if startPos is not None:
+                        self.car.setPosition(*startPos)
 
             # #Adding control point
             # if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (self.trackEditor.mainTrack.mouseHovering is None) and (not self.UILayer.mouseOnLayer((self.mousePosX, self.mousePosY))) and (not programUI.mouseOnLayer((self.mousePosX, self.mousePosY))) and not (self.userSettingScale or self.userSettingFinish):
@@ -1384,9 +1386,15 @@ class RacingModel (Scene):
 
         if self.edgePoints != self.trackEditor.mainTrack.getEdgePoints():
             self.edgePoints = list(self.trackEditor.mainTrack.getEdgePoints())
-            self.trackEditor.mainTrack.deKink()
+            if len(self.trackEditor.mainTrack.points) >= 2:
+                self.trackEditor.mainTrack.deKink()
 
         self.trackEditor.mainTrack.draw(self.colours, screen, pygame, True, "Display", True)
+
+        self.car.update(self.steeringInput, self.accelerationInput, self.offsetPosition, self.zoom, deltaTime)
+        self.car.display()
+
+        self.offsetPosition = (-self.car.position.x + (self.screenWidth / 2), -self.car.position.y + (self.screenHeight / 2))
 
         self.UILayer.display(self.screenWidth, self.screenHeight, self.events)
 
@@ -1394,9 +1402,6 @@ class RacingModel (Scene):
         #     self.car.show = True
         # else:
         #     self.car.show = False
-
-        self.car.update(self.steeringInput, self.accelerationInput, self.offsetPosition, self.zoom, deltaTime)
-        self.car.display()
 
 
 trackEditorScene = TrackEditor()
@@ -1406,7 +1411,7 @@ ProgramSceneManager = SceneManager()
 ProgramSceneManager.addScene(trackEditorScene, "Track Editor")
 ProgramSceneManager.addScene(carConfigurationScene, "Racing Model")
 
-ProgramSceneManager.setScene("Racing Model")
+ProgramSceneManager.setScene("Track Editor")
 
 while running:
     screenWidth, screenHeight = screen.get_size()
