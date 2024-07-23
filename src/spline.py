@@ -729,7 +729,7 @@ class Track:
 
         return [closedStatusBefore, self.closed]
 
-    def update(self, mousePosX, mousePosY, zoom, screenWidth, screenHeight, screenBorder, pygame, offset, screenRect):
+    def update(self, mousePosX, mousePosY, zoom, screenWidth, screenHeight, screenBorder, pygame, offset, screenRect, directories):
         self.pointsSelected = [[self.points[point], point] for point in range(len(self.points)) if self.points[point].pointSelected]
 
         #If track is closed, then moving join will select both points. This unselects one of the points
@@ -831,3 +831,30 @@ class Track:
                     colour = programColours["controlPoint"]
 
                 point.draw(colour, screen, pygame, self.offsetValue, self.zoomValue)
+
+        if self.finishIndex is not None and viewMode in ["Display"]:
+            checkeredHeight = (12 * self.zoomValue)
+            checkeredWidthCount = int((self.width * (1 / self.scale) * self.zoomValue) // checkeredHeight)
+            checkeredWidth = checkeredHeight + (((self.width * self.scale * self.zoomValue) % checkeredHeight) / checkeredWidthCount)
+
+            finishIndex = int(self.finishIndex * self.perSegRes)
+            finishAngle = self.getStartPos()[1]
+
+            startLeftCoord = int(self.__offset_leftBorderInnerEdge[finishIndex][0]), int(self.__offset_leftBorderInnerEdge[finishIndex][1])
+
+            for y in range(4):
+                for x in range(checkeredWidthCount):
+                    topLeft = startLeftCoord[0] - (cosDeg(finishAngle) * (checkeredHeight * y)) - (sinDeg(finishAngle) * (checkeredWidth * x)), startLeftCoord[1] + (sinDeg(finishAngle) * (checkeredHeight * y)) - (cosDeg(finishAngle) * (checkeredWidth * x))
+
+                    corner1 = topLeft
+                    corner2 = topLeft[0] - (cosDeg(finishAngle) * checkeredHeight), topLeft[1] + (sinDeg(finishAngle) * checkeredHeight)
+                    corner3 = topLeft[0] - (cosDeg(finishAngle) * checkeredHeight) - (sinDeg(finishAngle) * checkeredWidth), topLeft[1] + (sinDeg(finishAngle) * checkeredHeight) - (cosDeg(finishAngle) * checkeredWidth)
+                    corner4 = topLeft[0] - (sinDeg(finishAngle) * checkeredWidth), topLeft[1] - (cosDeg(finishAngle) * checkeredWidth)
+
+                    if (x + y) % 2 == 0:
+                        checkeredColour = (0, 0, 0)
+                    else:
+                        checkeredColour = (200, 200, 200)
+
+                    checkeredSquarePoints = [corner1, corner2, corner3, corner4]
+                    pygame.draw.polygon(screen, checkeredColour, checkeredSquarePoints)

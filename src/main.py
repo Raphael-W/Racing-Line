@@ -53,7 +53,7 @@ directories = {"mainFont": "assets/fonts/MonoFont.ttf",
                "hide": "assets/icons/hide.png",
                "show": "assets/icons/show.png",
                "f1Car": "assets/sprites/f1_car.png",
-               "f1Wheel": "assets/sprites/f1_wheel.png"}
+               "f1Wheel": "assets/sprites/f1_wheel.png",}
 
 #Makes above relative paths absolute
 directories = {item: os.path.normpath(os.path.join(executionDir, directory)) for (item, directory) in directories.items()}
@@ -275,6 +275,8 @@ class TrackEditor (Scene):
             self.zoom = 1
 
         self.offsetPosition = ((((self.screenWidth / self.zoom) / 2) - centreX) * self.zoom, (((self.screenHeight / self.zoom) / 2) - centreY) * self.zoom)
+        if self.referenceImage is not None:
+            self.scaledReferenceImage = pygame.transform.scale_by(self.referenceImage, (self.zoom * self.referenceImageScale))
 
     def setScale(self):
         self.userSettingScale = True
@@ -729,6 +731,7 @@ class TrackEditor (Scene):
                         self.finishIndex = ((self.mousePosX - self.offsetPosition[0]) / self.zoom, (self.mousePosY - self.offsetPosition[1]) / self.zoom)
                         onLine, nearPointSegment, nearestPointCoords, nearestPoint = self.mainTrack.pointOnCurve(self.finishIndex[0], self.finishIndex[1], (self.mainTrack.width / 2))
                         if onLine:
+                            nearestPoint = max(5, nearestPoint)
                             self.finishIndex = nearestPoint / self.mainTrack.perSegRes
                         else:
                             self.finishIndex = None
@@ -766,8 +769,7 @@ class TrackEditor (Scene):
             screen.blit(self.scaledReferenceImage, self.referenceImageRect)
 
         if not (self.userSettingScale or self.userSettingFinish):
-            self.mainTrack.update((self.mousePosX - self.offsetPosition[0]) / self.zoom, (self.mousePosY - self.offsetPosition[1]) / self.zoom, self.zoom, self.screenWidth, self.screenHeight, self.screenBorder, pygame, self.offsetPosition, screenRect)
-
+            self.mainTrack.update((self.mousePosX - self.offsetPosition[0]) / self.zoom, (self.mousePosY - self.offsetPosition[1]) / self.zoom, self.zoom, self.screenWidth, self.screenHeight, self.screenBorder, pygame, self.offsetPosition, screenRect, directories)
         self.mainTrack.draw(self.colours, screen, pygame, self.switchEndsSwitch.value, self.viewMode, self.antialiasingSwitch.value)
 
         #Algorithm for setting track scale - draw line between 2 mouse positions
@@ -820,7 +822,7 @@ class TrackEditor (Scene):
                 self.finishIndex = None
                 self.finishDir = None
 
-        if self.finishIndex is not None:
+        if self.finishIndex is not None and self.viewMode != "Display":
             self.finishIcon.show = True
             self.finishDirIcon.show = True
         else:
