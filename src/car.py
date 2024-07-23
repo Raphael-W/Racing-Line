@@ -53,8 +53,9 @@ class Car:
         self.directories = directories
         self.track = track
 
-    def setPosition(self, posX, posY):
+    def setPosition(self, posX, posY, facing = 0):
         self.position = Vector2(posX, posY)
+        self.rotation = facing
 
     def display(self):
         if self.show:

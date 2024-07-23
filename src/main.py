@@ -918,7 +918,7 @@ class RacingModel (Scene):
         self.edgePoints = []
 
         self.offsetPosition = (0, 0)
-        self.zoom = 1
+        self.zoom = 2
 
         self.screenWidth = 0
         self.screenHeight = 0
@@ -1262,9 +1262,9 @@ class RacingModel (Scene):
 
             if event.type == pygame.JOYBUTTONDOWN:
                 if pygame.joystick.Joystick(0).get_button(2):
-                    startPos = self.trackEditor.mainTrack.getStartPos()
+                    startPos, startAngle = self.trackEditor.mainTrack.getStartPos()
                     if startPos is not None:
-                        self.car.setPosition(*startPos)
+                        self.car.setPosition(*startPos, startAngle)
 
             # #Adding control point
             # if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (self.trackEditor.mainTrack.mouseHovering is None) and (not self.UILayer.mouseOnLayer((self.mousePosX, self.mousePosY))) and (not programUI.mouseOnLayer((self.mousePosX, self.mousePosY))) and not (self.userSettingScale or self.userSettingFinish):
@@ -1394,7 +1394,7 @@ class RacingModel (Scene):
         self.car.update(self.steeringInput, self.accelerationInput, self.offsetPosition, self.zoom, deltaTime)
         self.car.display()
 
-        self.offsetPosition = (-self.car.position.x + (self.screenWidth / 2), -self.car.position.y + (self.screenHeight / 2))
+        self.offsetPosition = ((-self.car.position.x * self.zoom) + (self.screenWidth / 2), (-self.car.position.y * self.zoom) + (self.screenHeight / 2))
 
         self.UILayer.display(self.screenWidth, self.screenHeight, self.events)
 
