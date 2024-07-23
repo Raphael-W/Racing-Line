@@ -56,6 +56,8 @@ class Car:
     def setPosition(self, posX, posY, facing = 0):
         self.position = Vector2(posX, posY)
         self.rotation = facing
+        self.velocity = Vector2(0, 0)
+        self.acceleration = 0
 
     def display(self):
         if self.show:

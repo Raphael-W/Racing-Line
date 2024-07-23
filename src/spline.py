@@ -840,7 +840,10 @@ class Track:
             finishIndex = int(self.finishIndex * self.perSegRes)
             finishAngle = self.getStartPos()[1]
 
-            startLeftCoord = int(self.__offset_leftBorderInnerEdge[finishIndex][0]), int(self.__offset_leftBorderInnerEdge[finishIndex][1])
+            if self.finishDir:
+                startLeftCoord = int(self.__offset_leftBorderInnerEdge[finishIndex][0]), int(self.__offset_leftBorderInnerEdge[finishIndex][1])
+            else:
+                startLeftCoord = int(self.__offset_rightBorderInnerEdge[finishIndex][0]), int(self.__offset_rightBorderInnerEdge[finishIndex][1])
 
             for y in range(4):
                 for x in range(checkeredWidthCount):
