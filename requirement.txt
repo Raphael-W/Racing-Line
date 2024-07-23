@@ -1,0 +1,4 @@
+pygame
+jsonschema
+pillow
+numpy
