@@ -973,7 +973,7 @@ class TrackTesting (Scene):
 
         self.UILayer = Layer(screen, pygame, mainFont, directories)
         self.speedometer = Label(self.UILayer, 30, (180, 100), "SE", "121mph", self.colours["white"], bold = True)
-        self.controlsLabel = Label(self.UILayer, 13, (50, 50), "SW", "Use WASD or arrow keys  |  'R' (keyboard) or 'X' (controller) to reset", self.colours["white"], bold = True)
+        self.controlsLabel = Label(self.UILayer, 13, (50, 50), "SW", "Use WASD, arrow keys or a controller  |  'R' (keyboard) or 'X' (controller) to reset", self.colours["white"], bold = True)
 
         self.car = Car(pygame, screen, directories, self.trackEditor.mainTrack)
 
@@ -1014,113 +1014,6 @@ class TrackTesting (Scene):
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_r:
                     self.car.reset()
-            # #Adding control point
-            # if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (self.trackEditor.mainTrack.mouseHovering is None) and (not self.UILayer.mouseOnLayer((self.mousePosX, self.mousePosY))) and (not programUI.mouseOnLayer((self.mousePosX, self.mousePosY))) and not (self.userSettingScale or self.userSettingFinish):
-            #     index = -1
-            #     if self.switchEndsSwitch.value:
-            #         index = 0
-            #
-            #     onLine = False
-            #     if len(self.trackEditor.mainTrack.points) >= 2:
-            #         onLine, nearPointSegment, nearestPoint, nearPointIndex = self.trackEditor.mainTrack.pointOnCurve((self.mousePosX - self.offsetPosition[0]) / self.zoom, (self.mousePosY - self.offsetPosition[1]) / self.zoom, 20)
-            #         if onLine:
-            #             index = nearPointSegment
-            #
-            #     validPlacement = (not self.trackEditor.mainTrack.closed or onLine)
-            #     if validPlacement:
-            #         self.trackEditor.mainTrack.add(ControlPoint((self.mousePosX - self.offsetPosition[0]) / self.zoom,
-            #                                         (self.mousePosY - self.offsetPosition[1]) / self.zoom),
-            #                            index = index, userPerformed = True)
-            #
-            # #Removing control point
-            # if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[2] and (self.trackEditor.mainTrack.mouseHovering is not None) and (not self.UILayer.mouseOnLayer((self.mousePosX, self.mousePosY))) and (not programUI.mouseOnLayer((self.mousePosX, self.mousePosY))) and not (self.userSettingScale or self.userSettingFinish):
-            #     index = self.trackEditor.mainTrack.mouseHovering
-            #     if not(self.trackEditor.mainTrack.closed and ((index == 0) or (index == len(self.trackEditor.mainTrack.points) - 1))):
-            #         self.trackEditor.mainTrack.remove(index = index, userPerformed = True)
-            #
-            # #Set offset pivot
-            # if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[1]:
-            #     self.pivotPos = (self.mousePosX - self.offsetPosition[0], self.mousePosY - self.offsetPosition[1])
-            #
-            # #Set offset pivot
-            # if event.type == pygame.MOUSEWHEEL:
-            #     if event.y > 0:
-            #         if self.zoom < self.upperZoomLimit:
-            #             beforeZoom = self.zoom
-            #             self.zoom *= 1 + self.zoomIncrement
-            #
-            #             if self.zoom > self.upperZoomLimit:
-            #                 self.zoom = self.upperZoomLimit
-            #
-            #             zoomDifference = (self.zoom/beforeZoom) - 1
-            #             self.offsetPosition = (int(self.offsetPosition[0] - (self.mousePosX - self.offsetPosition[0]) * zoomDifference), int(self.offsetPosition[1] - (self.mousePosY - self.offsetPosition[1]) * zoomDifference))
-            #
-            #             if self.trackEditor.mainTrack.referenceImageDir is not None:
-            #                 self.scaledReferenceImage = pygame.transform.scale_by(self.referenceImage, (self.zoom * self.referenceImageScale))
-            #
-            #     elif event.y < 0:
-            #         if self.zoom > self.lowerZoomLimit:
-            #             beforeZoom = self.zoom
-            #             self.zoom *= 1 - self.zoomIncrement
-            #
-            #             if self.zoom < self.lowerZoomLimit:
-            #                 self.zoom = self.lowerZoomLimit
-            #
-            #             zoomDifference = (beforeZoom/self.zoom) - 1
-            #             self.offsetPosition = (int(self.offsetPosition[0] + (self.mousePosX - self.offsetPosition[0]) * zoomDifference), int(self.offsetPosition[1] + (self.mousePosY - self.offsetPosition[1]) * zoomDifference))
-            #
-            #             if self.trackEditor.mainTrack.referenceImageDir is not None:
-            #                 self.scaledReferenceImage = pygame.transform.scale_by(self.referenceImage, (self.zoom * self.referenceImageScale))
-            #
-            # #Handling key presses
-            # if event.type == pygame.KEYDOWN:
-            #     if event.key == pygame.K_z and pygame.key.get_mods() & pygame.KMOD_LCTRL and not(pygame.key.get_mods() & pygame.KMOD_LSHIFT):
-            #         self.undo()
-            #
-            #     if event.key == pygame.K_z and pygame.key.get_mods() & pygame.KMOD_LCTRL and pygame.key.get_mods() & pygame.KMOD_LSHIFT:
-            #         self.redo()
-            #
-            #     if event.key == pygame.K_s and pygame.key.get_mods() & pygame.KMOD_LCTRL:
-            #         self.saveTrack()
-            #
-            #     if event.key == pygame.K_o and pygame.key.get_mods() & pygame.KMOD_LCTRL:
-            #         self.openTrack()
-            #
-            #     if event.key == pygame.K_n and pygame.key.get_mods() & pygame.KMOD_LCTRL:
-            #         self.newTrack()
-            #
-            # #Logic for setting scale
-            # if self.userSettingScale:
-            #     if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (not self.UILayer.mouseOnLayer((self.mousePosX, self.mousePosY))) and (not programUI.mouseOnLayer((self.mousePosX, self.mousePosY))):
-            #         if self.setScalePoint1 is None:
-            #             self.setScalePoint1 = ((self.mousePosX - self.offsetPosition[0]) / self.zoom, (self.mousePosY - self.offsetPosition[1]) / self.zoom)
-            #         elif self.setScalePoint2 is None:
-            #             self.setScalePoint2 = ((self.mousePosX - self.offsetPosition[0]) / self.zoom, (self.mousePosY - self.offsetPosition[1]) / self.zoom)
-            #             self.realDistanceTextInput.show = True
-            #             self.realDistanceTextInput.text = ""
-            #
-            #     if event.type == pygame.KEYDOWN:
-            #         if event.key == pygame.K_ESCAPE:
-            #             self.realDistanceTextInput.show = False
-            #             self.userSettingScale = False
-            #
-            # #Logic for setting finish
-            # if self.userSettingFinish:
-            #     if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (not self.UILayer.mouseOnLayer((self.mousePosX, self.mousePosY))) and (not programUI.mouseOnLayer((self.mousePosX, self.mousePosY))):
-            #         if self.finishIndex is None:
-            #             self.finishIndex = ((self.mousePosX - self.offsetPosition[0]) / self.zoom, (self.mousePosY - self.offsetPosition[1]) / self.zoom)
-            #             onLine, nearPointSegment, nearestPointCoords, nearestPoint = self.trackEditor.mainTrack.pointOnCurve(self.finishIndex[0], self.finishIndex[1], (self.trackEditor.mainTrack.width / 2))
-            #             if onLine:
-            #                 self.finishIndex = nearestPoint / self.trackEditor.mainTrack.perSegRes
-            #             else:
-            #                 self.finishIndex = None
-            #
-            #         elif self.finishIndex is not None:
-            #             self.completeFinish()
-            #
-            #     if event.type == pygame.KEYDOWN:
-            #         if event.key == pygame.K_ESCAPE:
-            #             self.userSettingFinish = False
 
     def update(self):
         self.trackEditor.mainTrack.updateOffsetValues(self.offsetPosition, self.zoom)
@@ -1136,8 +1029,8 @@ class TrackTesting (Scene):
             self.edgePoints = list(self.trackEditor.mainTrack.getEdgePoints())
 
             if len(self.trackEditor.mainTrack.points) >= 2:
-                self.trackEditor.mainTrack.deKink()
                 self.car.reset()
+                self.trackEditor.mainTrack.deKink()
 
         self.trackEditor.mainTrack.draw(self.colours, screen, pygame, True, "Display", True)
 

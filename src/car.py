@@ -167,7 +167,7 @@ class Car:
         self.velocity.x = max(min(self.velocity.x, self.maxSpeed), 0)
 
         if self.steering:
-            turningRadius = (self.wheelBase / math.sin(math.radians(self.steering))) + math.copysign(self.velocity.x / 4, self.steering)
+            turningRadius = (self.wheelBase / math.sin(math.radians(self.steering))) + math.copysign((self.velocity.x / 10) ** 1.5, self.steering)
             angularVelocity = self.velocity.x / turningRadius
         else:
             angularVelocity = 0
