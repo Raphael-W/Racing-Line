@@ -119,8 +119,12 @@ def mToPix(metres, pixelInMetres):
 
 def sinDeg(degrees):
     return math.sin(degrees * math.pi / 180)
-
 def cosDeg(degrees):
     return math.cos(degrees * math.pi / 180)
 def tanDeg(degrees):
     return math.tan(degrees * math.pi / 180)
+
+def pixToMiles(pixels, scale):
+    meters = pixels * scale
+    return int(meters * 2.237)
+

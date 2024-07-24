@@ -21,11 +21,11 @@ class Car:
         self.steeringInput = 0
         self.accelerationInput = 0
 
-        self.maxSpeed = 500
-        self.maxAcceleration = 300
+        self.maxSpeed = 515
+        self.maxAcceleration = 120
         self.maxTurningAngle = 40
         self.brakeDeceleration = 200
-        self.freeDeceleration = 50
+        self.freeDeceleration = 10
 
         self.width = mToPix(2, self.scale)
         self.wheelBase = mToPix(0.7, self.scale) #1.93
@@ -52,6 +52,8 @@ class Car:
 
         self.show = True
         self.dead = False
+        self.offTrack = False
+        self.previouslyOffTrack = False
 
         self.directories = directories
         self.track = track
@@ -63,21 +65,28 @@ class Car:
         self.velocity = Vector2(0, 0)
         self.acceleration = 0
 
+    def reset(self):
+        startPos, startAngle = self.track.getStartPos()
+        self.setPosition(*startPos, startAngle)
+        self.dead = False
+
     def updateNearestSplineIndex(self):
-        points = self.track.splinePoints
-        tree = KDTree(points)
-        dist, index = tree.query(self.position)
-        self.nearestSplineIndex = index
+        if len(self.track.points) >= 2:
+            points = self.track.splinePoints
+            tree = KDTree(points)
+            dist, index = tree.query(self.position)
+            self.nearestSplineIndex = index
 
     def updateIsDead(self):
-        if not self.dead:
+        if not self.dead and (len(self.track.points) >= 2):
             points = extendPoints(self.track.splinePoints)
             width = self.track.width * (1 / self.track.scale)
             index = self.nearestSplineIndex + 1
 
             distanceFromCenter = lineToPointDistance(points[index - 1], points[(index + 1) % (len(points) + 1)], self.position)
-            self.dead = distanceFromCenter[0] > (width / 2)
-            return distanceFromCenter[1], points[index - 1], points[(index + 1) % len(points)]
+            self.dead = self.dead and distanceFromCenter[0] > (width / 2)
+            self.previouslyOffTrack = self.offTrack
+            self.offTrack = distanceFromCenter[0] > (width / 2)
 
     def display(self):
         if self.show:
@@ -89,6 +98,16 @@ class Car:
 
             self.carWheelRRect.center = (436, 281)
             self.carWheelLRect.center = (64, 281)
+
+            if self.offTrack != self.previouslyOffTrack:
+                if self.offTrack:
+                    self.carBody.fill((220, 0, 0), special_flags = 4) #BLEND_RGB_MIN
+                    self.carWheelR.fill((220, 0, 0), special_flags = 4) #BLEND_RGB_MIN
+                    self.carWheelL.fill((220, 0, 0), special_flags = 4) #BLEND_RGB_MIN
+                else:
+                    self.carBody.fill((255, 255, 255), special_flags = 5)  #BLEND_RGB_MAX
+                    self.carWheelR.fill((255, 255, 255), special_flags = 5)  #BLEND_RGB_MAX
+                    self.carWheelL.fill((255, 255, 255), special_flags = 5)  #BLEND_RGB_MAX
 
             self.carSurface = self.pygame.Surface((500, 963), self.pygame.SRCALPHA).convert_alpha()
             self.carSurface.blit(self.transformedCarBody, self.carBodyRect)

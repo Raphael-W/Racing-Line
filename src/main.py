@@ -89,19 +89,39 @@ class SceneManager:
         self.changeSceneDropdown.values = self.getSceneNames()
 
     def setScene(self, newScene):
-        self.currentScene = self.getSceneNames().index(newScene)
+        self.currentScene = self.getSceneIndex(newScene)
         self.changeSceneDropdown.index = self.currentScene
 
+    def getSceneIndex(self, name):
+        return self.getSceneNames().index(name)
+
     def updateCurrentScene(self):
+        if len(self.scenes[self.getSceneIndex("Track Editor")].mainTrack.points) <= 1:
+            self.changeSceneDropdown.disabledIndexes = [self.getSceneIndex("Track Testing")]
+        else:
+            self.changeSceneDropdown.disabledIndexes = []
+
         if len(self.scenes) > 0:
             self.scenes[self.currentScene].update()
 
     #Events are passed from main loop to current scene
     def distributeEvents(self, events):
+        global running
+
         for event in events:
+            if event.type == pygame.QUIT:
+                trackEditorSceneIndex = self.getSceneIndex("Track Editor")
+                if not self.scenes[trackEditorSceneIndex].mainTrack.isSaved():
+                    self.setScene("Track Editor")
+                else:
+                    running = False
+
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_TAB:
                     self.currentScene = (self.currentScene + 1) % len(self.scenes)
+                    while self.currentScene in self.changeSceneDropdown.disabledIndexes:
+                        self.currentScene = (self.currentScene + 1) % len(self.scenes)
+
                     self.changeSceneDropdown.index = self.currentScene
 
         if len(self.scenes) > 0:
@@ -573,11 +593,10 @@ class TrackEditor (Scene):
 
     def closeTrack(self):
         def closeError(sender):
-
             sender.close()
             self.closeCount = 0
 
-        def saveTrackFirst():
+        def saveTrackFirst(sender):
             global running
             self.saveTrack()
             running = False
@@ -909,6 +928,225 @@ class TrackEditor (Scene):
             self.trackScaleLabel.text = ""
 
         self.trackLayer.display(self.screenWidth, self.screenHeight, self.events, self.offsetPosition, self.zoom)
+        self.UILayer.display(self.screenWidth, self.screenHeight, self.events)
+
+class TrackTesting (Scene):
+    def __init__(self, trackEditor):
+        super().__init__()
+        self.trackEditor = trackEditor
+        self.screenBorder = 5
+        self.edgePoints = []
+
+        self.offsetPosition = (0, 0)
+        self.zoom = 2
+
+        self.screenWidth = 0
+        self.screenHeight = 0
+        self.mousePosX = 0
+        self.mousePosY = 0
+
+        self.saveDirectory = None
+        self.closeCount = 0
+        self.newCaption = None
+        self.lastCaption = None
+
+        self.events = []
+
+        self.deltaTime = 0
+
+        pygame.joystick.init()
+        self.controllers = [pygame.joystick.Joystick(i) for i in range(pygame.joystick.get_count())]
+
+        self.steeringInput = 0
+        self.accelerationInput = 0
+
+        self.colours = {"background": (101, 126, 51),
+                        "curve": (128, 128, 128),
+                        "controlPoint": (24, 150, 204),
+                        "frontControlPoint": (204, 138, 24),
+                        "mainGrid": (30, 30, 30),
+                        "innerGrid": (25, 25, 25),
+                        "white": (200, 200, 200),
+                        "mainTrack": (100, 100, 100)}
+
+        self.mainFont = directories["mainFont"]
+
+        self.UILayer = Layer(screen, pygame, mainFont, directories)
+        self.speedometer = Label(self.UILayer, 30, (180, 100), "SE", "121mph", self.colours["white"], bold = True)
+        self.controlsLabel = Label(self.UILayer, 13, (50, 50), "SW", "Use WASD or arrow keys  |  'R' (keyboard) or 'X' (controller) to reset", self.colours["white"], bold = True)
+
+        self.car = Car(pygame, screen, directories, self.trackEditor.mainTrack)
+
+    #Where all the events are passed to be processed
+    def handleEvents(self, events):
+        global running
+
+        self.accelerationInput = 0
+        self.steeringInput = 0
+
+        if len(self.controllers) > 0:
+            self.steeringInput = pygame.joystick.Joystick(0).get_axis(0)
+            self.accelerationInput = ((pygame.joystick.Joystick(0).get_axis(5)) / 2) + 0.5
+            braking = ((pygame.joystick.Joystick(0).get_axis(4)) / 2) + 0.5
+            if braking > 0:
+                self.accelerationInput = -braking
+
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_UP] or keys[pygame.K_DOWN] or keys[pygame.K_RIGHT] or keys[pygame.K_LEFT] or keys[pygame.K_w] or keys[pygame.K_s] or keys[pygame.K_a] or keys[pygame.K_d]:
+            self.accelerationInput = 0
+            self.steeringInput = 0
+
+        if keys[pygame.K_UP] or keys[pygame.K_w]:
+            self.accelerationInput = 1
+        if keys[pygame.K_DOWN] or keys[pygame.K_s]:
+            self.accelerationInput = -1
+        if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
+            self.steeringInput = 1
+        if keys[pygame.K_LEFT] or keys[pygame.K_a]:
+            self.steeringInput = -1
+
+        self.events = events
+        for event in events:
+            if event.type == pygame.JOYBUTTONDOWN:
+                if pygame.joystick.Joystick(0).get_button(2): #X
+                    self.car.reset()
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_r:
+                    self.car.reset()
+            # #Adding control point
+            # if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (self.trackEditor.mainTrack.mouseHovering is None) and (not self.UILayer.mouseOnLayer((self.mousePosX, self.mousePosY))) and (not programUI.mouseOnLayer((self.mousePosX, self.mousePosY))) and not (self.userSettingScale or self.userSettingFinish):
+            #     index = -1
+            #     if self.switchEndsSwitch.value:
+            #         index = 0
+            #
+            #     onLine = False
+            #     if len(self.trackEditor.mainTrack.points) >= 2:
+            #         onLine, nearPointSegment, nearestPoint, nearPointIndex = self.trackEditor.mainTrack.pointOnCurve((self.mousePosX - self.offsetPosition[0]) / self.zoom, (self.mousePosY - self.offsetPosition[1]) / self.zoom, 20)
+            #         if onLine:
+            #             index = nearPointSegment
+            #
+            #     validPlacement = (not self.trackEditor.mainTrack.closed or onLine)
+            #     if validPlacement:
+            #         self.trackEditor.mainTrack.add(ControlPoint((self.mousePosX - self.offsetPosition[0]) / self.zoom,
+            #                                         (self.mousePosY - self.offsetPosition[1]) / self.zoom),
+            #                            index = index, userPerformed = True)
+            #
+            # #Removing control point
+            # if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[2] and (self.trackEditor.mainTrack.mouseHovering is not None) and (not self.UILayer.mouseOnLayer((self.mousePosX, self.mousePosY))) and (not programUI.mouseOnLayer((self.mousePosX, self.mousePosY))) and not (self.userSettingScale or self.userSettingFinish):
+            #     index = self.trackEditor.mainTrack.mouseHovering
+            #     if not(self.trackEditor.mainTrack.closed and ((index == 0) or (index == len(self.trackEditor.mainTrack.points) - 1))):
+            #         self.trackEditor.mainTrack.remove(index = index, userPerformed = True)
+            #
+            # #Set offset pivot
+            # if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[1]:
+            #     self.pivotPos = (self.mousePosX - self.offsetPosition[0], self.mousePosY - self.offsetPosition[1])
+            #
+            # #Set offset pivot
+            # if event.type == pygame.MOUSEWHEEL:
+            #     if event.y > 0:
+            #         if self.zoom < self.upperZoomLimit:
+            #             beforeZoom = self.zoom
+            #             self.zoom *= 1 + self.zoomIncrement
+            #
+            #             if self.zoom > self.upperZoomLimit:
+            #                 self.zoom = self.upperZoomLimit
+            #
+            #             zoomDifference = (self.zoom/beforeZoom) - 1
+            #             self.offsetPosition = (int(self.offsetPosition[0] - (self.mousePosX - self.offsetPosition[0]) * zoomDifference), int(self.offsetPosition[1] - (self.mousePosY - self.offsetPosition[1]) * zoomDifference))
+            #
+            #             if self.trackEditor.mainTrack.referenceImageDir is not None:
+            #                 self.scaledReferenceImage = pygame.transform.scale_by(self.referenceImage, (self.zoom * self.referenceImageScale))
+            #
+            #     elif event.y < 0:
+            #         if self.zoom > self.lowerZoomLimit:
+            #             beforeZoom = self.zoom
+            #             self.zoom *= 1 - self.zoomIncrement
+            #
+            #             if self.zoom < self.lowerZoomLimit:
+            #                 self.zoom = self.lowerZoomLimit
+            #
+            #             zoomDifference = (beforeZoom/self.zoom) - 1
+            #             self.offsetPosition = (int(self.offsetPosition[0] + (self.mousePosX - self.offsetPosition[0]) * zoomDifference), int(self.offsetPosition[1] + (self.mousePosY - self.offsetPosition[1]) * zoomDifference))
+            #
+            #             if self.trackEditor.mainTrack.referenceImageDir is not None:
+            #                 self.scaledReferenceImage = pygame.transform.scale_by(self.referenceImage, (self.zoom * self.referenceImageScale))
+            #
+            # #Handling key presses
+            # if event.type == pygame.KEYDOWN:
+            #     if event.key == pygame.K_z and pygame.key.get_mods() & pygame.KMOD_LCTRL and not(pygame.key.get_mods() & pygame.KMOD_LSHIFT):
+            #         self.undo()
+            #
+            #     if event.key == pygame.K_z and pygame.key.get_mods() & pygame.KMOD_LCTRL and pygame.key.get_mods() & pygame.KMOD_LSHIFT:
+            #         self.redo()
+            #
+            #     if event.key == pygame.K_s and pygame.key.get_mods() & pygame.KMOD_LCTRL:
+            #         self.saveTrack()
+            #
+            #     if event.key == pygame.K_o and pygame.key.get_mods() & pygame.KMOD_LCTRL:
+            #         self.openTrack()
+            #
+            #     if event.key == pygame.K_n and pygame.key.get_mods() & pygame.KMOD_LCTRL:
+            #         self.newTrack()
+            #
+            # #Logic for setting scale
+            # if self.userSettingScale:
+            #     if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (not self.UILayer.mouseOnLayer((self.mousePosX, self.mousePosY))) and (not programUI.mouseOnLayer((self.mousePosX, self.mousePosY))):
+            #         if self.setScalePoint1 is None:
+            #             self.setScalePoint1 = ((self.mousePosX - self.offsetPosition[0]) / self.zoom, (self.mousePosY - self.offsetPosition[1]) / self.zoom)
+            #         elif self.setScalePoint2 is None:
+            #             self.setScalePoint2 = ((self.mousePosX - self.offsetPosition[0]) / self.zoom, (self.mousePosY - self.offsetPosition[1]) / self.zoom)
+            #             self.realDistanceTextInput.show = True
+            #             self.realDistanceTextInput.text = ""
+            #
+            #     if event.type == pygame.KEYDOWN:
+            #         if event.key == pygame.K_ESCAPE:
+            #             self.realDistanceTextInput.show = False
+            #             self.userSettingScale = False
+            #
+            # #Logic for setting finish
+            # if self.userSettingFinish:
+            #     if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (not self.UILayer.mouseOnLayer((self.mousePosX, self.mousePosY))) and (not programUI.mouseOnLayer((self.mousePosX, self.mousePosY))):
+            #         if self.finishIndex is None:
+            #             self.finishIndex = ((self.mousePosX - self.offsetPosition[0]) / self.zoom, (self.mousePosY - self.offsetPosition[1]) / self.zoom)
+            #             onLine, nearPointSegment, nearestPointCoords, nearestPoint = self.trackEditor.mainTrack.pointOnCurve(self.finishIndex[0], self.finishIndex[1], (self.trackEditor.mainTrack.width / 2))
+            #             if onLine:
+            #                 self.finishIndex = nearestPoint / self.trackEditor.mainTrack.perSegRes
+            #             else:
+            #                 self.finishIndex = None
+            #
+            #         elif self.finishIndex is not None:
+            #             self.completeFinish()
+            #
+            #     if event.type == pygame.KEYDOWN:
+            #         if event.key == pygame.K_ESCAPE:
+            #             self.userSettingFinish = False
+
+    def update(self):
+        self.trackEditor.mainTrack.updateOffsetValues(self.offsetPosition, self.zoom)
+        self.controllers = [pygame.joystick.Joystick(i) for i in range(pygame.joystick.get_count())]
+
+        self.screenWidth, self.screenHeight = screen.get_size()
+        self.mousePosX = pygame.mouse.get_pos()[0]
+        self.mousePosY = pygame.mouse.get_pos()[1]
+
+        screen.fill(self.colours["background"])
+
+        if self.edgePoints != self.trackEditor.mainTrack.getEdgePoints():
+            self.edgePoints = list(self.trackEditor.mainTrack.getEdgePoints())
+
+            if len(self.trackEditor.mainTrack.points) >= 2:
+                self.trackEditor.mainTrack.deKink()
+                self.car.reset()
+
+        self.trackEditor.mainTrack.draw(self.colours, screen, pygame, True, "Display", True)
+
+        self.car.update(self.steeringInput, self.accelerationInput, self.offsetPosition, self.zoom, deltaTime)
+        self.car.display()
+
+        self.offsetPosition = ((-self.car.position.x * self.zoom) + (self.screenWidth / 2), (-self.car.position.y * self.zoom) + (self.screenHeight / 2))
+
+        self.speedometer.text = f"{pixToMiles(self.car.velocity.x, self.car.scale)} mph"
         self.UILayer.display(self.screenWidth, self.screenHeight, self.events)
 
 class RacingModel (Scene):
@@ -1260,10 +1498,7 @@ class RacingModel (Scene):
 
             if event.type == pygame.JOYBUTTONDOWN:
                 if pygame.joystick.Joystick(0).get_button(2): #X
-                    startPos, startAngle = self.trackEditor.mainTrack.getStartPos()
-                    if startPos is not None:
-                        self.car.setPosition(*startPos, startAngle)
-                    self.car.dead = False
+                    self.car.reset()
 
             # #Adding control point
             # if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (self.trackEditor.mainTrack.mouseHovering is None) and (not self.UILayer.mouseOnLayer((self.mousePosX, self.mousePosY))) and (not programUI.mouseOnLayer((self.mousePosX, self.mousePosY))) and not (self.userSettingScale or self.userSettingFinish):
@@ -1389,7 +1624,7 @@ class RacingModel (Scene):
             if len(self.trackEditor.mainTrack.points) >= 2:
                 self.trackEditor.mainTrack.deKink()
 
-        self.trackEditor.mainTrack.draw(self.colours, screen, pygame, True, "Display", True)
+        self.trackEditor.mainTrack.draw(self.colours, screen, pygame, True, "Skeleton", True)
 
         if not self.car.dead:
             self.car.update(self.steeringInput, self.accelerationInput, self.offsetPosition, self.zoom, deltaTime)
@@ -1401,11 +1636,12 @@ class RacingModel (Scene):
 
 
 trackEditorScene = TrackEditor()
-carConfigurationScene = RacingModel(trackEditorScene)
+trackTestingScene = TrackTesting(trackEditorScene)
+racingModelScene = RacingModel(trackEditorScene)
 
 ProgramSceneManager = SceneManager()
 ProgramSceneManager.addScene(trackEditorScene, "Track Editor")
-ProgramSceneManager.addScene(carConfigurationScene, "Racing Model")
+ProgramSceneManager.addScene(trackTestingScene, "Track Testing")
 
 ProgramSceneManager.setScene("Track Editor")
 

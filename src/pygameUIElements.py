@@ -135,11 +135,13 @@ class Button (UIElement):
         self.font.render_to(self.layer.screen, text_rect, self.text, (250, 250, 250))
 
 class Label (UIElement):
-    def __init__(self, layer, fontSize, pos, stick, text, colour, show = True, layerIndex = -1):
+    def __init__(self, layer, fontSize, pos, stick, text, colour, bold = False, show = True, layerIndex = -1):
         super().__init__(layer, pos, stick, show, layerIndex)
         self.text = text
 
         self.font = layer.pygame.freetype.Font(layer.fontName, fontSize)
+        self.font.strong = bold
+
         self.textSize = self.font.get_rect(self.text).size
         self.colour = colour
 
@@ -618,10 +620,11 @@ class Message(UIElement):
             self.xAction()
 
 class Dropdown(UIElement):
-    def __init__(self, layer, pos, stick, dimensions, values, itemIndex, action = None, show = True, layerIndex = -1):
+    def __init__(self, layer, pos, stick, dimensions, values, itemIndex, disabledIndexes = [], action = None, show = True, layerIndex = -1):
         super().__init__(layer, pos, stick, show, layerIndex)
         self.values = values
         self.index = itemIndex
+        self.disabledIndexes = disabledIndexes
 
         self.action = action
 
@@ -681,7 +684,7 @@ class Dropdown(UIElement):
 
                 mouseOverItem = (((self.contextualPosX + self.width) > mousePos[0] >= self.contextualPosX) and
                                  (self.contextualPosY + ((i + 1) * 22) + self.height > mousePos[1] >= self.contextualPosY + (i * 22) + self.height))
-                if mouseOverItem:
+                if mouseOverItem and (currentIndex not in self.disabledIndexes):
                     self.hoveringItemIndex = i
                     if self.layer.pygame.mouse.get_pressed()[0]:
                         self.index = currentIndex
@@ -704,9 +707,14 @@ class Dropdown(UIElement):
                 if i == self.index:
                     currentIndex += 1
 
-                if i == self.hoveringItemIndex:
+                if (i == self.hoveringItemIndex) and (currentIndex not in self.disabledIndexes):
                     self.layer.pygame.draw.rect(self.layer.screen, (75, 75, 75), (self.contextualPosX, self.contextualPosY + (i * 22) + self.height, self.width, 22), border_radius = 10)
-                self.font.render_to(self.layer.screen, (self.contextualPosX + 10, self.contextualPosY + self.height + (22 * i) + 5), str(self.values[currentIndex]), (200, 200, 200))
+
+                if currentIndex in self.disabledIndexes:
+                    colour = (150, 150, 150)
+                else:
+                    colour = (200, 200, 200)
+                self.font.render_to(self.layer.screen, (self.contextualPosX + 10, self.contextualPosY + self.height + (22 * i) + 5), str(self.values[currentIndex]), colour)
                 currentIndex += 1
 
         self.layer.pygame.draw.rect(self.layer.screen, self.colour, (self.contextualPosX, self.contextualPosY, self.width, self.height), border_radius = 10)

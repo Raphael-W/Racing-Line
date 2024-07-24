@@ -227,15 +227,19 @@ class Track:
     #Returns coordinates of start line
     def getStartPos(self):
         if self.finishIndex is None:
-            return None
+            finishIndex = 0.1
+            finishDir = True
+        else:
+            finishIndex = self.finishIndex
+            finishDir = self.finishDir
 
-        finishCoord = self.splinePoints[int(self.finishIndex * self.perSegRes)]
-        finishNeighbourCoord = self.splinePoints[int(self.finishIndex * self.perSegRes) + 1]
+        finishCoord = self.splinePoints[int(finishIndex * self.perSegRes)]
+        finishNeighbourCoord = self.splinePoints[int(finishIndex * self.perSegRes) + 1]
 
         trackAngle = 0 + math.degrees(math.atan2(finishCoord[0] - finishNeighbourCoord[0], (finishCoord[1] - finishNeighbourCoord[1]))) - 90
-        startAngle = trackAngle + (self.finishDir * 180)
+        startAngle = trackAngle + (finishDir * 180)
 
-        return self.splinePoints[int(self.finishIndex * self.perSegRes)], startAngle
+        return self.splinePoints[int(finishIndex * self.perSegRes)], startAngle
 
     def save(self):
         self.history.saveTrack()
