@@ -95,12 +95,17 @@ def calculateSide(points, pointIndex, width):
     return sideX, sideY
 
 #Used to combine two sides of a polygon (in the form of a list of points), to make one shape
-def formPolygon(leftSide, rightSide, selectRange, close = False):
-    newLeftSide = leftSide[selectRange]
-    newRightSide = rightSide[selectRange]
+def formPolygon(leftSide, rightSide, selectRange = None, close = False):
+    if selectRange is None:
+        newLeftSide = leftSide
+        newRightSide = rightSide
+    else:
+        newLeftSide = leftSide[selectRange]
+        newRightSide = rightSide[selectRange]
+
     if close:
-        newLeftSide += [leftSide[0]]
-        newRightSide += [rightSide[0]]
+        newLeftSide = newLeftSide + [leftSide[0]]
+        newRightSide = newRightSide + [rightSide[0]]
 
     return newLeftSide + list(reversed(newRightSide))
 

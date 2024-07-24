@@ -498,7 +498,7 @@ class TrackEditor (Scene):
                         referenceImageSaveDir = os.path.normpath(os.path.join(executionDir, "temp/referenceImage.png"))
                         referenceImageData.save(referenceImageSaveDir)
                         self.mainTrack.referenceImageDir = referenceImageSaveDir
-                        self.setReferenceImage(referenceImageSaveDir)
+                        self.setReferenceImage(referenceImageSaveDir, userPerformed = False)
 
                     self.mainTrack.computeTrack()
 
@@ -1388,6 +1388,7 @@ class RacingModel (Scene):
 
         if self.edgePoints != self.trackEditor.mainTrack.getEdgePoints():
             self.edgePoints = list(self.trackEditor.mainTrack.getEdgePoints())
+
             if len(self.trackEditor.mainTrack.points) >= 2:
                 self.trackEditor.mainTrack.deKink()
 
@@ -1399,11 +1400,6 @@ class RacingModel (Scene):
         self.offsetPosition = ((-self.car.position.x * self.zoom) + (self.screenWidth / 2), (-self.car.position.y * self.zoom) + (self.screenHeight / 2))
 
         self.UILayer.display(self.screenWidth, self.screenHeight, self.events)
-
-        # if (not self.trackEditor.mainTrack.closed and (len(self.trackEditor.mainTrack.points) > 1)) or (self.trackEditor.mainTrack.finishIndex is not None):
-        #     self.car.show = True
-        # else:
-        #     self.car.show = False
 
 
 trackEditorScene = TrackEditor()
