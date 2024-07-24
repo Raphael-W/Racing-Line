@@ -2,3 +2,4 @@ pygame
 jsonschema
 pillow
 numpy
+scipy

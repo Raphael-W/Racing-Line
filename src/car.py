@@ -1,7 +1,9 @@
-import math
+from scipy.spatial import KDTree
+from pygame import Vector2
 
 from utils import *
-from pygame import Vector2
+from ray import *
+
 class Car:
     def __init__(self, pygame, screen, directories, track):
         self.pygame = pygame
@@ -49,15 +51,33 @@ class Car:
         self.offset = (0, 0)
 
         self.show = True
+        self.dead = False
 
         self.directories = directories
         self.track = track
+        self.nearestSplineIndex = 0
 
     def setPosition(self, posX, posY, facing = 0):
         self.position = Vector2(posX, posY)
         self.rotation = facing
         self.velocity = Vector2(0, 0)
         self.acceleration = 0
+
+    def updateNearestSplineIndex(self):
+        points = self.track.splinePoints
+        tree = KDTree(points)
+        dist, index = tree.query(self.position)
+        self.nearestSplineIndex = index
+
+    def updateIsDead(self):
+        if not self.dead:
+            points = extendPoints(self.track.splinePoints)
+            width = self.track.width * (1 / self.track.scale)
+            index = self.nearestSplineIndex + 1
+
+            distanceFromCenter = lineToPointDistance(points[index - 1], points[(index + 1) % (len(points) + 1)], self.position)
+            self.dead = distanceFromCenter[0] > (width / 2)
+            return distanceFromCenter[1], points[index - 1], points[(index + 1) % len(points)]
 
     def display(self):
         if self.show:
@@ -95,6 +115,8 @@ class Car:
             self.carBodyRect.topleft = (0, 0)
 
         # ---- Movement ----
+        self.updateNearestSplineIndex()
+        self.updateIsDead()
 
         self.steeringInput = -steeringInput
         self.accelerationInput = accelerationInput
