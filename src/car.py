@@ -70,7 +70,7 @@ class Car:
         self.nearestSplineIndex = index
 
     def updateIsDead(self):
-        if True:#not self.dead:
+        if not self.dead:
             points = extendPoints(self.track.splinePoints)
             width = self.track.width * (1 / self.track.scale)
             index = self.nearestSplineIndex + 1

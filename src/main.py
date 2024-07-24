@@ -15,7 +15,7 @@ import PIL.Image
 from io import BytesIO
 
 from pygameUIElements import *
-from spline import *
+from track import *
 from car import *
 
 if os.name == "nt":
@@ -38,7 +38,6 @@ deltaTime = 0
 executionDir = os.path.dirname(os.path.dirname(__file__))
 directories = {"mainFont": "assets/fonts/MonoFont.ttf",
                "trackSchema": "assets/schemas/trackSchema.json",
-               "carSchema": "assets/schemas/carSchema.json",
                "recentreButton": "assets/icons/aim.png",
                "finishLine": "assets/icons/flag.png",
                "scale": "assets/icons/scale.png",
@@ -957,9 +956,6 @@ class RacingModel (Scene):
 
         self.car = Car(pygame, screen, directories, self.trackEditor.mainTrack)
 
-        with open(directories["carSchema"]) as carSchema:
-            self.trackFileSchema = json.load(carSchema)
-
         self.fpsLabel = Label(self.UILayer, 15, (118, 30), "NE", "", self.colours["white"])
         self.carXLabel = Label(self.UILayer, 15, (100, 60), "NE", "", self.colours["white"])
         self.carYLabel = Label(self.UILayer, 15, (100, 80), "NE", "", self.colours["white"])
@@ -1263,10 +1259,11 @@ class RacingModel (Scene):
                     self.accelerationInput = -braking
 
             if event.type == pygame.JOYBUTTONDOWN:
-                if pygame.joystick.Joystick(0).get_button(2):
+                if pygame.joystick.Joystick(0).get_button(2): #X
                     startPos, startAngle = self.trackEditor.mainTrack.getStartPos()
                     if startPos is not None:
                         self.car.setPosition(*startPos, startAngle)
+                    self.car.dead = False
 
             # #Adding control point
             # if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (self.trackEditor.mainTrack.mouseHovering is None) and (not self.UILayer.mouseOnLayer((self.mousePosX, self.mousePosY))) and (not programUI.mouseOnLayer((self.mousePosX, self.mousePosY))) and not (self.userSettingScale or self.userSettingFinish):
@@ -1394,7 +1391,8 @@ class RacingModel (Scene):
 
         self.trackEditor.mainTrack.draw(self.colours, screen, pygame, True, "Display", True)
 
-        self.car.update(self.steeringInput, self.accelerationInput, self.offsetPosition, self.zoom, deltaTime)
+        if not self.car.dead:
+            self.car.update(self.steeringInput, self.accelerationInput, self.offsetPosition, self.zoom, deltaTime)
         self.car.display()
 
         self.offsetPosition = ((-self.car.position.x * self.zoom) + (self.screenWidth / 2), (-self.car.position.y * self.zoom) + (self.screenHeight / 2))
