@@ -148,8 +148,9 @@ class TrackEditor (Scene):
         self.trackRes = 20
         self.mainTrack = Track(resolution = self.trackRes)
 
-        self.screenWidth = 0
-        self.screenHeight = 0
+        self.screenWidth = screen.get_size()[0]
+        self.screenHeight = screen.get_size()[1]
+
         self.mousePosX = 0
         self.mousePosY = 0
 
@@ -1151,10 +1152,6 @@ class RacingModel (Scene):
                                           self.redoButton, self.redoIcon],
                                           layerIndex = 0)
 
-
-        if len(sys.argv) > 1:
-            self.openTrack(sys.argv[1])
-
     #Saves track to directory specified by user.
     def saveTrack(self, saveNewDirectory = False):
         def closeError(sender):
@@ -1518,13 +1515,10 @@ class RacingModel (Scene):
             if len(self.trackEditor.mainTrack.points) >= 2:
                 self.trackEditor.mainTrack.deKink()
 
-        self.trackEditor.mainTrack.draw(self.colours, screen, pygame, True, "Skeleton", True)
+        self.trackEditor.mainTrack.draw(self.colours, screen, pygame, True, "Display", True)
 
-        if not self.car.dead:
-            self.car.update(self.steeringInput, self.accelerationInput, self.offsetPosition, self.zoom, deltaTime)
-        self.car.display()
-
-        self.offsetPosition = ((-self.car.position.x * self.zoom) + (self.screenWidth / 2), (-self.car.position.y * self.zoom) + (self.screenHeight / 2))
+        startLine = self.trackEditor.mainTrack.getStartPos()[0]
+        self.offsetPosition = ((-startLine[0] * self.zoom) + (self.screenWidth / 2), (-startLine[1] * self.zoom) + (self.screenHeight / 2))
 
         self.UILayer.display(self.screenWidth, self.screenHeight, self.events)
 
