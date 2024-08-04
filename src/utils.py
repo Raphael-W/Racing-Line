@@ -18,7 +18,7 @@ def gradient(point1, point2):
 
 #Calculate the angle between 3 points
 def angle(point1, point2, point3):
-    distance12 = pointDistance(point1, point2)
+    distance12 = pointDistance(point1, point2) #
     distance23 = pointDistance(point2, point3)
     distance31 = pointDistance(point3, point1)
 
@@ -28,6 +28,17 @@ def angle(point1, point2, point3):
     angleDegrees = angleRad * (180.0 / math.pi)
 
     return angleDegrees
+
+def bearing(pos1, pos2):
+    changeX = pos2[0] - pos1[0]
+    changeY = pos2[1] - pos1[1]
+
+    bearingAngle = math.atan2(changeX, changeY)
+    bearingAngle = math.degrees(bearingAngle)
+    return bearingAngle % 360
+
+def makeAnglePositive(angle):
+    return angle % 360
 
 #Finds the shortest distance between a point and a line
 def lineToPointDistance(lineA, lineB, point):
@@ -42,6 +53,45 @@ def lineToPointDistance(lineA, lineB, point):
     t = max(0, min(1, np.dot(point - lineA, lineB - lineA) / l2))
     projection = lineA + t * (lineB - lineA)
     return pointDistance(point, projection), projection
+
+def makeInfiniteLine(pointA, pointB):
+    grad = gradient(pointA, pointB)
+    intercept = pointA[1] - (grad * pointA[0])
+
+    return grad, intercept
+
+#Calculate intersection point of an infinitely long line (y = mx + c) and a line segment
+def lineSegmentIntersection(pointA, pointB, m, c, facing, start):
+    segM, segC = makeInfiniteLine(pointA, pointB)
+    if segM == m:
+        return None
+
+    intersection = infiniteLineIntersection(segM, segC, m, c)
+    onSegment = pointLiesOnSegment(intersection, pointA, pointB)
+    direction = bearing(start, intersection) - 90
+    facing = makeAnglePositive(360 - facing)
+    correctDirection = ((int(direction + facing) % 360) == 0) or ((int(direction + facing + 1) % 360) == 0) or ((int(direction + facing - 1) % 360) == 0)
+    if onSegment and correctDirection:
+        return intersection
+    else:
+        return None
+
+def infiniteLineIntersection(line1M, line1C, line2M, line2C):
+    if line1M == line2M:
+        return None
+
+    x = (line1C - line2C) / (line2M - line1M)
+    y = line1M * x + line1C
+
+    return x, y
+
+def pointLiesOnSegment(point, lineA, lineB):
+    distPointToA = pointDistance(point, lineA)
+    distPointToB = pointDistance(point, lineB)
+    lineLength = pointDistance(lineA, lineB)
+    tolerance = 0.00001
+
+    return (lineLength - tolerance) <= (distPointToA + distPointToB) <=  (lineLength + tolerance)
 
 #Extends a list of points back by taking the length and gradient of the last segment and inserting it at the end
 def extendPointsBack(points):

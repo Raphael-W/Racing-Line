@@ -145,7 +145,7 @@ class Track:
         self.length = 0
 
         self.finishIndex = None
-        self.finishDir = None
+        self.finishDir = True
 
         self.referenceImageDir = None
 
@@ -222,7 +222,7 @@ class Track:
 
     #Used to check whether the track has been changed
     def getEdgePoints(self):
-        return self.__leftBorderInnerEdge
+        return [list(self.__leftBorderInnerEdge), self.__rightBorderInnerEdge]
 
     #Returns coordinates of start line
     def getStartPos(self):
@@ -792,6 +792,7 @@ class Track:
         if len(self.points) >= 2:
             if viewMode in ["Track", "Skeleton", "Display"]:
                 for point in range(len(self.points) - 1):
+                    pass
                     leftTrackEdgePolygon = formPolygon(self.__offset_leftBorderInnerEdge, self.__offset_leftBorderOuterEdge, slice((point * self.perSegRes), ((point + 1) * self.perSegRes) + 1), ((point == len(self.points) - 2) and self.closed))
                     rightTrackEdgePolygon = formPolygon(self.__offset_rightBorderInnerEdge, self.__offset_rightBorderOuterEdge, slice((point * self.perSegRes), ((point + 1) * self.perSegRes) + 1), ((point == len(self.points) - 2) and self.closed))
 

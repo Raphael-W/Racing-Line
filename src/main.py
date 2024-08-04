@@ -26,7 +26,7 @@ if os.name == "nt":
 
 pygame.init()
 pygame.display.set_caption("Racing Line Finder")
-screen = pygame.display.set_mode((1280, 720), pygame.RESIZABLE)
+screen = pygame.display.set_mode((1280, 649), pygame.RESIZABLE) #1280, 720
 clock = pygame.time.Clock()
 
 pygame.event.set_allowed([pygame.QUIT, pygame.KEYDOWN, pygame.MOUSEBUTTONDOWN])
@@ -97,7 +97,7 @@ class SceneManager:
 
     def updateCurrentScene(self):
         if len(self.scenes[self.getSceneIndex("Track Editor")].mainTrack.points) <= 1:
-            self.changeSceneDropdown.disabledIndexes = [self.getSceneIndex("Track Testing")]
+            self.changeSceneDropdown.disabledIndexes = [self.getSceneIndex("Track Testing"), self.getSceneIndex("Racing Model")]
         else:
             self.changeSceneDropdown.disabledIndexes = []
 
@@ -1030,6 +1030,7 @@ class TrackTesting (Scene):
 
             if len(self.trackEditor.mainTrack.points) >= 2:
                 self.car.reset()
+                self.car.trackChanged()
                 self.trackEditor.mainTrack.deKink()
 
         self.trackEditor.mainTrack.draw(self.colours, screen, pygame, True, "Display", True)
@@ -1535,6 +1536,7 @@ racingModelScene = RacingModel(trackEditorScene)
 ProgramSceneManager = SceneManager()
 ProgramSceneManager.addScene(trackEditorScene, "Track Editor")
 ProgramSceneManager.addScene(trackTestingScene, "Track Testing")
+ProgramSceneManager.addScene(racingModelScene, "Racing Model")
 
 ProgramSceneManager.setScene("Track Editor")
 
