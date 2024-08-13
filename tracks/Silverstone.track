@@ -373,8 +373,8 @@
         "width": 10.0,
         "trackRes": 20,
         "closed": true,
-        "finishIndex": null,
-        "finishDir": null,
+        "finishIndex": 2.3,
+        "finishDir": false,
         "referenceImage": null,
         "referenceImageScale": 1
     }

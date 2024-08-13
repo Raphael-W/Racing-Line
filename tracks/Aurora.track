@@ -65,6 +65,10 @@
             2571.9999999999995
         ],
         [
+            -1705.6586804395645,
+            2586.1100235814447
+        ],
+        [
             -1144.9999999999998,
             2226.0
         ],
@@ -105,7 +109,7 @@
         "width": 12.6,
         "trackRes": 45,
         "closed": true,
-        "finishIndex": 22.45,
+        "finishIndex": 23.45,
         "finishDir": true,
         "referenceImage": null,
         "referenceImageScale": 1
