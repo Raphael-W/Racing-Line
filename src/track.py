@@ -622,6 +622,7 @@ class Track:
             self.offsetTrackEdges()
 
     def computeRacingLine(self):
+        self.racingLine = []
         racingLineControlPoints = []
         slightBendLimit = 7000
 
