@@ -155,7 +155,7 @@ class Label (UIElement):
         self.font.render_to(self.layer.screen, (self.contextualPosX, self.contextualPosY), self.text, self.colour)
 
 class Slider (UIElement):
-    def __init__(self, layer, fontSize, barColour, handleColour, pos, stick, size, length, valueRange, value = 0, action = None, finishedUpdatingAction = None, show = True, disabled = False, layerIndex = -1):
+    def __init__(self, layer, fontSize, barColour, handleColour, pos, stick, size, length, valueRange, value = 0, action = None, increment = None, finishedUpdatingAction = None, show = True, disabled = False, hideLabel = False, layerIndex = -1):
         super().__init__(layer, pos, stick, show, layerIndex)
 
         self.barColour = barColour
@@ -173,6 +173,7 @@ class Slider (UIElement):
         self.length = length
         self.valueRange = valueRange
         self.value = value
+        self.increment = increment
         if not (valueRange[0] <= value <= valueRange[1]): self.value = valueRange[0]
 
         self.mouseHovering = False
@@ -189,6 +190,7 @@ class Slider (UIElement):
 
         self.show = show
         self.disabled = disabled
+        self.hideLabel = hideLabel
 
     def update(self):
         self.updateContextualPos()
@@ -214,7 +216,13 @@ class Slider (UIElement):
                     self.action(self.value)
 
                 if self.contextualPosX < mouseX < (self.contextualPosX + self.length):
-                    self.handleX = mouseX - self.contextualPosX
+                    if self.increment is None:
+                        self.handleX = mouseX - self.contextualPosX
+                    else:
+                        gap = self.length / (self.valueRange[1] - self.valueRange[0] + 1)
+                        handleX = int((mouseX - self.contextualPosX) / gap)
+                        self.handleX = handleX * gap
+
                 elif self.contextualPosX >= mouseX:
                     self.handleX = 0
                 else:
@@ -241,7 +249,8 @@ class Slider (UIElement):
     def display(self):
         bar = self.layer.pygame.Rect(self.contextualPosX, self.contextualPosY, self.length, int(7 * self.size))
         self.layer.pygame.draw.rect(self.layer.screen, self.displayBarColour, bar, 0, 100)
-        self.font.render_to(self.layer.screen, (self.contextualPosX + self.length + 17, self.contextualPosY - 3), str(int(self.value)), self.displayBarColour)
+        if not self.hideLabel:
+            self.font.render_to(self.layer.screen, (self.contextualPosX + self.length + 17, self.contextualPosY - 3), str(int(self.value)), self.displayBarColour)
 
         self.layer.pygame.gfxdraw.aacircle(self.layer.screen, int(self.contextualPosX + self.handleX), int(self.contextualPosY + (int(7 * self.size)) / 2), self.handleSize, self.displayColour)
         self.layer.pygame.gfxdraw.filled_circle(self.layer.screen, int(self.contextualPosX + self.handleX), int(self.contextualPosY + (int(7 * self.size)) / 2), self.handleSize, self.displayColour)

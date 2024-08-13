@@ -36,6 +36,15 @@ def calculateSpline(control_points, t):
 
     return interpolate(p0, p1, p2, p3, t)
 
+#Used to determine whether the track is bending left or right
+def trackDir(P1, P2, P3):
+    v1 = (P2[0] - P1[0], P2[1] - P1[1])
+    v2 = (P3[0] - P2[0], P3[1] - P2[1])
+
+    crossProd = v1[0] * v2[1] - v1[1] * v2[0]
+    return crossProd
+
+
 class ControlPoint:
     def __init__(self, posX, posY):
         self.posX = posX
@@ -103,12 +112,18 @@ class ControlPoint:
             pygame.gfxdraw.filled_circle(screen, newPos[0], newPos[1], self.size, colour)
 
 class Track:
-    def __init__(self, resolution, points = None):
+    def __init__(self, resolution, pygame, screen, points = None):
         if points is None:
             points = []
 
         self.points = points
         self.splinePoints = []
+
+        for point in self.points:
+            self.points.append(ControlPoint(point[0], point[1]))
+
+        self.pygame = pygame
+        self.screen = screen
 
         #Visual Track Points
         self.__mainPolyLeftEdge = []
@@ -141,6 +156,7 @@ class Track:
 
         self.perSegRes = resolution
         self.scale = 0.2
+        self.width = 12
 
         self.length = 0
 
@@ -149,12 +165,12 @@ class Track:
 
         self.referenceImageDir = None
 
-        self.width = 12
-
-        for point in self.points:
-            self.points.append(ControlPoint(point[0], point[1]))
-
         self.history = History(self)
+
+        self.racingLine = []
+        self.leftRacingLineSpline = []
+        self.rightRacingLineSpline = []
+
 
     #Clear track, and any settings
     def clear(self):
@@ -239,7 +255,7 @@ class Track:
         trackAngle = 0 + math.degrees(math.atan2(finishCoord[0] - finishNeighbourCoord[0], (finishCoord[1] - finishNeighbourCoord[1]))) - 90
         startAngle = trackAngle + (finishDir * 180)
 
-        return self.splinePoints[int(finishIndex * self.perSegRes)], startAngle
+        return self.splinePoints[int(finishIndex * self.perSegRes)], startAngle, int(finishIndex * self.perSegRes), finishDir
 
     def save(self):
         self.history.saveTrack()
@@ -605,88 +621,50 @@ class Track:
 
             self.offsetTrackEdges()
 
+    def computeRacingLine(self):
+        racingLineControlPoints = []
+        slightBendLimit = 7000
+
+        if len(self.points) >= 3:
+            pointCoords = self.returnPointCoords()
+            controlPointDirection = [0]
+            for controlPIndex in range(1, len(pointCoords) - 1):
+                controlPointDirection.append(trackDir(pointCoords[controlPIndex - 1], pointCoords[controlPIndex], pointCoords[controlPIndex + 1]))
+            controlPointDirection.append(0)
+
+            for controlPDir in range(1, len(controlPointDirection) - 1):
+                if 2 <= controlPDir <= len(controlPointDirection) - 3:
+                    pointDirections = [controlPointDirection[controlPDir - 1], controlPointDirection[controlPDir], controlPointDirection[controlPDir + 1]]
+                    largeCurve = all([abs(point) >= slightBendLimit for point in pointDirections]) and sameSign(pointDirections) and (not sameSign([controlPointDirection[controlPDir + 1], controlPointDirection[controlPDir + 2]])) and (not sameSign([controlPointDirection[controlPDir - 1], controlPointDirection[controlPDir - 2]]))
+                    if largeCurve:
+                        controlPointDirection[controlPDir] *= -1
+
+            lastDir = 0
+            for controlPDirIndex in range(len(controlPointDirection) - 1):
+                lineSplit = splitLineToNodes(self.__leftBorderInnerEdge[controlPDirIndex * self.perSegRes], self.__rightBorderInnerEdge[controlPDirIndex * self.perSegRes], 10)
+                currentDir = controlPointDirection[controlPDirIndex]
+
+                if (currentDir > slightBendLimit) or ((-slightBendLimit < currentDir < slightBendLimit) and lastDir == 1):
+                    racingLineControlPoints.append(lineSplit[1])
+                    lastDir = 1
+                elif (currentDir < -slightBendLimit) or ((-slightBendLimit < currentDir < slightBendLimit) and lastDir == -1):
+                    racingLineControlPoints.append(lineSplit[-2])
+                    lastDir = -1
+                else:
+                    racingLineControlPoints.append(pointCoords[controlPDirIndex])
+            racingLineControlPoints.append(pointCoords[-1])
+
+            resolution = (len(pointCoords) - 1) * 100
+            for tInt in range(resolution):
+                t = tInt / resolution
+                self.racingLine.append(calculateSpline(racingLineControlPoints, t))
+
+
     #Runs both computeSpline() and computeTrackEdges()
     def computeTrack(self, updatePoints = []):
         self.computeSpline(updatePoints = updatePoints)
         self.computeTrackEdges(updatePoints = updatePoints)
-
-    #UNFINISHED - Used to find where curbs should be drawn
-    def computeCurbs(self, pygame, screen, offset, zoom):
-        curbSpline = self.returnPointCoords()
-        if self.closed:
-            first1 = curbSpline[1]
-            first2 = curbSpline[2]
-            last1 = curbSpline[-2]
-            last2 = curbSpline[-3]
-
-            curbSpline.insert(0, last1)
-            curbSpline.insert(0, last2)
-            curbSpline.insert(-1, first1)
-            curbSpline.insert(-1, first2)
-
-
-        numOfSegments = len(self.points) - 1
-        resolution = numOfSegments * 100
-        for tInt in range(0, resolution):
-            t = tInt / resolution
-            curbSpline.append(calculateSpline(self.returnPointCoords(), t))
-
-        if self.closed:
-            curbSpline.pop(0)
-            curbSpline.pop(0)
-            curbSpline.pop(-1)
-            curbSpline.pop(-1)
-
-        curbThreshold = 0.02
-        if len(self.points) >= 2:
-            splinePoints = offsetPoints(curbSpline, offset, zoom)
-            lengthOfSpline = len(splinePoints) - 1
-            previousAngle = angle(splinePoints[0], splinePoints[1], splinePoints[2])
-            curbRanges = []
-
-            lowerBound = None
-            upperBound = None
-
-            for dot in range(1, lengthOfSpline):
-                currentAngle = angle(splinePoints[dot - 1], splinePoints[dot], splinePoints[dot + 1])
-                diffInAngle = abs(currentAngle - previousAngle)
-                if diffInAngle > curbThreshold:
-                    if lowerBound is None:
-                        lowerBound = dot
-                        upperBound = dot
-                    else:
-                        upperBound += 1
-                elif upperBound is not None:
-                    curbRanges.append((lowerBound, upperBound))
-
-                    lowerBound = None
-                    upperBound = None
-
-                previousAngle = currentAngle
-
-            if len(curbRanges) > 1:
-                cleanedCurbRanges = []
-                lowerBound = curbRanges[0][0]
-                upperBound = curbRanges[0][1]
-                minDotCount = 15
-                for curbRange in range(1, len(curbRanges)):
-                    if (pointDistance(splinePoints[curbRanges[curbRange][0]], splinePoints[upperBound]) / zoom) > 70:
-                        if (upperBound - lowerBound) > minDotCount:
-                            cleanedCurbRanges.append((lowerBound, upperBound))
-
-                        lowerBound = curbRanges[curbRange][0]
-                        upperBound = curbRanges[curbRange][1]
-                    else:
-                        upperBound = curbRanges[curbRange][1]
-
-                if (upperBound - lowerBound) > minDotCount:
-                    cleanedCurbRanges.append((lowerBound, upperBound))
-
-                curbRanges = cleanedCurbRanges
-
-            for curbRange in curbRanges:
-                for dot in range(*curbRange):
-                    pygame.draw.circle(screen, (252, 186, 3), splinePoints[dot], 5)
+        self.computeRacingLine()
 
     #Loops over every point finding where a kink starts and ends, before removing it
     def deKink(self):
@@ -733,7 +711,23 @@ class Track:
 
         return [closedStatusBefore, self.closed]
 
-    def update(self, mousePosX, mousePosY, zoom, screenWidth, screenHeight, screenBorder, pygame, offset, screenRect, directories):
+    def cloneTrack(self, resolution = None):
+        otherTrack = Track(20, self.pygame, self.screen)
+        otherTrack.points = self.points
+        otherTrack.closed = self.closed
+        otherTrack.finishIndex = self.finishIndex
+        otherTrack.finishDir = self.finishDir
+        otherTrack.width = self.width
+
+        if resolution is None:
+            otherTrack.perSegRes = self.perSegRes
+        else:
+            otherTrack.perSegRes = resolution
+
+        otherTrack.computeTrack()
+        return otherTrack
+
+    def update(self, mousePosX, mousePosY, zoom, screenWidth, screenHeight, screenBorder, offset, screenRect, directories):
         self.pointsSelected = [[self.points[point], point] for point in range(len(self.points)) if self.points[point].pointSelected]
 
         #If track is closed, then moving join will select both points. This unselects one of the points
@@ -756,7 +750,7 @@ class Track:
         for pointIndex in range(len(self.points)):
             point = self.points[pointIndex]
             if screenRect.collidepoint(offsetPoints(point.getPos(), offset, zoom, True)):
-                point.update(mousePosX, mousePosY, zoom, screenWidth, screenHeight, screenBorder, pygame, offset)
+                point.update(mousePosX, mousePosY, zoom, screenWidth, screenHeight, screenBorder, self.pygame, offset)
                 if (point.posAtClick is not None) and (point.posAtRelease is not None) and (point.posAtClick != point.posAtRelease):
                     self.history.addAction("MOVE POINT", [pointIndex, point.posAtClick, point.posAtRelease], group = groupMove)
                     groupMove = True
@@ -766,15 +760,15 @@ class Track:
         #Handles when the end control point and start control point should connect
         if len(self.points) >= 5:
             snapThreshold = 50
-            if self.points[0].pointSelected and (-snapThreshold <= self.points[0].posX - self.points[-1].posX <= snapThreshold) and (-snapThreshold <= self.points[0].posY - self.points[-1].posY <= snapThreshold) and not(pygame.key.get_mods() & pygame.KMOD_LSHIFT):
+            if self.points[0].pointSelected and (-snapThreshold <= self.points[0].posX - self.points[-1].posX <= snapThreshold) and (-snapThreshold <= self.points[0].posY - self.points[-1].posY <= snapThreshold) and not(self.pygame.key.get_mods() & self.pygame.KMOD_LSHIFT):
                 self.points[0].posX, self.points[0].posY = self.points[-1].posX, self.points[-1].posY
                 self.updateCloseStatus(value = True)
 
-            elif self.points[-1].pointSelected and (-snapThreshold <= self.points[-1].posX - self.points[0].posX <= snapThreshold) and (-snapThreshold <= self.points[-1].posY - self.points[0].posY <= snapThreshold) and not(pygame.key.get_mods() & pygame.KMOD_LSHIFT):
+            elif self.points[-1].pointSelected and (-snapThreshold <= self.points[-1].posX - self.points[0].posX <= snapThreshold) and (-snapThreshold <= self.points[-1].posY - self.points[0].posY <= snapThreshold) and not(self.pygame.key.get_mods() & self.pygame.KMOD_LSHIFT):
                 self.points[-1].posX, self.points[-1].posY = self.points[0].posX, self.points[0].posY
                 self.updateCloseStatus(value = True)
 
-            if (self.points[0].pointSelected or self.points[-1].pointSelected) and (pygame.key.get_mods() & pygame.KMOD_LSHIFT):
+            if (self.points[0].pointSelected or self.points[-1].pointSelected) and (self.pygame.key.get_mods() & self.pygame.KMOD_LSHIFT):
                 self.updateCloseStatus(value = False)
 
         else:
@@ -783,48 +777,45 @@ class Track:
         #Updates track
         if len(self.pointsSelected) > 0:
             updatePoints = [point[1] for point in self.pointsSelected]
-
-            self.computeSpline(updatePoints = updatePoints)
-            self.computeTrackEdges(updatePoints = updatePoints)
+            self.computeTrack(updatePoints = updatePoints)
 
     #Main rendering algorithm for drawing track
-    def draw(self, programColours, screen, pygame, switchFront, viewMode, antialiasing):
+    def draw(self, programColours, switchFront, viewMode, antialiasing):
         if len(self.points) >= 2:
             if viewMode in ["Track", "Skeleton", "Display"]:
                 for point in range(len(self.points) - 1):
-                    pass
                     leftTrackEdgePolygon = formPolygon(self.__offset_leftBorderInnerEdge, self.__offset_leftBorderOuterEdge, slice((point * self.perSegRes), ((point + 1) * self.perSegRes) + 1), ((point == len(self.points) - 2) and self.closed))
                     rightTrackEdgePolygon = formPolygon(self.__offset_rightBorderInnerEdge, self.__offset_rightBorderOuterEdge, slice((point * self.perSegRes), ((point + 1) * self.perSegRes) + 1), ((point == len(self.points) - 2) and self.closed))
 
                     if antialiasing:
-                        pygame.gfxdraw.aapolygon(screen, leftTrackEdgePolygon, programColours["white"])
-                    pygame.gfxdraw.filled_polygon(screen, leftTrackEdgePolygon, programColours["white"])
+                        self.pygame.gfxdraw.aapolygon(self.screen, leftTrackEdgePolygon, programColours["white"])
+                    self.pygame.gfxdraw.filled_polygon(self.screen, leftTrackEdgePolygon, programColours["white"])
 
                     if antialiasing:
-                        pygame.gfxdraw.aapolygon(screen, rightTrackEdgePolygon, programColours["white"])
-                    pygame.gfxdraw.filled_polygon(screen, rightTrackEdgePolygon, programColours["white"])
+                        self.pygame.gfxdraw.aapolygon(self.screen, rightTrackEdgePolygon, programColours["white"])
+                    self.pygame.gfxdraw.filled_polygon(self.screen, rightTrackEdgePolygon, programColours["white"])
 
             if viewMode in ["Track", "Display"]:
                 for point in range(len(self.points) - 1):
                     mainTrackPolygon = formPolygon(self.__offset_leftBorderInnerEdge, self.__offset_rightBorderInnerEdge, slice((point * self.perSegRes), ((point + 1) * self.perSegRes) + 1), ((point == len(self.points) - 2) and self.closed))
 
                     if antialiasing:
-                        pygame.gfxdraw.aapolygon(screen, mainTrackPolygon, programColours["mainTrack"])
-                    pygame.gfxdraw.filled_polygon(screen, mainTrackPolygon, programColours["mainTrack"])
+                        self.pygame.gfxdraw.aapolygon(self.screen, mainTrackPolygon, programColours["mainTrack"])
+                    self.pygame.gfxdraw.filled_polygon(self.screen, mainTrackPolygon, programColours["mainTrack"])
 
             if viewMode in ["Track", "Skeleton", "Curve"]:
                 for point in range(len(self.points) - 1):
                     mainCurvePolygon = formPolygon(self.__offset_mainPolyLeftEdge, self.__offset_mainPolyRightEdge, slice((point * self.perSegRes), ((point + 1) * self.perSegRes) + 1), ((point == len(self.points) - 2) and self.closed))
 
                     if antialiasing:
-                        pygame.gfxdraw.aapolygon(screen, mainCurvePolygon, programColours["curve"])
-                    pygame.gfxdraw.filled_polygon(screen, mainCurvePolygon, programColours["curve"])
+                        self.pygame.gfxdraw.aapolygon(self.screen, mainCurvePolygon, programColours["curve"])
+                    self.pygame.gfxdraw.filled_polygon(self.screen, mainCurvePolygon, programColours["curve"])
 
             if viewMode in ["Spline Dots"]:
                 for dot in self.__offset_splinePoints:
                     if antialiasing:
-                        pygame.gfxdraw.aacircle(screen, int(dot[0]), int(dot[1]), 4, programColours["curve"])
-                    pygame.gfxdraw.filled_circle(screen, int(dot[0]), int(dot[1]), 4, programColours["curve"])
+                        self.pygame.gfxdraw.aacircle(self.screen, int(dot[0]), int(dot[1]), 4, programColours["curve"])
+                    self.pygame.gfxdraw.filled_circle(self.screen, int(dot[0]), int(dot[1]), 4, programColours["curve"])
 
         if viewMode in ["Track", "Skeleton", "Curve", "Spline Dots"]:
             for pointIndex in range(len(self.points)):
@@ -835,7 +826,7 @@ class Track:
                 else:
                     colour = programColours["controlPoint"]
 
-                point.draw(colour, screen, pygame, self.offsetValue, self.zoomValue)
+                point.draw(colour, self.screen, self.pygame, self.offsetValue, self.zoomValue)
 
         if self.finishIndex is not None and viewMode in ["Display"]:
             checkeredHeight = (12 * self.zoomValue)
@@ -865,4 +856,8 @@ class Track:
                         checkeredColour = (200, 200, 200)
 
                     checkeredSquarePoints = [corner1, corner2, corner3, corner4]
-                    pygame.draw.polygon(screen, checkeredColour, checkeredSquarePoints)
+                    self.pygame.draw.polygon(self.screen, checkeredColour, checkeredSquarePoints)
+
+        for point in self.racingLine:
+            offsetPoint = offsetPoints(point, self.offsetValue, self.zoomValue, True)
+            self.pygame.draw.circle(self.screen, (200, 0, 0), offsetPoint, 3)

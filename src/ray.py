@@ -22,7 +22,7 @@ class Ray:
         self.angle = angle
 
         if self.reverseSearch:
-            self.startingIndex = min(startIndex + 10, self.lastPointsIndex)
+            self.startingIndex = min(startIndex + 10, self.lastPointsIndex);
             points = [(l[(len(l) - 1) - self.startingIndex:] + l[:(len(l) - 1) - self.startingIndex]) for l in self.points]
         else:
             self.startingIndex = max(startIndex - 10, 0)

@@ -97,7 +97,7 @@ class SceneManager:
 
     def updateCurrentScene(self):
         if len(self.scenes[self.getSceneIndex("Track Editor")].mainTrack.points) <= 1:
-            self.changeSceneDropdown.disabledIndexes = [self.getSceneIndex("Track Testing"), self.getSceneIndex("Racing Model")]
+            self.changeSceneDropdown.disabledIndexes = [self.getSceneIndex("Track Testing")]
         else:
             self.changeSceneDropdown.disabledIndexes = []
 
@@ -146,7 +146,7 @@ class TrackEditor (Scene):
         self.viewMode = "Track"
 
         self.trackRes = 20
-        self.mainTrack = Track(resolution = self.trackRes)
+        self.mainTrack = Track(self.trackRes, pygame, screen)
 
         self.screenWidth = screen.get_size()[0]
         self.screenHeight = screen.get_size()[1]
@@ -788,8 +788,8 @@ class TrackEditor (Scene):
             screen.blit(self.scaledReferenceImage, self.referenceImageRect)
 
         if not (self.userSettingScale or self.userSettingFinish):
-            self.mainTrack.update((self.mousePosX - self.offsetPosition[0]) / self.zoom, (self.mousePosY - self.offsetPosition[1]) / self.zoom, self.zoom, self.screenWidth, self.screenHeight, self.screenBorder, pygame, self.offsetPosition, screenRect, directories)
-        self.mainTrack.draw(self.colours, screen, pygame, self.switchEndsSwitch.value, self.viewMode, self.antialiasingSwitch.value)
+            self.mainTrack.update((self.mousePosX - self.offsetPosition[0]) / self.zoom, (self.mousePosY - self.offsetPosition[1]) / self.zoom, self.zoom, self.screenWidth, self.screenHeight, self.screenBorder, self.offsetPosition, screenRect, directories)
+        self.mainTrack.draw(self.colours, self.switchEndsSwitch.value, self.viewMode, self.antialiasingSwitch.value)
 
         #Algorithm for setting track scale - draw line between 2 mouse positions
         if self.userSettingScale:
@@ -946,11 +946,6 @@ class TrackTesting (Scene):
         self.mousePosX = 0
         self.mousePosY = 0
 
-        self.saveDirectory = None
-        self.closeCount = 0
-        self.newCaption = None
-        self.lastCaption = None
-
         self.events = []
 
         self.deltaTime = 0
@@ -1017,6 +1012,7 @@ class TrackTesting (Scene):
                     self.car.reset()
 
     def update(self):
+        self.offsetPosition = ((-self.car.position.x * self.zoom) + (self.screenWidth / 2), (-self.car.position.y * self.zoom) + (self.screenHeight / 2))
         self.trackEditor.mainTrack.updateOffsetValues(self.offsetPosition, self.zoom)
         self.controllers = [pygame.joystick.Joystick(i) for i in range(pygame.joystick.get_count())]
 
@@ -1032,505 +1028,21 @@ class TrackTesting (Scene):
             if len(self.trackEditor.mainTrack.points) >= 2:
                 self.car.reset()
                 self.car.trackChanged()
-                self.trackEditor.mainTrack.deKink()
 
-        self.trackEditor.mainTrack.draw(self.colours, screen, pygame, True, "Display", True)
+        self.trackEditor.mainTrack.draw(self.colours, True, "Display", True)
 
         self.car.update(self.steeringInput, self.accelerationInput, self.offsetPosition, self.zoom, deltaTime)
         self.car.display()
 
-        self.offsetPosition = ((-self.car.position.x * self.zoom) + (self.screenWidth / 2), (-self.car.position.y * self.zoom) + (self.screenHeight / 2))
-
         self.speedometer.text = f"{pixToMiles(self.car.velocity.x, self.car.scale)} mph"
         self.UILayer.display(self.screenWidth, self.screenHeight, self.events)
 
-class RacingModel (Scene):
-    def __init__(self, trackEditor):
-        super().__init__()
-        self.trackEditor = trackEditor
-        self.screenBorder = 5
-        self.edgePoints = []
-
-        self.offsetPosition = (0, 0)
-        self.zoom = 2
-
-        self.screenWidth = 0
-        self.screenHeight = 0
-        self.mousePosX = 0
-        self.mousePosY = 0
-
-        self.saveDirectory = None
-        self.closeCount = 0
-        self.newCaption = None
-        self.lastCaption = None
-
-        self.events = []
-
-        self.deltaTime = 0
-
-        pygame.joystick.init()
-        self.controllers = [pygame.joystick.Joystick(i) for i in range(pygame.joystick.get_count())]
-
-        self.steeringInput = 0
-        self.accelerationInput = 0
-
-        self.colours = {"background": (101, 126, 51),
-                        "curve": (128, 128, 128),
-                        "controlPoint": (24, 150, 204),
-                        "frontControlPoint": (204, 138, 24),
-                        "mainGrid": (30, 30, 30),
-                        "innerGrid": (25, 25, 25),
-                        "white": (200, 200, 200),
-                        "mainTrack": (100, 100, 100)}
-
-        self.mainFont = directories["mainFont"]
-
-        self.UILayer = Layer(screen, pygame, mainFont, directories)
-
-        self.car = Car(pygame, screen, directories, self.trackEditor.mainTrack)
-
-        self.fpsLabel = Label(self.UILayer, 15, (118, 30), "NE", "", self.colours["white"])
-        self.carXLabel = Label(self.UILayer, 15, (100, 60), "NE", "", self.colours["white"])
-        self.carYLabel = Label(self.UILayer, 15, (100, 80), "NE", "", self.colours["white"])
-
-        #------------ CONFIG ACCORDION ------------
-
-        self.saveButton = Button(self.UILayer, (330, 492.5), "SE", (123.75, 30), "Save", 12, (100, 100, 100), action = self.saveTrack)
-        self.saveAsButton = Button(self.UILayer, (198.75, 492.5), "SE", (123.75, 30), "Save As", 12, (100, 100, 100), action = lambda: self.saveTrack(saveNewDirectory = True))
-        self.openTrackButton = Button(self.UILayer, (330, 455), "SE", (123.75, 30), "Open", 12, (100, 100, 100), action = self.openTrack)
-        self.newTrackButton = Button(self.UILayer, (198.75, 455), "SE", (123.75, 30), "New", 12, (100, 100, 100), action = self.newTrack)
-
-        self.setFinishButton = Button(self.UILayer, (330, 410), "SE", (80, 60), "Set Finish", 10, (100, 100, 100), (0, -18), action = None)
-        self.setFinishImage = Image(self.UILayer, (self.setFinishButton.posX - 28, self.setFinishButton.posY - 10), "SE", directories["finishLine"], 1, colour = (30, 30, 30))
-
-        self.setScaleButton = Button(self.UILayer, (242.5, 410), "SE", (80, 60), "Set Scale", 10, (100, 100, 100), (0, -18), action = None)
-        self.scaleImage = Image(self.UILayer, (self.setScaleButton.posX - 28, self.setScaleButton.posY - 10), "SE", directories["scale"], 1, colour = (30, 30, 30))
-
-        self.recentreButton = Button(self.UILayer, (155, 410), "SE", (80, 60), "Recentre", 10, (100, 100, 100), (0, -18), action = None)
-        self.recentreImage = Image(self.UILayer, (self.recentreButton.posX - 27, self.recentreButton.posY - 10), "SE", directories["recentreButton"], 1, colour = (30, 30, 30))
-
-        self.setReferenceImageButton = Button(self.UILayer, (330, 335), "SE", (185, 30), "Set Reference Image", 12, (100, 100, 100), textOffset = (0, -1), action = None)
-
-        self.removeReferenceImageButton = Button(self.UILayer, (105, 335), "SE", (30, 30), "", 12, (66, 41, 41), action = None)
-        self.removeReferenceImageIcon = Image(self.UILayer, (self.removeReferenceImageButton.posX - 1, self.removeReferenceImageButton.posY - 1), "SE", directories["bin"], 0.7, colour = (200, 200, 200))
-
-        self.hideReferenceImageButton = Button(self.UILayer, (140, 335), "SE", (30, 30), "", 12, (100, 100, 100), action = None)
-        self.hideReferenceImageIcon = Image(self.UILayer, (self.hideReferenceImageButton.posX - 1, self.hideReferenceImageButton.posY - 1), "SE", directories["hide"], 0.7, colour = (200, 200, 200))
-
-        self.trackResSlider = Slider(self.UILayer, 15, self.colours["white"], self.colours["controlPoint"], (225, 278), "SE", 1, 100, (10, 100), value = 0, action = None, finishedUpdatingAction = None)
-        self.trackResLabel = Label(self.UILayer, 15, (330, 283), "SE", "Track Res", self.colours["white"])
-
-        self.trackWidthSlider = Slider(self.UILayer, 15, self.colours["white"], self.colours["controlPoint"],(224, 243), "SE", 1, 100, (10, 30), value = 0, action = None, finishedUpdatingAction = None)
-        self.trackWidthLabel = Label(self.UILayer, 15, (295, 248), "SE", "Width", self.colours["white"])
-
-        self.antialiasingSwitch = Switch(self.UILayer, (165, 175), "SE", 0.8, value = False)
-        self.antialiasingLabel = Label(self.UILayer, 15, (281, 173), "SE", "Antialiasing", self.colours["white"])
-
-        self.switchEndsSwitch = Switch(self.UILayer, (165, 125), "SE", 0.8, value = False)
-        self.switchEndsLabel = Label(self.UILayer, 15, (280, 123), "SE", "Switch front", self.colours["white"])
-
-        self.undoButton = Button(self.UILayer, (330, 95), "SE", (30, 30), "", 12, (100, 100, 100), action = self.undo)
-        self.undoIcon = Image(self.UILayer, (self.undoButton.posX - 2, self.undoButton.posY - 2), "SE", directories["undo"], 0.8, colour = self.colours["white"])
-
-        self.redoButton = Button(self.UILayer, (295, 95), "SE", (30, 30), "", 12, (100, 100, 100), action = self.redo)
-        self.redoIcon = Image(self.UILayer, (self.redoButton.posX - 2, self.redoButton.posY - 2), "SE", directories["redo"], 0.8, colour = self.colours["white"])
-
-        self.viewModeDropdown = Dropdown(self.UILayer, (225, 210), "SE", (150, 25),["Track", "Skeleton", "Curve", "Spline Dots"], 0, action = None)
-        self.viewModeLabel = Label(self.UILayer, 15, (330, 205), "SE", "View Mode", (200, 200, 200))
-
-        self.configAccordion = Accordion(self.UILayer, (50, 50), "SE", (305, 505), "Untitled Track",
-                                         [self.saveButton, self.saveAsButton, self.openTrackButton, self.newTrackButton,
-                                          self.setFinishButton, self.setFinishImage, self.setScaleButton,
-                                          self.scaleImage, self.recentreButton, self.recentreImage,
-                                          self.setReferenceImageButton, self.removeReferenceImageButton,
-                                          self.removeReferenceImageIcon, self.hideReferenceImageButton,
-                                          self.hideReferenceImageIcon,self.trackResSlider,
-                                          self.trackResLabel, self.trackWidthSlider, self.trackWidthLabel,
-                                          self.viewModeDropdown, self.viewModeLabel, self.antialiasingSwitch,
-                                          self.antialiasingLabel, self.switchEndsSwitch, self.switchEndsLabel,
-                                          self.undoButton, self.undoIcon,
-                                          self.redoButton, self.redoIcon],
-                                          layerIndex = 0)
-
-    #Saves track to directory specified by user.
-    def saveTrack(self, saveNewDirectory = False):
-        def closeError(sender):
-            sender.close()
-
-        trackData = self.trackEditor.mainTrack.getSaveState()
-        trackData["properties"]["referenceImageScale"] = self.referenceImageScale
-
-        def getFileName():
-            root = tk.Tk()
-            root.wm_attributes('-topmost', 1)
-            root.withdraw()
-            fileSelected = asksaveasfilename(title = "Save Track", initialfile = 'Untitled.track', defaultextension = ".track", filetypes = [("Track Files", "*.track")])
-            root.destroy()
-            return fileSelected
-
-        validFile = True
-        if self.saveDirectory is None or saveNewDirectory:
-            tempDirectory = getFileName()
-            if tempDirectory != '':
-                validFile = os.path.isdir(os.path.dirname(tempDirectory))
-            else:
-                validFile = False
-        else:
-            tempDirectory = self.saveDirectory
-
-        if validFile:
-            try:
-                with open(tempDirectory, "w") as outputFile:
-                    json.dump(trackData, outputFile, indent=4)
-                    pygame.display.set_caption(os.path.splitext(os.path.basename(tempDirectory))[0] + " - " + tempDirectory)
-                    self.saveDirectory = tempDirectory
-                    self.trackEditor.mainTrack.save()
-
-            except Exception as error:
-                Message(self.UILayer, "Can't Save", str(error), "OK", closeError, "grey")
-                self.saveDirectory = None
-
-        elif not validFile and tempDirectory != '':
-            Message(self.UILayer, "Can't Save", "Please select a valid directory", "OK", closeError, "grey")
-            self.saveDirectory = None
-
-    #Opens track from specific directory specified by user. Track is checked first
-    def openTrack(self, tempDirectory = None):
-        def validateTrackFile(directory):
-            error = None
-            try:
-                with open(directory) as loadFile:
-                    try:
-                        trackData = json.load(loadFile)
-                        validate(instance = trackData, schema = self.trackFileSchema)
-                    except:
-                        error = "Invalid"
-
-            except Exception as errorMessage:
-                error = errorMessage
-
-            return error
-
-        def loadTrack(directory):
-            validFile = validateTrackFile(directory)
-            if validFile is None:
-                with open(directory) as loadFile:
-                    trackData = json.load(loadFile)
-
-                    pointCoords = trackData["points"]
-                    self.trackEditor.mainTrack.loadTrackPoints(pointCoords)
-
-                    trackProperties = trackData["properties"]
-
-                    self.trackWidthSlider.updateValue(trackProperties["width"], update = False)
-                    self.trackEditor.mainTrack.width = trackProperties["width"]
-
-                    self.trackResSlider.updateValue(trackProperties["trackRes"], update = False)
-                    self.trackEditor.mainTrack.perSegRes = trackProperties["trackRes"]
-
-                    self.trackEditor.mainTrack.finishIndex = trackProperties["finishIndex"]
-                    self.trackEditor.mainTrack.finishDir = trackProperties["finishDir"]
-                    self.trackEditor.mainTrack.updateCloseStatus(trackProperties["closed"], update = False)
-
-                    self.referenceImageScale = trackProperties["referenceImageScale"]
-
-                    if trackProperties["referenceImage"] is not None:
-                        referenceImageData = PIL.Image.open(BytesIO(base64.b64decode(trackProperties["referenceImage"])))
-                        referenceImageSaveDir = os.path.normpath(os.path.join(executionDir, "temp"))
-
-                        if not os.path.exists(referenceImageSaveDir):
-                            os.makedirs(referenceImageSaveDir)
-
-                        referenceImageSaveDir = os.path.normpath(os.path.join(executionDir, "temp/referenceImage.png"))
-                        referenceImageData.save(referenceImageSaveDir)
-                        self.trackEditor.mainTrack.referenceImageDir = referenceImageSaveDir
-                        self.setReferenceImage(referenceImageSaveDir)
-
-                    self.trackEditor.mainTrack.computeTrack()
-
-                    self.saveDirectory = directory
-                    self.recentreFrame()
-
-            elif validFile == "Invalid":
-                Message(self.UILayer, "Invalid File", "Please select a valid file", "OK", closeError, "grey")
-            else:
-                Message(self.UILayer, "Can't Open", str(validFile), "OK", closeError, "grey")
-
-        def getFileName():
-            root = tk.Tk()
-            root.withdraw()
-            root.wm_attributes('-topmost', 1)
-            fileSelected = askopenfilename(title = "Open Track", defaultextension = ".track", filetypes = [("Track Files", "*.track")])
-            root.destroy()
-            return fileSelected
-
-        def closeError(sender):
-            sender.close()
-
-        def saveTrackFirst(sender):
-            sender.close()
-            self.saveTrack()
-            loadTrack(tempDirectory)
-
-        def discardTrack(sender):
-            sender.close()
-            loadTrack(tempDirectory)
-
-        if tempDirectory is None:
-            tempDirectory = getFileName()
-
-        if tempDirectory != '':
-            validDir = os.path.isfile(tempDirectory)
-            if not validDir:
-                Message(self.UILayer, "Invalid File", "Please select a valid file", "OK", closeError, "grey")
-
-            if tempDirectory != '' and self.trackEditor.mainTrack.isSaved() == False and validDir:
-                Message(self.UILayer, "Sure?", "You currently have an unsaved file open", "Save", saveTrackFirst, "grey","Discard", discardTrack, "red")
-            else:
-                loadTrack(tempDirectory)
-
-    #Clears current track, asks user before clearing
-    def newTrack(self):
-        def saveTrackFirst(sender):
-            sender.close()
-            self.saveTrack()
-            self.trackEditor.mainTrack.clear()
-            self.recentreFrame()
-
-            self.saveDirectory = None
-        def discardTrack(sender):
-            sender.close()
-            self.trackEditor.mainTrack.clear()
-            self.recentreFrame()
-
-            self.saveDirectory = None
-
-        if not self.trackEditor.mainTrack.isSaved():
-            Message(self.UILayer, "Sure?", "You currently have an unsaved file open", "Save", saveTrackFirst, "grey", "Discard", discardTrack, "red")
-
-        elif self.saveDirectory is not None:
-            self.saveTrack()
-            self.trackEditor.mainTrack.clear()
-            self.recentreFrame()
-
-            self.saveDirectory = None
-
-        else:
-            self.recentreFrame()
-
-    def closeTrack(self):
-        def closeError(sender):
-
-            sender.close()
-            self.closeCount = 0
-
-        def saveTrackFirst():
-            global running
-            self.saveTrack()
-            running = False
-
-        def discardTrack(sender):
-            global running
-            running = False
-
-        if self.closeCount == 0:
-            unsavedTrackError = Message(self.UILayer, "Sure?", "You currently have an unsaved file open", "Save", saveTrackFirst, "grey", "Discard", discardTrack, "red", xAction = lambda: closeError(unsavedTrackError))
-        self.closeCount += 1
-
-    #Undoes previous action
-    def undo(self):
-        undoActions = self.trackEditor.mainTrack.history.undo()
-        for action in undoActions:
-            if action.command == "SET REFERENCE IMAGE":
-                self.trackEditor.mainTrack.referenceImageDir = action.params[1]
-                if self.trackEditor.mainTrack.referenceImageDir is not None:
-                    self.setReferenceImage(self.trackEditor.mainTrack.referenceImageDir, userPerformed = False)
-
-        undoActions = self.trackEditor.mainTrack.undo(undoActions)
-        for action in undoActions:
-            if action.command == "SET SCALE":
-                self.scaleReferenceImage(1 / (action.params[0] * (1 / self.trackEditor.mainTrack.scale)))
-                self.recentreFrame()
-
-    #Redoes previously undone action
-    def redo(self):
-        redoActions = self.trackEditor.mainTrack.history.redo()
-        for action in redoActions:
-            if action.command == "SET REFERENCE IMAGE":
-                self.trackEditor.mainTrack.referenceImageDir = action.params[0]
-                if self.trackEditor.mainTrack.referenceImageDir is not None:
-                    self.setReferenceImage(self.trackEditor.mainTrack.referenceImageDir, userPerformed = False)
-
-        redoActions = self.trackEditor.mainTrack.redo(redoActions)
-        for action in redoActions:
-            if action.command == "SET SCALE":
-                self.scaleReferenceImage(action.params[0] * (1 / self.trackEditor.mainTrack.scale))
-                self.recentreFrame()
-
-    #Where all the events are passed to be processed
-    def handleEvents(self, events):
-        global running
-
-        self.events = events
-        for event in events:
-            if event.type == pygame.QUIT:
-                if not self.trackEditor.mainTrack.isSaved():
-                    self.closeTrack()
-
-                if self.trackEditor.mainTrack.isSaved() or self.closeCount > 1:
-                    running = False
-
-            if event.type == pygame.JOYAXISMOTION:
-                self.steeringInput = pygame.joystick.Joystick(0).get_axis(0)
-                self.accelerationInput = ((pygame.joystick.Joystick(0).get_axis(5)) / 2) + 0.5
-                braking = ((pygame.joystick.Joystick(0).get_axis(4)) / 2) + 0.5
-                if braking > 0:
-                    self.accelerationInput = -braking
-
-            if event.type == pygame.JOYBUTTONDOWN:
-                if pygame.joystick.Joystick(0).get_button(2): #X
-                    self.car.reset()
-
-            # #Adding control point
-            # if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (self.trackEditor.mainTrack.mouseHovering is None) and (not self.UILayer.mouseOnLayer((self.mousePosX, self.mousePosY))) and (not programUI.mouseOnLayer((self.mousePosX, self.mousePosY))) and not (self.userSettingScale or self.userSettingFinish):
-            #     index = -1
-            #     if self.switchEndsSwitch.value:
-            #         index = 0
-            #
-            #     onLine = False
-            #     if len(self.trackEditor.mainTrack.points) >= 2:
-            #         onLine, nearPointSegment, nearestPoint, nearPointIndex = self.trackEditor.mainTrack.pointOnCurve((self.mousePosX - self.offsetPosition[0]) / self.zoom, (self.mousePosY - self.offsetPosition[1]) / self.zoom, 20)
-            #         if onLine:
-            #             index = nearPointSegment
-            #
-            #     validPlacement = (not self.trackEditor.mainTrack.closed or onLine)
-            #     if validPlacement:
-            #         self.trackEditor.mainTrack.add(ControlPoint((self.mousePosX - self.offsetPosition[0]) / self.zoom,
-            #                                         (self.mousePosY - self.offsetPosition[1]) / self.zoom),
-            #                            index = index, userPerformed = True)
-            #
-            # #Removing control point
-            # if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[2] and (self.trackEditor.mainTrack.mouseHovering is not None) and (not self.UILayer.mouseOnLayer((self.mousePosX, self.mousePosY))) and (not programUI.mouseOnLayer((self.mousePosX, self.mousePosY))) and not (self.userSettingScale or self.userSettingFinish):
-            #     index = self.trackEditor.mainTrack.mouseHovering
-            #     if not(self.trackEditor.mainTrack.closed and ((index == 0) or (index == len(self.trackEditor.mainTrack.points) - 1))):
-            #         self.trackEditor.mainTrack.remove(index = index, userPerformed = True)
-            #
-            # #Set offset pivot
-            # if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[1]:
-            #     self.pivotPos = (self.mousePosX - self.offsetPosition[0], self.mousePosY - self.offsetPosition[1])
-            #
-            # #Set offset pivot
-            # if event.type == pygame.MOUSEWHEEL:
-            #     if event.y > 0:
-            #         if self.zoom < self.upperZoomLimit:
-            #             beforeZoom = self.zoom
-            #             self.zoom *= 1 + self.zoomIncrement
-            #
-            #             if self.zoom > self.upperZoomLimit:
-            #                 self.zoom = self.upperZoomLimit
-            #
-            #             zoomDifference = (self.zoom/beforeZoom) - 1
-            #             self.offsetPosition = (int(self.offsetPosition[0] - (self.mousePosX - self.offsetPosition[0]) * zoomDifference), int(self.offsetPosition[1] - (self.mousePosY - self.offsetPosition[1]) * zoomDifference))
-            #
-            #             if self.trackEditor.mainTrack.referenceImageDir is not None:
-            #                 self.scaledReferenceImage = pygame.transform.scale_by(self.referenceImage, (self.zoom * self.referenceImageScale))
-            #
-            #     elif event.y < 0:
-            #         if self.zoom > self.lowerZoomLimit:
-            #             beforeZoom = self.zoom
-            #             self.zoom *= 1 - self.zoomIncrement
-            #
-            #             if self.zoom < self.lowerZoomLimit:
-            #                 self.zoom = self.lowerZoomLimit
-            #
-            #             zoomDifference = (beforeZoom/self.zoom) - 1
-            #             self.offsetPosition = (int(self.offsetPosition[0] + (self.mousePosX - self.offsetPosition[0]) * zoomDifference), int(self.offsetPosition[1] + (self.mousePosY - self.offsetPosition[1]) * zoomDifference))
-            #
-            #             if self.trackEditor.mainTrack.referenceImageDir is not None:
-            #                 self.scaledReferenceImage = pygame.transform.scale_by(self.referenceImage, (self.zoom * self.referenceImageScale))
-            #
-            # #Handling key presses
-            # if event.type == pygame.KEYDOWN:
-            #     if event.key == pygame.K_z and pygame.key.get_mods() & pygame.KMOD_LCTRL and not(pygame.key.get_mods() & pygame.KMOD_LSHIFT):
-            #         self.undo()
-            #
-            #     if event.key == pygame.K_z and pygame.key.get_mods() & pygame.KMOD_LCTRL and pygame.key.get_mods() & pygame.KMOD_LSHIFT:
-            #         self.redo()
-            #
-            #     if event.key == pygame.K_s and pygame.key.get_mods() & pygame.KMOD_LCTRL:
-            #         self.saveTrack()
-            #
-            #     if event.key == pygame.K_o and pygame.key.get_mods() & pygame.KMOD_LCTRL:
-            #         self.openTrack()
-            #
-            #     if event.key == pygame.K_n and pygame.key.get_mods() & pygame.KMOD_LCTRL:
-            #         self.newTrack()
-            #
-            # #Logic for setting scale
-            # if self.userSettingScale:
-            #     if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (not self.UILayer.mouseOnLayer((self.mousePosX, self.mousePosY))) and (not programUI.mouseOnLayer((self.mousePosX, self.mousePosY))):
-            #         if self.setScalePoint1 is None:
-            #             self.setScalePoint1 = ((self.mousePosX - self.offsetPosition[0]) / self.zoom, (self.mousePosY - self.offsetPosition[1]) / self.zoom)
-            #         elif self.setScalePoint2 is None:
-            #             self.setScalePoint2 = ((self.mousePosX - self.offsetPosition[0]) / self.zoom, (self.mousePosY - self.offsetPosition[1]) / self.zoom)
-            #             self.realDistanceTextInput.show = True
-            #             self.realDistanceTextInput.text = ""
-            #
-            #     if event.type == pygame.KEYDOWN:
-            #         if event.key == pygame.K_ESCAPE:
-            #             self.realDistanceTextInput.show = False
-            #             self.userSettingScale = False
-            #
-            # #Logic for setting finish
-            # if self.userSettingFinish:
-            #     if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (not self.UILayer.mouseOnLayer((self.mousePosX, self.mousePosY))) and (not programUI.mouseOnLayer((self.mousePosX, self.mousePosY))):
-            #         if self.finishIndex is None:
-            #             self.finishIndex = ((self.mousePosX - self.offsetPosition[0]) / self.zoom, (self.mousePosY - self.offsetPosition[1]) / self.zoom)
-            #             onLine, nearPointSegment, nearestPointCoords, nearestPoint = self.trackEditor.mainTrack.pointOnCurve(self.finishIndex[0], self.finishIndex[1], (self.trackEditor.mainTrack.width / 2))
-            #             if onLine:
-            #                 self.finishIndex = nearestPoint / self.trackEditor.mainTrack.perSegRes
-            #             else:
-            #                 self.finishIndex = None
-            #
-            #         elif self.finishIndex is not None:
-            #             self.completeFinish()
-            #
-            #     if event.type == pygame.KEYDOWN:
-            #         if event.key == pygame.K_ESCAPE:
-            #             self.userSettingFinish = False
-
-    def update(self):
-        self.trackEditor.mainTrack.updateOffsetValues(self.offsetPosition, self.zoom)
-        self.controllers = [pygame.joystick.Joystick(i) for i in range(pygame.joystick.get_count())]
-
-        self.screenWidth, self.screenHeight = screen.get_size()
-        self.mousePosX = pygame.mouse.get_pos()[0]
-        self.mousePosY = pygame.mouse.get_pos()[1]
-
-        screen.fill(self.colours["background"])
-
-        if self.edgePoints != self.trackEditor.mainTrack.getEdgePoints():
-            self.edgePoints = list(self.trackEditor.mainTrack.getEdgePoints())
-
-            if len(self.trackEditor.mainTrack.points) >= 2:
-                self.trackEditor.mainTrack.deKink()
-
-        self.trackEditor.mainTrack.draw(self.colours, screen, pygame, True, "Display", True)
-
-        startLine = self.trackEditor.mainTrack.getStartPos()[0]
-        self.offsetPosition = ((-startLine[0] * self.zoom) + (self.screenWidth / 2), (-startLine[1] * self.zoom) + (self.screenHeight / 2))
-
-        self.UILayer.display(self.screenWidth, self.screenHeight, self.events)
-
-
 trackEditorScene = TrackEditor()
 trackTestingScene = TrackTesting(trackEditorScene)
-racingModelScene = RacingModel(trackEditorScene)
 
 ProgramSceneManager = SceneManager()
 ProgramSceneManager.addScene(trackEditorScene, "Track Editor")
 ProgramSceneManager.addScene(trackTestingScene, "Track Testing")
-ProgramSceneManager.addScene(racingModelScene, "Racing Model")
 
 ProgramSceneManager.setScene("Track Editor")
 

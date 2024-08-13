@@ -30,6 +30,9 @@ def angle(point1, point2, point3):
     return angleDegrees
 
 def bearing(pos1, pos2):
+    tempPos1 = pos1
+    pos1 = pos2
+    pos2 = tempPos1
     changeX = pos2[0] - pos1[0]
     changeY = pos2[1] - pos1[1]
 
@@ -39,6 +42,9 @@ def bearing(pos1, pos2):
 
 def makeAnglePositive(angle):
     return angle % 360
+
+def sameSign(nums):
+    return all([x > 0 for x in nums]) or all([x < 0 for x in nums])
 
 #Finds the shortest distance between a point and a line
 def lineToPointDistance(lineA, lineB, point):
@@ -144,6 +150,17 @@ def calculateSide(points, pointIndex, width):
 
     return sideX, sideY
 
+def splitLineToNodes(startPos, endPos, nodeCount):
+    lineLength = pointDistance(startPos, endPos)
+    nodeSpacing = lineLength / (nodeCount - 1)
+    nodes = []
+    for node in range(int(nodeCount)):
+        t = (nodeSpacing * node) / lineLength
+        point = (((1 - t) * startPos[0]) + (t * endPos[0])), (((1 - t) * startPos[1]) + (t * endPos[1]))
+        nodes.append(point)
+
+    return nodes
+
 #Used to combine two sides of a polygon (in the form of a list of points), to make one shape
 def formPolygon(leftSide, rightSide, selectRange = None, close = False):
     if selectRange is None:
@@ -177,4 +194,3 @@ def tanDeg(degrees):
 def pixToMiles(pixels, scale):
     meters = pixels * scale
     return int(meters * 2.237)
-

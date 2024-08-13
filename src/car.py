@@ -60,15 +60,11 @@ class Car:
         self.track = track
         self.nearestSplineIndex = None
 
-        self.forwardRay = Ray(self.track.getEdgePoints(), self.track.finishDir)
-        self.leftRay = Ray(self.track.getEdgePoints(), self.track.finishDir)
-        self.rightRay = Ray(self.track.getEdgePoints(), self.track.finishDir)
-        self.leftDiagonalRay = Ray(self.track.getEdgePoints(), self.track.finishDir)
-        self.rightDiagonalRay = Ray(self.track.getEdgePoints(), self.track.finishDir)
-        self.leftDiagonalSteepRay = Ray(self.track.getEdgePoints(), self.track.finishDir)
-        self.rightDiagonalSteepRay = Ray(self.track.getEdgePoints(), self.track.finishDir)
-
-        self.rays = [self.forwardRay, self.leftRay, self.rightRay, self.leftDiagonalRay, self.rightDiagonalRay, self.leftDiagonalSteepRay, self.rightDiagonalSteepRay]
+        # self.forwardRay = Ray(self.track.getEdgePoints(), self.track.finishDir)
+        # self.leftDiagonalSteepRay = Ray(self.track.getEdgePoints(), self.track.finishDir)
+        # self.rightDiagonalSteepRay = Ray(self.track.getEdgePoints(), self.track.finishDir)
+        #
+        # self.rays = [self.forwardRay, self.leftDiagonalSteepRay, self.rightDiagonalSteepRay]
 
     def setPosition(self, posX, posY, facing = 0):
         self.position = Vector2(posX, posY)
@@ -77,14 +73,15 @@ class Car:
         self.acceleration = 0
 
     def reset(self):
-        startPos, startAngle = self.track.getStartPos()
+        startPos, startAngle, startIndex, startDir = self.track.getStartPos()
         self.nearestSplineIndex = None
         self.setPosition(*startPos, startAngle)
         self.dead = False
 
     def trackChanged(self):
-        for ray in self.rays:
-            ray.updatePoints(self.track.getEdgePoints(), not self.track.finishDir)
+        pass
+        # for ray in self.rays:
+        #     ray.updatePoints(self.track.getEdgePoints(), not self.track.finishDir)
 
     def updateNearestSplineIndex(self):
         if len(self.track.points) >= 2:
@@ -109,10 +106,10 @@ class Car:
             width = self.track.width * (1 / self.track.scale)
             index = self.nearestSplineIndex + 1
 
-            distanceFromCenter = lineToPointDistance(points[(index - 1) % len(points)], points[(index + 1) % (len(points))], self.position)
-            self.dead = self.dead and distanceFromCenter[0] > (width / 2)
             self.previouslyOffTrack = self.offTrack
+            distanceFromCenter = lineToPointDistance(points[(index - 1) % len(points)], points[(index + 1) % (len(points))], self.position)
             self.offTrack = distanceFromCenter[0] > (width / 2)
+            self.dead = self.dead and self.offTrack
 
     def display(self):
         if self.show:
@@ -146,9 +143,9 @@ class Car:
 
             self.screen.blit(self.carSurface, (surfaceRect.x, surfaceRect.y))
 
-            if not self.offTrack:
-                for ray in self.rays:
-                    ray.display(self.pygame, self.screen, self.offset, self.zoom)
+            # if not self.offTrack:
+            #     for ray in self.rays:
+            #         ray.display(self.pygame, self.screen, self.offset, self.zoom)
 
     def update(self, steeringInput, accelerationInput, offset, zoom, deltaTime):
         self.zoom = zoom
@@ -209,13 +206,9 @@ class Car:
         self.position += self.velocity.rotate(-self.rotation) * deltaTime
         self.rotation += math.degrees(angularVelocity) * deltaTime
 
-        if not self.offTrack:
-            self.forwardRay.findCollision(self.position, self.rotation, self.nearestSplineIndex)
-            self.leftRay.findCollision(self.position, self.rotation - 90, self.nearestSplineIndex)
-            self.rightRay.findCollision(self.position, self.rotation + 90, self.nearestSplineIndex)
-            self.leftDiagonalRay.findCollision(self.position, self.rotation - 45, self.nearestSplineIndex)
-            self.rightDiagonalRay.findCollision(self.position, self.rotation + 45, self.nearestSplineIndex)
-            self.leftDiagonalSteepRay.findCollision(self.position, self.rotation - 20, self.nearestSplineIndex)
-            self.rightDiagonalSteepRay.findCollision(self.position, self.rotation + 20, self.nearestSplineIndex)
+        # if not self.offTrack:
+        #     self.forwardRay.findCollision(self.position, self.rotation + 180, self.nearestSplineIndex)
+        #     self.leftDiagonalSteepRay.findCollision(self.position, self.rotation - 20 + 180, self.nearestSplineIndex)
+        #     self.rightDiagonalSteepRay.findCollision(self.position, self.rotation + 20 + 180, self.nearestSplineIndex)
 
         self.previousZoom = self.zoom
