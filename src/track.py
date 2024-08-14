@@ -169,6 +169,7 @@ class Track:
 
         self.leftRacingLineSpline = []
         self.rightRacingLineSpline = []
+        self.showRacingLine = False
 
         self.offset_leftRacingLineSpline = []
         self.offset_rightRacingLineSpline = []
@@ -176,11 +177,10 @@ class Track:
         self.slightBendLimit = 7000
         self.racingLinePerSegRes = 20
 
-        self.racingLine = []
-
     #Clear track, and any settings
     def clear(self):
         self.__init__(20, self.pygame, self.screen)
+
     #Called when opening tracks from a save file, and is used to load in the track and its data
     def loadTrackPoints(self, pointCoords):
         self.clear()
@@ -602,6 +602,7 @@ class Track:
             pointCoords = self.returnPointCoords()
             numOfSegs = len(pointCoords) - 1
 
+            #Gets the direction of the track at each control point
             if self.closed:
                 controlPointDirection = []
                 pointCoords = pointCoords[:-1]
@@ -613,21 +614,23 @@ class Track:
                 for controlPIndex in range(1, numOfSegs):
                     controlPointDirection.append(trackDir(pointCoords[controlPIndex - 1], pointCoords[controlPIndex], pointCoords[controlPIndex + 1]))
 
+            #Produces a late turn for corners
             if self.closed:
                 for controlPDir in range(len(controlPointDirection)):
-                    pointDirections = [controlPointDirection[(controlPDir - 1) % len(controlPointDirection)], controlPointDirection[controlPDir], controlPointDirection[(controlPDir + 1) % len(controlPointDirection)]]
-                    largeCurve = all([abs(point) >= self.slightBendLimit for point in pointDirections]) and sameSign(pointDirections) and (not sameSign([controlPointDirection[(controlPDir + 1) % len(controlPointDirection)], controlPointDirection[(controlPDir + 2) % len(controlPointDirection)]])) and (not sameSign([controlPointDirection[(controlPDir - 1) % len(controlPointDirection)], controlPointDirection[(controlPDir - 2) % len(controlPointDirection)]]))
+                    pointDirections = [controlPointDirection[controlPDir], controlPointDirection[(controlPDir + 1) % len(controlPointDirection)], controlPointDirection[(controlPDir + 2) % len(controlPointDirection)]]
+                    largeCurve = all([abs(point) >= self.slightBendLimit for point in pointDirections]) and sameSign(pointDirections)
                     if largeCurve:
                         controlPointDirection[controlPDir] *= -1
             else:
                 controlPointDirection.append(0)
                 for controlPDir in range(1, len(controlPointDirection) - 1):
                     if 2 <= controlPDir <= len(controlPointDirection) - 3:
-                        pointDirections = [controlPointDirection[controlPDir - 1], controlPointDirection[controlPDir], controlPointDirection[controlPDir + 1]]
-                        largeCurve = all([abs(point) >= self.slightBendLimit for point in pointDirections]) and sameSign(pointDirections) and (not sameSign([controlPointDirection[controlPDir + 1], controlPointDirection[controlPDir + 2]])) and (not sameSign([controlPointDirection[controlPDir - 1], controlPointDirection[controlPDir - 2]]))
+                        pointDirections = [controlPointDirection[controlPDir], controlPointDirection[(controlPDir + 1) % len(controlPointDirection)], controlPointDirection[(controlPDir + 2) % len(controlPointDirection)]]
+                        largeCurve = all([abs(point) >= self.slightBendLimit for point in pointDirections]) and sameSign(pointDirections)
                         if largeCurve:
                             controlPointDirection[controlPDir] *= -1
 
+            #Produces list of all points on the racing line
             lastDir = 0
             for controlPDirIndex in range(numOfSegs):
                 lineSplit = splitLineToNodes(self.__leftBorderInnerEdge[controlPDirIndex * self.perSegRes], self.__rightBorderInnerEdge[controlPDirIndex * self.perSegRes], 10)
@@ -650,6 +653,7 @@ class Track:
             if self.closed:
                 racingLineControlPoints = racingLineControlPoints[-3:-1] + racingLineControlPoints + racingLineControlPoints[1:3]
 
+            #Computes the spline points of the racing line
             resolution = (len(racingLineControlPoints) - 1) * self.racingLinePerSegRes
             for tInt in range(resolution):
                 t = tInt / resolution
@@ -664,9 +668,8 @@ class Track:
 
             self.offset_leftRacingLineSpline = self.leftRacingLineSpline
             self.offset_rightRacingLineSpline = self.rightRacingLineSpline
-            self.racingLine = racingLine
 
-    #Runs both computeSpline() and computeTrackEdges()
+    #Runs all functions necessary to compute track
     def computeTrack(self, updatePoints = []):
         self.computeSpline(updatePoints = updatePoints)
         self.computeTrackEdges(updatePoints = updatePoints)
@@ -866,7 +869,7 @@ class Track:
                     checkeredSquarePoints = [corner1, corner2, corner3, corner4]
                     self.pygame.draw.polygon(self.screen, checkeredColour, checkeredSquarePoints)
 
-        if len(self.points) >= 3:
+        if len(self.points) >= 3 and self.showRacingLine:
             racingLinePolygon = formPolygon(self.offset_leftRacingLineSpline, self.offset_rightRacingLineSpline, close = self.closed)
             if antialiasing:
                 self.pygame.gfxdraw.aapolygon(self.screen, racingLinePolygon, (140, 32, 32))

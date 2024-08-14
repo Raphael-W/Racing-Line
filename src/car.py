@@ -190,12 +190,8 @@ class Car:
 
         self.steering = self.steeringInput * self.maxTurningAngle * deltaTime * 10
 
-        limitedSpeed = self.maxSpeed * self.accelerationInput
-        if self.accelerationInput <= 0:
-            limitedSpeed = self.maxSpeed
-
         self.velocity += (self.acceleration * deltaTime, 0)
-        self.velocity.x = max(min(self.velocity.x, limitedSpeed), 0)
+        self.velocity.x = max(min(self.velocity.x, self.maxSpeed), 0)
 
         if self.steering:
             turningRadius = (self.wheelBase / math.sin(math.radians(self.steering))) + math.copysign((self.velocity.x / 10) ** 1.5, self.steering)

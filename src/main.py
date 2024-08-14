@@ -227,11 +227,14 @@ class TrackEditor (Scene):
         self.trackWidthSlider = Slider(self.UILayer, 15, self.colours["white"], self.colours["controlPoint"],(224, 243), "SE", 1, 100, (10, 30), value = self.mainTrack.width, action = self.mainTrack.changeWidth, finishedUpdatingAction = self.mainTrack.changeWidthComplete)
         self.trackWidthLabel = Label(self.UILayer, 15, (295, 248), "SE", "Width", self.colours["white"])
 
-        self.antialiasingSwitch = Switch(self.UILayer, (165, 175), "SE", 0.8, value = False)
-        self.antialiasingLabel = Label(self.UILayer, 15, (281, 173), "SE", "Antialiasing", self.colours["white"])
+        self.racingLineSwitch = Switch(self.UILayer, (130, 175), "SE", 0.8, value = False)
+        self.racingLineLabel = Label(self.UILayer, 15, (290, 173), "SE", "Racing Line", self.colours["white"])
 
-        self.switchEndsSwitch = Switch(self.UILayer, (165, 125), "SE", 0.8, value = False)
-        self.switchEndsLabel = Label(self.UILayer, 15, (280, 123), "SE", "Switch front", self.colours["white"])
+        self.antialiasingSwitch = Switch(self.UILayer, (130, 147), "SE", 0.8, value = False)
+        self.antialiasingLabel = Label(self.UILayer, 15, (300, 145), "SE", "Antialiasing", self.colours["white"])
+
+        self.switchEndsSwitch = Switch(self.UILayer, (130, 117), "SE", 0.8, value = False)
+        self.switchEndsLabel = Label(self.UILayer, 15, (299, 115), "SE", "Switch front", self.colours["white"])
 
         self.undoButton = Button(self.UILayer, (330, 95), "SE", (30, 30), "", 12, (100, 100, 100), action = self.undo)
         self.undoIcon = Image(self.UILayer, (self.undoButton.posX - 2, self.undoButton.posY - 2), "SE", directories["undo"], 0.8, colour = self.colours["white"])
@@ -785,6 +788,8 @@ class TrackEditor (Scene):
 
         if not(any(pygame.mouse.get_pressed())):
             self.UIClick = False
+
+        self.mainTrack.showRacingLine = self.racingLineSwitch.value
 
         self.drawGrid(self.offsetPosition, 50 * self.zoom, 1, self.colours["innerGrid"])
 
