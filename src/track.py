@@ -167,51 +167,20 @@ class Track:
 
         self.history = History(self)
 
-        self.racingLine = []
         self.leftRacingLineSpline = []
         self.rightRacingLineSpline = []
 
+        self.offset_leftRacingLineSpline = []
+        self.offset_rightRacingLineSpline = []
+
+        self.slightBendLimit = 7000
+        self.racingLinePerSegRes = 20
+
+        self.racingLine = []
 
     #Clear track, and any settings
     def clear(self):
-        self.points = []
-        self.splinePoints = []
-        self.history = History(self)
-
-        #Visual Track Points
-        self.__mainPolyLeftEdge = []
-        self.__mainPolyRightEdge = []
-
-        self.__leftBorderInnerEdge = []
-        self.__leftBorderOuterEdge = []
-
-        self.__rightBorderInnerEdge = []
-        self.__rightBorderOuterEdge = []
-
-        #Cached, offset - Visual Track Points
-        self.__offset_mainPolyLeftEdge = []
-        self.__offset_mainPolyRightEdge = []
-
-        self.__offset_leftBorderInnerEdge = []
-        self.__offset_leftBorderOuterEdge = []
-
-        self.__offset_rightBorderInnerEdge = []
-        self.__offset_rightBorderOuterEdge = []
-
-        self.__offset_splinePoints = []
-
-        self.width = 12
-
-        self.scale = 0.2
-        self.length = 0
-
-        self.finishIndex = None
-        self.finishDir = None
-
-        self.referenceImageDir = None
-
-        self.closed = False
-
+        self.__init__(20, self.pygame, self.screen)
     #Called when opening tracks from a save file, and is used to load in the track and its data
     def loadTrackPoints(self, pointCoords):
         self.clear()
@@ -297,8 +266,7 @@ class Track:
         if self.closed is not value:
             self.closed = value
             if update:
-                self.computeSpline(updatePoints = [0])
-                self.computeTrackEdges(updatePoints = [0])
+                self.computeTrack(updatePoints = [0])
 
     #Called in game loop
     def updateOffsetValues(self, offset, zoom):
@@ -310,10 +278,10 @@ class Track:
         self.zoomValue = zoom
 
         if offsetChanged:
-            self.offsetTrackEdges()
+            self.offsetAllTrackPoints()
 
     #Offsets each point that makes up track edges by current values for offset and zoom
-    def offsetTrackEdges(self, updatePoints = [], updateRange = []):
+    def offsetAllTrackPoints(self):
         self.__offset_mainPolyLeftEdge = offsetPoints(self.__mainPolyLeftEdge, self.offsetValue, self.zoomValue)
         self.__offset_mainPolyRightEdge = offsetPoints(self.__mainPolyRightEdge, self.offsetValue, self.zoomValue)
 
@@ -324,6 +292,9 @@ class Track:
         self.__offset_rightBorderOuterEdge = offsetPoints(self.__rightBorderOuterEdge, self.offsetValue, self.zoomValue)
 
         self.__offset_splinePoints = offsetPoints(self.splinePoints, self.offsetValue, self.zoomValue)
+
+        self.offset_leftRacingLineSpline = offsetPoints(self.leftRacingLineSpline, self.offsetValue, self.zoomValue)
+        self.offset_rightRacingLineSpline = offsetPoints(self.rightRacingLineSpline, self.offsetValue, self.zoomValue)
 
     #Checks if current mouse pos crosses the spline (for inserting points)
     def pointOnCurve(self, pointX, pointY, margin):
@@ -618,54 +589,90 @@ class Track:
                     self.__rightBorderInnerEdge[point] = self.__offset_rightBorderInnerEdge[point] = calculateSide(self.splinePoints, point, -(self.width * 5))
                     self.__rightBorderOuterEdge[point] = self.__offset_rightBorderOuterEdge[point] = calculateSide(self.splinePoints, point, -((self.width * 5) + 7))
 
-
-            self.offsetTrackEdges()
-
     def computeRacingLine(self):
-        self.racingLine = []
+        racingLine = []
         racingLineControlPoints = []
-        slightBendLimit = 7000
+
+        self.leftRacingLineSpline = []
+        self.rightRacingLineSpline = []
+        self.offset_leftRacingLineSpline = []
+        self.offset_rightRacingLineSpline = []
 
         if len(self.points) >= 3:
             pointCoords = self.returnPointCoords()
-            controlPointDirection = [0]
-            for controlPIndex in range(1, len(pointCoords) - 1):
-                controlPointDirection.append(trackDir(pointCoords[controlPIndex - 1], pointCoords[controlPIndex], pointCoords[controlPIndex + 1]))
-            controlPointDirection.append(0)
+            numOfSegs = len(pointCoords) - 1
 
-            for controlPDir in range(1, len(controlPointDirection) - 1):
-                if 2 <= controlPDir <= len(controlPointDirection) - 3:
-                    pointDirections = [controlPointDirection[controlPDir - 1], controlPointDirection[controlPDir], controlPointDirection[controlPDir + 1]]
-                    largeCurve = all([abs(point) >= slightBendLimit for point in pointDirections]) and sameSign(pointDirections) and (not sameSign([controlPointDirection[controlPDir + 1], controlPointDirection[controlPDir + 2]])) and (not sameSign([controlPointDirection[controlPDir - 1], controlPointDirection[controlPDir - 2]]))
+            if self.closed:
+                controlPointDirection = []
+                pointCoords = pointCoords[:-1]
+                for controlPIndex in range(len(pointCoords)):
+                    controlPointDirection.append(trackDir(pointCoords[(controlPIndex - 1) % len(pointCoords)], pointCoords[controlPIndex], pointCoords[(controlPIndex + 1) % len(pointCoords)]))
+                pointCoords = self.returnPointCoords()
+            else:
+                controlPointDirection = [0]
+                for controlPIndex in range(1, numOfSegs):
+                    controlPointDirection.append(trackDir(pointCoords[controlPIndex - 1], pointCoords[controlPIndex], pointCoords[controlPIndex + 1]))
+
+            if self.closed:
+                for controlPDir in range(len(controlPointDirection)):
+                    pointDirections = [controlPointDirection[(controlPDir - 1) % len(controlPointDirection)], controlPointDirection[controlPDir], controlPointDirection[(controlPDir + 1) % len(controlPointDirection)]]
+                    largeCurve = all([abs(point) >= self.slightBendLimit for point in pointDirections]) and sameSign(pointDirections) and (not sameSign([controlPointDirection[(controlPDir + 1) % len(controlPointDirection)], controlPointDirection[(controlPDir + 2) % len(controlPointDirection)]])) and (not sameSign([controlPointDirection[(controlPDir - 1) % len(controlPointDirection)], controlPointDirection[(controlPDir - 2) % len(controlPointDirection)]]))
                     if largeCurve:
                         controlPointDirection[controlPDir] *= -1
+            else:
+                controlPointDirection.append(0)
+                for controlPDir in range(1, len(controlPointDirection) - 1):
+                    if 2 <= controlPDir <= len(controlPointDirection) - 3:
+                        pointDirections = [controlPointDirection[controlPDir - 1], controlPointDirection[controlPDir], controlPointDirection[controlPDir + 1]]
+                        largeCurve = all([abs(point) >= self.slightBendLimit for point in pointDirections]) and sameSign(pointDirections) and (not sameSign([controlPointDirection[controlPDir + 1], controlPointDirection[controlPDir + 2]])) and (not sameSign([controlPointDirection[controlPDir - 1], controlPointDirection[controlPDir - 2]]))
+                        if largeCurve:
+                            controlPointDirection[controlPDir] *= -1
 
             lastDir = 0
-            for controlPDirIndex in range(len(controlPointDirection) - 1):
+            for controlPDirIndex in range(numOfSegs):
                 lineSplit = splitLineToNodes(self.__leftBorderInnerEdge[controlPDirIndex * self.perSegRes], self.__rightBorderInnerEdge[controlPDirIndex * self.perSegRes], 10)
                 currentDir = controlPointDirection[controlPDirIndex]
 
-                if (currentDir > slightBendLimit) or ((-slightBendLimit < currentDir < slightBendLimit) and lastDir == 1):
+                if (currentDir > self.slightBendLimit) or ((-self.slightBendLimit < currentDir < self.slightBendLimit) and lastDir == 1):
                     racingLineControlPoints.append(lineSplit[1])
                     lastDir = 1
-                elif (currentDir < -slightBendLimit) or ((-slightBendLimit < currentDir < slightBendLimit) and lastDir == -1):
+                elif (currentDir < -self.slightBendLimit) or ((-self.slightBendLimit < currentDir < self.slightBendLimit) and lastDir == -1):
                     racingLineControlPoints.append(lineSplit[-2])
                     lastDir = -1
                 else:
                     racingLineControlPoints.append(pointCoords[controlPDirIndex])
-            racingLineControlPoints.append(pointCoords[-1])
 
-            resolution = (len(pointCoords) - 1) * 100
+            if self.closed:
+                racingLineControlPoints.append(racingLineControlPoints[0])
+            else:
+                racingLineControlPoints.append(pointCoords[-1])
+
+            if self.closed:
+                racingLineControlPoints = racingLineControlPoints[-3:-1] + racingLineControlPoints + racingLineControlPoints[1:3]
+
+            resolution = (len(racingLineControlPoints) - 1) * self.racingLinePerSegRes
             for tInt in range(resolution):
                 t = tInt / resolution
-                self.racingLine.append(calculateSpline(racingLineControlPoints, t))
+                racingLine.append(calculateSpline(racingLineControlPoints, t))
 
+            if self.closed:
+                racingLine = racingLine[(2 * self.racingLinePerSegRes):-(2 * self.racingLinePerSegRes)]
+
+            for pointIndex in range(len(racingLine)):
+                self.leftRacingLineSpline.append(calculateSide(racingLine, pointIndex, -3))
+                self.rightRacingLineSpline.append(calculateSide(racingLine, pointIndex, 3))
+
+            self.offset_leftRacingLineSpline = self.leftRacingLineSpline
+            self.offset_rightRacingLineSpline = self.rightRacingLineSpline
+            self.racingLine = racingLine
 
     #Runs both computeSpline() and computeTrackEdges()
     def computeTrack(self, updatePoints = []):
         self.computeSpline(updatePoints = updatePoints)
         self.computeTrackEdges(updatePoints = updatePoints)
         self.computeRacingLine()
+
+        self.offsetAllTrackPoints()
 
     #Loops over every point finding where a kink starts and ends, before removing it
     def deKink(self):
@@ -694,7 +701,7 @@ class Track:
                 nonKinkCoordRightInner = self.__rightBorderInnerEdge[seg]
                 nonKinkCoordRightOuter = self.__rightBorderOuterEdge[seg]
 
-        self.offsetTrackEdges()
+        self.offsetAllTrackPoints()
 
     #Checks whether track should be closed based off of whether end and start points are at the same positions
     def shouldTrackBeClosed(self):
@@ -859,6 +866,8 @@ class Track:
                     checkeredSquarePoints = [corner1, corner2, corner3, corner4]
                     self.pygame.draw.polygon(self.screen, checkeredColour, checkeredSquarePoints)
 
-        for point in self.racingLine:
-            offsetPoint = offsetPoints(point, self.offsetValue, self.zoomValue, True)
-            self.pygame.draw.circle(self.screen, (200, 0, 0), offsetPoint, 3)
+        if len(self.points) >= 3:
+            racingLinePolygon = formPolygon(self.offset_leftRacingLineSpline, self.offset_rightRacingLineSpline, close = self.closed)
+            if antialiasing:
+                self.pygame.gfxdraw.aapolygon(self.screen, racingLinePolygon, (140, 32, 32))
+            self.pygame.gfxdraw.filled_polygon(self.screen, racingLinePolygon, (140, 32, 32))
