@@ -29,20 +29,6 @@ def angle(point1, point2, point3):
 
     return angleDegrees
 
-def bearing(pos1, pos2):
-    tempPos1 = pos1
-    pos1 = pos2
-    pos2 = tempPos1
-    changeX = pos2[0] - pos1[0]
-    changeY = pos2[1] - pos1[1]
-
-    bearingAngle = math.atan2(changeX, changeY)
-    bearingAngle = math.degrees(bearingAngle)
-    return bearingAngle % 360
-
-def makeAnglePositive(angle):
-    return angle % 360
-
 def sameSign(nums):
     return all([x > 0 for x in nums]) or all([x < 0 for x in nums])
 
@@ -59,45 +45,6 @@ def lineToPointDistance(lineA, lineB, point):
     t = max(0, min(1, np.dot(point - lineA, lineB - lineA) / l2))
     projection = lineA + t * (lineB - lineA)
     return pointDistance(point, projection), projection
-
-def makeInfiniteLine(pointA, pointB):
-    grad = gradient(pointA, pointB)
-    intercept = pointA[1] - (grad * pointA[0])
-
-    return grad, intercept
-
-#Calculate intersection point of an infinitely long line (y = mx + c) and a line segment
-def lineSegmentIntersection(pointA, pointB, m, c, facing, start):
-    segM, segC = makeInfiniteLine(pointA, pointB)
-    if segM == m:
-        return None
-
-    intersection = infiniteLineIntersection(segM, segC, m, c)
-    onSegment = pointLiesOnSegment(intersection, pointA, pointB)
-    direction = bearing(start, intersection) - 90
-    facing = makeAnglePositive(360 - facing)
-    correctDirection = ((int(direction + facing) % 360) == 0) or ((int(direction + facing + 1) % 360) == 0) or ((int(direction + facing - 1) % 360) == 0)
-    if onSegment and correctDirection:
-        return intersection
-    else:
-        return None
-
-def infiniteLineIntersection(line1M, line1C, line2M, line2C):
-    if line1M == line2M:
-        return None
-
-    x = (line1C - line2C) / (line2M - line1M)
-    y = line1M * x + line1C
-
-    return x, y
-
-def pointLiesOnSegment(point, lineA, lineB):
-    distPointToA = pointDistance(point, lineA)
-    distPointToB = pointDistance(point, lineB)
-    lineLength = pointDistance(lineA, lineB)
-    tolerance = 0.00001
-
-    return (lineLength - tolerance) <= (distPointToA + distPointToB) <=  (lineLength + tolerance)
 
 #Extends a list of points back by taking the length and gradient of the last segment and inserting it at the end
 def extendPointsBack(points):
@@ -150,12 +97,12 @@ def calculateSide(points, pointIndex, width):
 
     return sideX, sideY
 
-def splitLineToNodes(startPos, endPos, nodeCount):
+#Returns ends of slightly shortened line
+def getPaddedLineEnds(startPos, endPos, padding):
     lineLength = pointDistance(startPos, endPos)
-    nodeSpacing = lineLength / (nodeCount - 1)
     nodes = []
-    for node in range(int(nodeCount)):
-        t = (nodeSpacing * node) / lineLength
+
+    for t in [padding / lineLength, 1 - (padding / lineLength)]:
         point = (((1 - t) * startPos[0]) + (t * endPos[0])), (((1 - t) * startPos[1]) + (t * endPos[1]))
         nodes.append(point)
 
@@ -188,8 +135,6 @@ def sinDeg(degrees):
     return math.sin(degrees * math.pi / 180)
 def cosDeg(degrees):
     return math.cos(degrees * math.pi / 180)
-def tanDeg(degrees):
-    return math.tan(degrees * math.pi / 180)
 
 def pixToMiles(pixels, scale):
     meters = pixels * scale

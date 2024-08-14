@@ -1,10 +1,7 @@
-import pygame.draw
 from scipy.spatial import KDTree
 from pygame import Vector2
 
 from utils import *
-from ray import *
-
 class Car:
     def __init__(self, pygame, screen, directories, track):
         self.pygame = pygame
@@ -52,7 +49,6 @@ class Car:
         self.offset = (0, 0)
 
         self.show = True
-        self.dead = False
         self.offTrack = False
         self.previouslyOffTrack = False
 
@@ -60,29 +56,20 @@ class Car:
         self.track = track
         self.nearestSplineIndex = None
 
-        # self.forwardRay = Ray(self.track.getEdgePoints(), self.track.finishDir)
-        # self.leftDiagonalSteepRay = Ray(self.track.getEdgePoints(), self.track.finishDir)
-        # self.rightDiagonalSteepRay = Ray(self.track.getEdgePoints(), self.track.finishDir)
-        #
-        # self.rays = [self.forwardRay, self.leftDiagonalSteepRay, self.rightDiagonalSteepRay]
-
+    #Sets position of car
     def setPosition(self, posX, posY, facing = 0):
         self.position = Vector2(posX, posY)
         self.rotation = facing
         self.velocity = Vector2(0, 0)
         self.acceleration = 0
 
+    #Resets position of car
     def reset(self):
         startPos, startAngle, startIndex, startDir = self.track.getStartPos()
         self.nearestSplineIndex = None
         self.setPosition(*startPos, startAngle)
-        self.dead = False
 
-    def trackChanged(self):
-        pass
-        # for ray in self.rays:
-        #     ray.updatePoints(self.track.getEdgePoints(), not self.track.finishDir)
-
+    #Updates where nearest point on track is
     def updateNearestSplineIndex(self):
         if len(self.track.points) >= 2:
             previousIndex = self.nearestSplineIndex
@@ -100,8 +87,9 @@ class Car:
             index += (pointsIndex[index] - index)
             self.nearestSplineIndex = index
 
-    def updateIsDead(self):
-        if not self.dead and (len(self.track.points) >= 2):
+    #Checks whether car is offtrack
+    def updateOffTrack(self):
+        if len(self.track.points) >= 2:
             points = extendPoints(self.track.splinePoints)
             width = self.track.width * (1 / self.track.scale)
             index = self.nearestSplineIndex + 1
@@ -109,7 +97,6 @@ class Car:
             self.previouslyOffTrack = self.offTrack
             distanceFromCenter = lineToPointDistance(points[(index - 1) % len(points)], points[(index + 1) % (len(points))], self.position)
             self.offTrack = distanceFromCenter[0] > (width / 2)
-            self.dead = self.dead and self.offTrack
 
     def display(self):
         if self.show:
@@ -143,10 +130,6 @@ class Car:
 
             self.screen.blit(self.carSurface, (surfaceRect.x, surfaceRect.y))
 
-            # if not self.offTrack:
-            #     for ray in self.rays:
-            #         ray.display(self.pygame, self.screen, self.offset, self.zoom)
-
     def update(self, steeringInput, accelerationInput, offset, zoom, deltaTime):
         self.zoom = zoom
         self.offset = offset
@@ -162,7 +145,7 @@ class Car:
 
         # ---- Movement ----
         self.updateNearestSplineIndex()
-        self.updateIsDead()
+        self.updateOffTrack()
 
         self.steeringInput = -steeringInput
         self.accelerationInput = accelerationInput
@@ -201,10 +184,5 @@ class Car:
 
         self.position += self.velocity.rotate(-self.rotation) * deltaTime
         self.rotation += math.degrees(angularVelocity) * deltaTime
-
-        # if not self.offTrack:
-        #     self.forwardRay.findCollision(self.position, self.rotation + 180, self.nearestSplineIndex)
-        #     self.leftDiagonalSteepRay.findCollision(self.position, self.rotation - 20 + 180, self.nearestSplineIndex)
-        #     self.rightDiagonalSteepRay.findCollision(self.position, self.rotation + 20 + 180, self.nearestSplineIndex)
 
         self.previousZoom = self.zoom

@@ -564,7 +564,7 @@ class TrackEditor (Scene):
                 Message(self.UILayer, "Invalid File", "Please select a valid file", "OK", closeError, "grey")
 
             if tempDirectory != '' and self.mainTrack.isSaved() == False and validDir:
-                Message(self.UILayer, "Sure?", "You currently have an unsaved file open", "Save", saveTrackFirst, "grey","Discard", discardTrack, "red")
+                Message(self.UILayer, "Sure?", "You currently have an unsaved track open", "Save", saveTrackFirst, "grey","Discard", discardTrack, "red")
             else:
                 loadTrack(tempDirectory)
 
@@ -585,7 +585,7 @@ class TrackEditor (Scene):
             self.saveDirectory = None
 
         if not self.mainTrack.isSaved():
-            Message(self.UILayer, "Sure?", "You currently have an unsaved file open", "Save", saveTrackFirst, "grey", "Discard", discardTrack, "red")
+            Message(self.UILayer, "Sure?", "You currently have an unsaved track open", "Save", saveTrackFirst, "grey", "Discard", discardTrack, "red")
 
         elif self.saveDirectory is not None:
             self.saveTrack()
@@ -612,7 +612,7 @@ class TrackEditor (Scene):
             running = False
 
         if self.closeCount == 0:
-            unsavedTrackError = Message(self.UILayer, "Sure?", "You currently have an unsaved file open", "Save", saveTrackFirst, "grey", "Discard", discardTrack, "red", xAction = lambda: closeError(unsavedTrackError))
+            unsavedTrackError = Message(self.UILayer, "Sure?", "You currently have an unsaved track open", "Save", saveTrackFirst, "grey", "Discard", discardTrack, "red", xAction = lambda: closeError(unsavedTrackError))
         self.closeCount += 1
 
     #Undoes previous action
@@ -993,6 +993,7 @@ class TrackTesting (Scene):
         self.accelerationInput = 0
         self.steeringInput = 0
 
+        #Get input from connected controller
         if len(self.controllers) > 0:
             self.steeringInput = pygame.joystick.Joystick(0).get_axis(0)
             self.accelerationInput = ((pygame.joystick.Joystick(0).get_axis(5)) / 2) + 0.5
@@ -1000,6 +1001,7 @@ class TrackTesting (Scene):
             if braking > 0:
                 self.accelerationInput = -braking
 
+        #If arrow/WASD keys pressed, override controller input
         keys = pygame.key.get_pressed()
         if keys[pygame.K_UP] or keys[pygame.K_DOWN] or keys[pygame.K_RIGHT] or keys[pygame.K_LEFT] or keys[pygame.K_w] or keys[pygame.K_s] or keys[pygame.K_a] or keys[pygame.K_d]:
             self.accelerationInput = 0
@@ -1016,6 +1018,7 @@ class TrackTesting (Scene):
 
         self.events = events
         for event in events:
+            #Reset car position
             if event.type == pygame.JOYBUTTONDOWN:
                 if pygame.joystick.Joystick(0).get_button(2): #X
                     self.car.reset()
@@ -1035,12 +1038,11 @@ class TrackTesting (Scene):
 
         screen.fill(self.colours["background"])
 
-        if self.edgePoints != self.trackEditor.mainTrack.getEdgePoints():
+        if self.edgePoints != self.trackEditor.mainTrack.getEdgePoints(): #Track has changed
             self.edgePoints = list(self.trackEditor.mainTrack.getEdgePoints())
 
             if len(self.trackEditor.mainTrack.points) >= 2:
                 self.car.reset()
-                self.car.trackChanged()
 
         self.trackEditor.mainTrack.draw(self.colours, True, "Display", True)
 

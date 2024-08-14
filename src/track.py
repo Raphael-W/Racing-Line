@@ -633,14 +633,15 @@ class Track:
             #Produces list of all points on the racing line
             lastDir = 0
             for controlPDirIndex in range(numOfSegs):
-                lineSplit = splitLineToNodes(self.__leftBorderInnerEdge[controlPDirIndex * self.perSegRes], self.__rightBorderInnerEdge[controlPDirIndex * self.perSegRes], 10)
+                lineEnds = getPaddedLineEnds(self.__leftBorderInnerEdge[controlPDirIndex * self.perSegRes],
+                                             self.__rightBorderInnerEdge[controlPDirIndex * self.perSegRes], 10)
                 currentDir = controlPointDirection[controlPDirIndex]
 
                 if (currentDir > self.slightBendLimit) or ((-self.slightBendLimit < currentDir < self.slightBendLimit) and lastDir == 1):
-                    racingLineControlPoints.append(lineSplit[1])
+                    racingLineControlPoints.append(lineEnds[0])
                     lastDir = 1
                 elif (currentDir < -self.slightBendLimit) or ((-self.slightBendLimit < currentDir < self.slightBendLimit) and lastDir == -1):
-                    racingLineControlPoints.append(lineSplit[-2])
+                    racingLineControlPoints.append(lineEnds[1])
                     lastDir = -1
                 else:
                     racingLineControlPoints.append(pointCoords[controlPDirIndex])
