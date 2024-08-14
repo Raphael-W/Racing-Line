@@ -174,6 +174,7 @@ class TrackEditor (Scene):
         self.referenceImageVisibility = True
 
         self.events = []
+        self.UIClick = False
 
         self.colours = {"background": (20, 20, 20),
                         "curve": (128, 128, 128),
@@ -521,6 +522,7 @@ class TrackEditor (Scene):
                         self.setReferenceImage(referenceImageSaveDir, userPerformed = False)
 
                     self.mainTrack.computeTrack()
+                    self.mainTrack.save()
 
                     self.saveDirectory = directory
                     self.recentreFrame()
@@ -654,7 +656,7 @@ class TrackEditor (Scene):
                     running = False
 
             #Adding control point
-            if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (self.mainTrack.mouseHovering is None) and (not self.UILayer.mouseOnLayer((self.mousePosX, self.mousePosY))) and (not programUI.mouseOnLayer((self.mousePosX, self.mousePosY))) and not (self.userSettingScale or self.userSettingFinish):
+            if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0] and (self.mainTrack.mouseHovering is None) and (not self.UILayer.mouseOnLayer((self.mousePosX, self.mousePosY))) and (not programUI.mouseOnLayer((self.mousePosX, self.mousePosY))) and not (self.userSettingScale or self.userSettingFinish) and (not self.UIClick):
                 index = -1
                 if self.switchEndsSwitch.value:
                     index = 0
@@ -672,7 +674,7 @@ class TrackEditor (Scene):
                                        index = index, userPerformed = True)
 
             #Removing control point
-            if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[2] and (self.mainTrack.mouseHovering is not None) and (not self.UILayer.mouseOnLayer((self.mousePosX, self.mousePosY))) and (not programUI.mouseOnLayer((self.mousePosX, self.mousePosY))) and not (self.userSettingScale or self.userSettingFinish):
+            if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[2] and (self.mainTrack.mouseHovering is not None) and (not self.UILayer.mouseOnLayer((self.mousePosX, self.mousePosY))) and (not programUI.mouseOnLayer((self.mousePosX, self.mousePosY))) and not (self.userSettingScale or self.userSettingFinish) and (not self.UIClick):
                 index = self.mainTrack.mouseHovering
                 if not(self.mainTrack.closed and ((index == 0) or (index == len(self.mainTrack.points) - 1))):
                     self.mainTrack.remove(index = index, userPerformed = True)
@@ -680,6 +682,9 @@ class TrackEditor (Scene):
             #Set offset pivot
             if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[1]:
                 self.pivotPos = (self.mousePosX - self.offsetPosition[0], self.mousePosY - self.offsetPosition[1])
+
+            if event.type == pygame.MOUSEBUTTONDOWN and (self.UILayer.mouseOnLayer((self.mousePosX, self.mousePosY))):
+                self.UIClick = True
 
             #Set offset pivot
             if event.type == pygame.MOUSEWHEEL:
@@ -778,6 +783,9 @@ class TrackEditor (Scene):
         else:
             self.pivotPos = None
 
+        if not(any(pygame.mouse.get_pressed())):
+            self.UIClick = False
+
         self.drawGrid(self.offsetPosition, 50 * self.zoom, 1, self.colours["innerGrid"])
 
         screenRect = pygame.Rect((0, 0), (self.screenWidth + 15, self.screenHeight + 15))
@@ -787,7 +795,7 @@ class TrackEditor (Scene):
             self.referenceImageRect = self.scaledReferenceImage.get_rect(center = self.offsetPosition)
             screen.blit(self.scaledReferenceImage, self.referenceImageRect)
 
-        if not (self.userSettingScale or self.userSettingFinish):
+        if not (self.userSettingScale or self.userSettingFinish) and (not self.UIClick):
             self.mainTrack.update((self.mousePosX - self.offsetPosition[0]) / self.zoom, (self.mousePosY - self.offsetPosition[1]) / self.zoom, self.zoom, self.screenWidth, self.screenHeight, self.screenBorder, self.offsetPosition, screenRect, directories)
         self.mainTrack.draw(self.colours, self.switchEndsSwitch.value, self.viewMode, self.antialiasingSwitch.value)
 
