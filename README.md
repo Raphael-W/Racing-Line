@@ -47,3 +47,4 @@ Example tracks can be located in `tracks/`
 - Silverstone
 - Solaris Speedway
 - Whittle Circuit
+- Goodwood Circuit
