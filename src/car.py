@@ -50,11 +50,13 @@ class Car:
 
         self.show = True
         self.offTrack = False
+        self.dead = False
         self.previouslyOffTrack = False
 
         self.directories = directories
         self.track = track
         self.nearestSplineIndex = None
+        self.previousSplineIndex = None
 
     #Sets position of car
     def setPosition(self, posX, posY, facing = 0):
@@ -68,6 +70,7 @@ class Car:
         startPos, startAngle, startIndex, startDir = self.track.getStartPos()
         self.nearestSplineIndex = None
         self.setPosition(*startPos, startAngle)
+        self.dead = False
 
     #Updates where nearest point on track is
     def updateNearestSplineIndex(self):
@@ -85,6 +88,7 @@ class Car:
             tree = KDTree(points)
             index = tree.query(self.position)[1]
             index += (pointsIndex[index] - index)
+            self.previousSplineIndex = self.nearestSplineIndex
             self.nearestSplineIndex = index
 
     #Checks whether car is offtrack
@@ -97,6 +101,7 @@ class Car:
             self.previouslyOffTrack = self.offTrack
             distanceFromCenter = lineToPointDistance(points[(index - 1) % len(points)], points[(index + 1) % (len(points))], self.position)
             self.offTrack = distanceFromCenter[0] > (width / 2)
+            self.dead = self.dead or self.offTrack
 
     def display(self):
         if self.show:

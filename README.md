@@ -37,7 +37,7 @@ To be able to open a `.track` file, double click it, and find `Racing Line.bat`.
 - Hit 'Tab' or use the dropdown menu at the top to switch between 'Track Testing' and 'Track Editor'
 
 
-## Examples:
+## Tracks:
 Example tracks can be located in `tracks/`
 
 **Tracks:**
@@ -48,3 +48,5 @@ Example tracks can be located in `tracks/`
 - Solaris Speedway
 - Whittle Circuit
 - Goodwood Circuit
+- IDKWTFIDA
+- Spiral Wonders

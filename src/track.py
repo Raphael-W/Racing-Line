@@ -175,7 +175,6 @@ class Track:
         self.offset_rightRacingLineSpline = []
 
         self.slightBendLimit = 7000
-        self.racingLinePerSegRes = 20
 
     #Clear track, and any settings
     def clear(self):
@@ -627,7 +626,7 @@ class Track:
                 for controlPDir in range(1, len(controlPointDirection) - 1):
                     if 2 <= controlPDir <= len(controlPointDirection) - 3:
                         pointDirections = [controlPointDirection[controlPDir], controlPointDirection[(controlPDir + 1) % len(controlPointDirection)], controlPointDirection[(controlPDir + 2) % len(controlPointDirection)]]
-                        largeCurve = all([abs(point) >= self.slightBendLimit for point in pointDirections]) and sameSign(pointDirections)
+                        largeCurve = all([abs(point) >= self.slightBendLimit for point in pointDirections]) and sameSign(pointDirections) and (not sameSign([controlPointDirection[(controlPDir + 2) % len(controlPointDirection)], controlPointDirection[(controlPDir + 3) % len(controlPointDirection)]]))
                         if largeCurve:
                             controlPointDirection[controlPDir] *= -1
 
@@ -656,13 +655,13 @@ class Track:
                 racingLineControlPoints = racingLineControlPoints[-3:-1] + racingLineControlPoints + racingLineControlPoints[1:3]
 
             #Computes the spline points of the racing line
-            resolution = (len(racingLineControlPoints) - 1) * self.racingLinePerSegRes
+            resolution = (len(racingLineControlPoints) - 1) * self.perSegRes
             for tInt in range(resolution):
                 t = tInt / resolution
                 racingLine.append(calculateSpline(racingLineControlPoints, t))
 
             if self.closed:
-                racingLine = racingLine[(2 * self.racingLinePerSegRes):-(2 * self.racingLinePerSegRes)]
+                racingLine = racingLine[(2 * self.perSegRes):-(2 * self.perSegRes)]
 
             for pointIndex in range(len(racingLine)):
                 self.leftRacingLineSpline.append(calculateSide(racingLine, pointIndex, -3))

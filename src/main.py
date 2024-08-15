@@ -1,4 +1,6 @@
 import json
+import time
+
 from jsonschema import validate
 
 import pygame
@@ -573,14 +575,24 @@ class TrackEditor (Scene):
         def saveTrackFirst(sender):
             sender.close()
             self.saveTrack()
+            clearTrackSequence()
+
+        def discardTrack(sender):
+            sender.close()
+            clearTrackSequence()
+
+        def clearTrackSequence():
             self.mainTrack.clear()
             self.recentreFrame()
 
-            self.saveDirectory = None
-        def discardTrack(sender):
-            sender.close()
-            self.mainTrack.clear()
-            self.recentreFrame()
+            self.trackResSlider.updateValue(self.mainTrack.perSegRes, update = False)
+            self.trackWidthSlider.updateValue(self.mainTrack.width, update = False)
+
+            self.viewModeDropdown.index = 0
+
+            self.racingLineSwitch.value = False
+            self.antialiasingSwitch.value = False
+            self.switchEndsSwitch.value = False
 
             self.saveDirectory = None
 
@@ -589,10 +601,7 @@ class TrackEditor (Scene):
 
         elif self.saveDirectory is not None:
             self.saveTrack()
-            self.mainTrack.clear()
-            self.recentreFrame()
-
-            self.saveDirectory = None
+            clearTrackSequence()
 
         else:
             self.recentreFrame()
@@ -982,9 +991,23 @@ class TrackTesting (Scene):
 
         self.UILayer = Layer(screen, pygame, mainFont, directories)
         self.speedometer = Label(self.UILayer, 30, (180, 100), "SE", "121mph", self.colours["white"], bold = True)
+        self.timer = Label(self.UILayer, 17, (180, 65), "SE", "00:00.00", (200, 200, 200))
         self.controlsLabel = Label(self.UILayer, 13, (50, 50), "SW", "Use WASD, arrow keys or a controller  |  'R' (keyboard) or 'X' (controller) to reset", self.colours["white"], bold = True)
 
         self.car = Car(pygame, screen, directories, self.trackEditor.mainTrack)
+
+        self.timerStart = None
+        self.timerEnd = None
+
+    def reset(self):
+        self.car.reset()
+
+        self.timerStart = None
+        self.timerEnd = None
+
+        self.car.dead = False
+        self.timer.text = secondToRaceTimer(0)
+        self.timer.colour = (200, 200, 200)
 
     #Where all the events are passed to be processed
     def handleEvents(self, events):
@@ -1021,11 +1044,11 @@ class TrackTesting (Scene):
             #Reset car position
             if event.type == pygame.JOYBUTTONDOWN:
                 if pygame.joystick.Joystick(0).get_button(2): #X
-                    self.car.reset()
+                    self.reset()
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_r:
-                    self.car.reset()
+                    self.reset()
 
     def update(self):
         self.offsetPosition = ((-self.car.position.x * self.zoom) + (self.screenWidth / 2), (-self.car.position.y * self.zoom) + (self.screenHeight / 2))
@@ -1042,14 +1065,52 @@ class TrackTesting (Scene):
             self.edgePoints = list(self.trackEditor.mainTrack.getEdgePoints())
 
             if len(self.trackEditor.mainTrack.points) >= 2:
-                self.car.reset()
+                self.reset()
 
         self.trackEditor.mainTrack.draw(self.colours, True, "Display", True)
 
         self.car.update(self.steeringInput, self.accelerationInput, self.offsetPosition, self.zoom, deltaTime)
         self.car.display()
 
+        if (self.timerStart is None) and (self.car.position != self.trackEditor.mainTrack.getStartPos()[0]):
+            self.timerStart = time.time()
+
+        if self.trackEditor.mainTrack.closed:
+            startPos, startAngle, startIndex, startDir = self.trackEditor.mainTrack.getStartPos()
+            if startDir:
+                crossedFinishLine = (self.car.previousSplineIndex == ((startIndex - 1) % len(self.trackEditor.mainTrack.splinePoints))) and (self.car.nearestSplineIndex == startIndex)
+                cheated = (self.car.previousSplineIndex == ((startIndex + 1) % len(self.trackEditor.mainTrack.splinePoints))) and (self.car.nearestSplineIndex == startIndex)
+            else:
+                crossedFinishLine = (self.car.previousSplineIndex == ((startIndex + 1) % len(self.trackEditor.mainTrack.splinePoints))) and (self.car.nearestSplineIndex == startIndex)
+                cheated = (self.car.previousSplineIndex == ((startIndex - 1) % len(self.trackEditor.mainTrack.splinePoints))) and (self.car.nearestSplineIndex == startIndex)
+        else:
+            crossedFinishLine = (self.car.nearestSplineIndex == len(self.trackEditor.mainTrack.splinePoints) - 1)
+            cheated = False
+
+        if cheated:
+            self.car.dead = True
+
+        if crossedFinishLine:
+            if (self.timerEnd is None) and (self.timerStart is not None) and (not self.car.offTrack):
+                self.timerEnd = time.time()
+
+        self.car.previousSplineIndex = self.car.nearestSplineIndex
+
         self.speedometer.text = f"{pixToMiles(self.car.velocity.x, self.car.scale)} mph"
+
+        if self.timerStart is not None:
+            timerEnd = time.time()
+            if self.timerEnd is not None:
+                timerEnd = self.timerEnd
+            timerValue = timerEnd - self.timerStart
+            self.timer.text = secondToRaceTimer(timerValue)
+
+        if (self.timerStart is not None) and (self.timerEnd is None):
+            if self.car.dead:
+                self.timer.colour = (200, 0, 0)
+            else:
+                self.timer.colour = (200, 200, 200)
+
         self.UILayer.display(self.screenWidth, self.screenHeight, self.events)
 
 trackEditorScene = TrackEditor()

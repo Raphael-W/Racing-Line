@@ -139,3 +139,12 @@ def cosDeg(degrees):
 def pixToMiles(pixels, scale):
     meters = pixels * scale
     return int(meters * 2.237)
+
+def secondToRaceTimer(inputSeconds):
+    inputSeconds += 0.0099 #Avoids errors if input is perfect second
+    mins = "{:02}".format(int(inputSeconds // 60))
+    secs = "{:02}".format(int(inputSeconds % 60))
+    ms =  "{:02}".format(int(str(inputSeconds - int(inputSeconds)).split('.')[1][:2]))
+
+    return f"{mins}:{secs}.{ms}"
+
