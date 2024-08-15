@@ -235,6 +235,7 @@ class Track:
     def changeWidth(self, value):
         self.width = value
         self.computeTrackEdges()
+        self.offsetAllTrackPoints()
 
     #Called when user stops setting width (lets go of track width slider)
     def changeWidthComplete(self, initialValue, slider):
@@ -618,7 +619,7 @@ class Track:
             if self.closed:
                 for controlPDir in range(len(controlPointDirection)):
                     pointDirections = [controlPointDirection[controlPDir], controlPointDirection[(controlPDir + 1) % len(controlPointDirection)], controlPointDirection[(controlPDir + 2) % len(controlPointDirection)]]
-                    largeCurve = all([abs(point) >= self.slightBendLimit for point in pointDirections]) and sameSign(pointDirections)
+                    largeCurve = all([abs(point) >= self.slightBendLimit for point in pointDirections]) and sameSign(pointDirections) and (not sameSign([controlPointDirection[(controlPDir + 2) % len(controlPointDirection)], controlPointDirection[(controlPDir + 3) % len(controlPointDirection)]]))
                     if largeCurve:
                         controlPointDirection[controlPDir] *= -1
             else:

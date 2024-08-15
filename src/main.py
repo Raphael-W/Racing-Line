@@ -221,7 +221,7 @@ class TrackEditor (Scene):
         self.hideReferenceImageButton = Button(self.UILayer, (140, 335), "SE", (30, 30), "", 12, (100, 100, 100), action = self.toggleReferenceImageVisibility)
         self.hideReferenceImageIcon = Image(self.UILayer, (self.hideReferenceImageButton.posX - 1, self.hideReferenceImageButton.posY - 1), "SE", directories["hide"], 0.7, colour = (200, 200, 200))
 
-        self.trackResSlider = Slider(self.UILayer, 15, self.colours["white"], self.colours["controlPoint"], (225, 278), "SE", 1, 100, (10, 100), value = self.mainTrack.perSegRes, action = self.mainTrack.changeRes, finishedUpdatingAction = self.mainTrack.changeResComplete)
+        self.trackResSlider = Slider(self.UILayer, 15, self.colours["white"], self.colours["controlPoint"], (225, 278), "SE", 1, 100, (10, 100), value = self.mainTrack.perSegRes, action = self.mainTrack.changeRes, finishedUpdatingAction = self.mainTrack.changeResComplete, increment = 1)
         self.trackResLabel = Label(self.UILayer, 15, (330, 283), "SE", "Track Res", self.colours["white"])
 
         self.trackWidthSlider = Slider(self.UILayer, 15, self.colours["white"], self.colours["controlPoint"],(224, 243), "SE", 1, 100, (10, 30), value = self.mainTrack.width, action = self.mainTrack.changeWidth, finishedUpdatingAction = self.mainTrack.changeWidthComplete)
