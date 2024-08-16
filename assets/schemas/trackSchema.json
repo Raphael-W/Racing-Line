@@ -12,13 +12,20 @@
         "maxItems": 2
       }
     },
+    "UUID": {
+      "type": "string"
+    },
     "properties": {
       "properties": {
         "width": {
-          "type": "number"
+          "type": "number",
+          "minimum": 10,
+          "maximum": 30
         },
         "trackRes": {
-          "type": "number"
+          "type": "number",
+          "minimum": 20,
+          "maximum": 100
         },
         "closed": {
           "type": "boolean"
@@ -53,6 +60,7 @@
   },
   "required": [
     "points",
+    "UUID",
     "properties"
   ]
 }

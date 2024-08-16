@@ -1,5 +1,7 @@
 import json
+import sqlite3
 import time
+import uuid
 
 from jsonschema import validate
 
@@ -40,6 +42,7 @@ deltaTime = 0
 executionDir = os.path.dirname(os.path.dirname(__file__))
 directories = {"mainFont": "assets/fonts/MonoFont.ttf",
                "trackSchema": "assets/schemas/trackSchema.json",
+               "raceTimes": "databases/raceTimes.db",
                "recentreButton": "assets/icons/aim.png",
                "finishLine": "assets/icons/flag.png",
                "scale": "assets/icons/scale.png",
@@ -149,6 +152,7 @@ class TrackEditor (Scene):
 
         self.trackRes = 20
         self.mainTrack = Track(self.trackRes, pygame, screen)
+        self.UUID = str(uuid.uuid1())
 
         self.screenWidth = screen.get_size()[0]
         self.screenHeight = screen.get_size()[1]
@@ -439,6 +443,7 @@ class TrackEditor (Scene):
 
         trackData = self.mainTrack.getSaveState()
         trackData["properties"]["referenceImageScale"] = self.referenceImageScale
+        trackData["UUID"] = self.UUID
 
         def getFileName():
             root = tk.Tk()
@@ -513,6 +518,8 @@ class TrackEditor (Scene):
                     self.mainTrack.updateCloseStatus(trackProperties["closed"], update = False)
 
                     self.referenceImageScale = trackProperties["referenceImageScale"]
+
+                    self.UUID = trackData["UUID"]
 
                     if trackProperties["referenceImage"] is not None:
                         referenceImageData = PIL.Image.open(BytesIO(base64.b64decode(trackProperties["referenceImage"])))
@@ -958,7 +965,7 @@ class TrackTesting (Scene):
         super().__init__()
         self.trackEditor = trackEditor
         self.screenBorder = 5
-        self.edgePoints = []
+        self.uniquenessToken = None
 
         self.offsetPosition = (0, 0)
         self.zoom = 2
@@ -1008,6 +1015,14 @@ class TrackTesting (Scene):
         self.car.dead = False
         self.timer.text = secondToRaceTimer(0)
         self.timer.colour = (200, 200, 200)
+
+    def uploadTime(self, raceTime):
+        print("Uploaded")
+        conn = sqlite3.connect(directories["raceTimes"])
+        cursor = conn.cursor()
+        cursor.execute(f'''INSERT INTO TIMES VALUES ('{self.trackEditor.UUID}', {raceTime}, datetime('now','localtime'))''')
+        conn.commit()
+        conn.close()
 
     #Where all the events are passed to be processed
     def handleEvents(self, events):
@@ -1061,8 +1076,8 @@ class TrackTesting (Scene):
 
         screen.fill(self.colours["background"])
 
-        if self.edgePoints != self.trackEditor.mainTrack.getEdgePoints(): #Track has changed
-            self.edgePoints = list(self.trackEditor.mainTrack.getEdgePoints())
+        if self.uniquenessToken != self.trackEditor.mainTrack.getUniquenessToken(): #Track has changed
+            self.uniquenessToken = self.trackEditor.mainTrack.getUniquenessToken()
 
             if len(self.trackEditor.mainTrack.points) >= 2:
                 self.reset()
@@ -1093,6 +1108,9 @@ class TrackTesting (Scene):
         if crossedFinishLine:
             if (self.timerEnd is None) and (self.timerStart is not None) and (not self.car.offTrack):
                 self.timerEnd = time.time()
+                validTime = not self.car.dead
+                if validTime:
+                    self.uploadTime(float("{:.2f}".format(self.timerEnd - self.timerStart)))
 
         self.car.previousSplineIndex = self.car.nearestSplineIndex
 

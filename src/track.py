@@ -204,14 +204,20 @@ class Track:
         return {"points"    : points,
                 "properties": properties}
 
-    #Used to check whether the track has been changed
+    #Returns track edges
     def getEdgePoints(self):
-        return [list(self.__leftBorderInnerEdge), self.__rightBorderInnerEdge]
+        return [list(self.__leftBorderInnerEdge), list(self.__rightBorderInnerEdge)]
+
+    #Used to check whether the track has been changed
+    def getUniquenessToken(self):
+        edgeCheck = self.getEdgePoints()
+        finishCheck = self.getStartPos()
+        return str(edgeCheck) + str(finishCheck)
 
     #Returns coordinates of start line
     def getStartPos(self):
         if self.finishIndex is None:
-            finishIndex = 0.1
+            finishIndex = 5 / self.perSegRes
             finishDir = True
         else:
             finishIndex = self.finishIndex
@@ -840,27 +846,26 @@ class Track:
 
                 point.draw(colour, self.screen, self.pygame, self.offsetValue, self.zoomValue)
 
-        if self.finishIndex is not None and viewMode in ["Display"]:
+        if viewMode in ["Display"]:
             checkeredHeight = (12 * self.zoomValue)
             checkeredWidthCount = int((self.width * (1 / self.scale) * self.zoomValue) // checkeredHeight)
             checkeredWidth = checkeredHeight + (((self.width * self.scale * self.zoomValue) % checkeredHeight) / checkeredWidthCount)
 
-            finishIndex = int(self.finishIndex * self.perSegRes)
-            finishAngle = self.getStartPos()[1]
+            startPos, startAngle, startIndex, startDir = self.getStartPos()
 
             if self.finishDir:
-                startLeftCoord = int(self.__offset_leftBorderInnerEdge[finishIndex][0]), int(self.__offset_leftBorderInnerEdge[finishIndex][1])
+                startLeftCoord = int(self.__offset_leftBorderInnerEdge[startIndex][0]), int(self.__offset_leftBorderInnerEdge[startIndex][1])
             else:
-                startLeftCoord = int(self.__offset_rightBorderInnerEdge[finishIndex][0]), int(self.__offset_rightBorderInnerEdge[finishIndex][1])
+                startLeftCoord = int(self.__offset_rightBorderInnerEdge[startIndex][0]), int(self.__offset_rightBorderInnerEdge[startIndex][1])
 
             for y in range(4):
                 for x in range(checkeredWidthCount):
-                    topLeft = startLeftCoord[0] - (cosDeg(finishAngle) * (checkeredHeight * y)) - (sinDeg(finishAngle) * (checkeredWidth * x)), startLeftCoord[1] + (sinDeg(finishAngle) * (checkeredHeight * y)) - (cosDeg(finishAngle) * (checkeredWidth * x))
+                    topLeft = startLeftCoord[0] - (cosDeg(startAngle) * (checkeredHeight * y)) - (sinDeg(startAngle) * (checkeredWidth * x)), startLeftCoord[1] + (sinDeg(startAngle) * (checkeredHeight * y)) - (cosDeg(startAngle) * (checkeredWidth * x))
 
                     corner1 = topLeft
-                    corner2 = topLeft[0] - (cosDeg(finishAngle) * checkeredHeight), topLeft[1] + (sinDeg(finishAngle) * checkeredHeight)
-                    corner3 = topLeft[0] - (cosDeg(finishAngle) * checkeredHeight) - (sinDeg(finishAngle) * checkeredWidth), topLeft[1] + (sinDeg(finishAngle) * checkeredHeight) - (cosDeg(finishAngle) * checkeredWidth)
-                    corner4 = topLeft[0] - (sinDeg(finishAngle) * checkeredWidth), topLeft[1] - (cosDeg(finishAngle) * checkeredWidth)
+                    corner2 = topLeft[0] - (cosDeg(startAngle) * checkeredHeight), topLeft[1] + (sinDeg(startAngle) * checkeredHeight)
+                    corner3 = topLeft[0] - (cosDeg(startAngle) * checkeredHeight) - (sinDeg(startAngle) * checkeredWidth), topLeft[1] + (sinDeg(startAngle) * checkeredHeight) - (cosDeg(startAngle) * checkeredWidth)
+                    corner4 = topLeft[0] - (sinDeg(startAngle) * checkeredWidth), topLeft[1] - (cosDeg(startAngle) * checkeredWidth)
 
                     if (x + y) % 2 == 0:
                         checkeredColour = (0, 0, 0)
