@@ -1120,8 +1120,9 @@ class TrackTesting (Scene):
             self.userPaused = userPaused
             self.pauseStart = time.time()
         else:
-            if self.timerStart is not None:
+            if self.timerStart is not None and self.timerEnd is None:
                 self.timerStart += (time.time() - self.pauseStart)
+                self.pauseStart = None
 
     #Where all the events are passed to be processed
     def handleEvents(self, events):
@@ -1233,7 +1234,7 @@ class TrackTesting (Scene):
 
         self.speedometer.text = f"{pixToMiles(self.car.velocity.x, self.car.scale)} mph"
 
-        if not self.pause:
+        if not self.pause or (self.pause and self.timerEnd is not None):
             if self.timerStart is not None:
                 timerEnd = time.time()
                 if self.timerEnd is not None:
