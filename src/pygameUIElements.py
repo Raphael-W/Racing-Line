@@ -525,9 +525,15 @@ class Message(UIElement):
         self.button1Action = button1Action
         self.button1Colour = button1Colour
 
+        if self.button1Action == "close":
+            self.button1Action = self.close
+
         self.button2Text = button2Text
         self.button2Action = button2Action
         self.button2Colour = button2Colour
+
+        if self.button2Action == "close":
+            self.button2Action = self.close
 
         self.xAction = closeAction
 
@@ -563,7 +569,7 @@ class Message(UIElement):
 
                 self.centreButton = Button(layer, (self.posX + 10, (self.posY + self.height) - 40), "",
                                            (self.width - 20, 30), button1Text, 15, centreButtonColour,
-                                           action = lambda: button1Action(self))
+                                           action = lambda: self.button1Action())
 
             else:
                 leftButtonColour = self.greyColour
@@ -576,10 +582,10 @@ class Message(UIElement):
 
                 self.leftButton = Button(layer, (self.posX + 10, (self.posY + self.height) - 40), "",
                                          ((self.width / 2) - 20, 30), button1Text, 15, leftButtonColour,
-                                         action = lambda: button1Action(self))
+                                         action = lambda: self.button1Action())
                 self.rightButton = Button(layer, (self.posX + 10 + (self.width / 2), (self.posY + self.height) - 40), "",
                                           ((self.width / 2) - 20, 30), button2Text, 15, rightButtonColour,
-                                          action = lambda: button2Action(self))
+                                          action = lambda: self.button2Action())
 
     def update(self):
         self.posX = (self.layer.screenWidth / 2) - (self.width / 2)

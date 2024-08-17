@@ -366,7 +366,7 @@ class TrackEditor (Scene):
                 self.referenceImageRect = self.referenceImage.get_rect()
 
             else:
-                Message(self.UILayer, "Invalid File", imageError, "OK", closeError, "grey")
+                Message(self.UILayer, "Invalid File", imageError, "OK", "close", "grey")
         def validateImageFile(directory):
             error = None
             try:
@@ -385,15 +385,12 @@ class TrackEditor (Scene):
             root.destroy()
             return fileSelected
 
-        def closeError(sender):
-            sender.close()
-
         if imageDirectory is None:
             tempDirectory = getFileName()
             if tempDirectory != '':
                 validDir = os.path.isfile(tempDirectory)
                 if not validDir:
-                    Message(self.UILayer, "Invalid File", "Please select a valid file", "OK", closeError, "grey")
+                    Message(self.UILayer, "Invalid File", "Please select a valid file", "OK", "close", "grey")
                 else:
                     openImage(tempDirectory)
 
@@ -477,11 +474,11 @@ class TrackEditor (Scene):
                     self.mainTrack.save()
 
             except Exception as error:
-                Message(self.UILayer, "Can't Save", str(error), "OK", closeError, "grey")
+                Message(self.UILayer, "Can't Save", str(error), "OK", "close", "grey")
                 self.saveDirectory = None
 
         elif not validFile and tempDirectory != '':
-            Message(self.UILayer, "Can't Save", "Please select a valid directory", "OK", closeError, "grey")
+            Message(self.UILayer, "Can't Save", "Please select a valid directory", "OK", "close", "grey")
             self.saveDirectory = None
 
     #Opens track from specific directory specified by user. Track is checked first
@@ -545,9 +542,9 @@ class TrackEditor (Scene):
                     self.recentreFrame()
 
             elif validFile == "Invalid":
-                Message(self.UILayer, "Invalid File", "Please select a valid file", "OK", closeError, "grey")
+                Message(self.UILayer, "Invalid File", "Please select a valid file", "OK", "close", "grey")
             else:
-                Message(self.UILayer, "Can't Open", str(validFile), "OK", closeError, "grey")
+                Message(self.UILayer, "Can't Open", str(validFile), "OK", "close", "grey")
 
         def getFileName():
             root = tk.Tk()
@@ -557,16 +554,13 @@ class TrackEditor (Scene):
             root.destroy()
             return fileSelected
 
-        def closeError(sender):
-            sender.close()
-
-        def saveTrackFirst(sender):
-            sender.close()
+        def saveTrackFirst():
+            message.close()
             self.saveTrack()
             loadTrack(tempDirectory)
 
-        def discardTrack(sender):
-            sender.close()
+        def discardTrack():
+            message.close()
             if self.saveDirectory is None:
                 self.deleteTrackTimes(self.mainTrack.UUID)
             loadTrack(tempDirectory)
@@ -577,10 +571,10 @@ class TrackEditor (Scene):
         if tempDirectory != '':
             validDir = os.path.isfile(tempDirectory)
             if not validDir:
-                Message(self.UILayer, "Invalid File", "Please select a valid file", "OK", closeError, "grey")
+                message = Message(self.UILayer, "Invalid File", "Please select a valid file", "OK", "close", "grey")
 
             if tempDirectory != '' and self.mainTrack.isSaved() == False and validDir:
-                Message(self.UILayer, "Sure?", "You currently have an unsaved track open", "Save", saveTrackFirst,
+                message = Message(self.UILayer, "Sure?", "You currently have an unsaved track open", "Save", saveTrackFirst,
                         "grey", "Discard", discardTrack, "red")
             else:
                 loadTrack(tempDirectory)
@@ -625,8 +619,8 @@ class TrackEditor (Scene):
             self.recentreFrame()
 
     def closeTrack(self):
-        def closeError(sender):
-            sender.close()
+        def closeError():
+            unsavedTrackError.close()
             self.closeCount = 0
 
         def saveTrackFirst(sender):
@@ -634,7 +628,7 @@ class TrackEditor (Scene):
             self.saveTrack()
             running = False
 
-        def discardTrack(sender):
+        def discardTrack():
             global running
             if self.saveDirectory is None:
                 self.deleteTrackTimes(self.mainTrack.UUID)
@@ -642,8 +636,7 @@ class TrackEditor (Scene):
 
         if self.closeCount == 0:
             unsavedTrackError = Message(self.UILayer, "Sure?", "You currently have an unsaved track open", "Save",
-                                        saveTrackFirst, "grey", "Discard", discardTrack, "red",
-                                        closeAction = lambda: closeError(unsavedTrackError))
+                                        saveTrackFirst, "grey", "Discard", discardTrack, "red", closeError)
         self.closeCount += 1
 
     #Undoes previous action
@@ -1039,11 +1032,15 @@ class TrackTesting (Scene):
         conn.commit()
         conn.close()
 
-    def viewLeaderboard(self):
+    def getTimes(self, UUID):
         conn = sqlite3.connect(directories["raceTimes"])
         cursor = conn.cursor()
-        cursor.execute(f"SELECT time, date FROM TIMES WHERE UUID = '{self.trackEditor.mainTrack.UUID}' ORDER BY time")
+        cursor.execute(f"SELECT time, date FROM TIMES WHERE UUID = '{UUID}' ORDER BY time")
         times = cursor.fetchall()
+        return times
+
+    def viewLeaderboard(self):
+        times = self.getTimes(self.trackEditor.mainTrack.UUID)
 
         leaderboardMessages = []
         if len(times) == 0:
@@ -1147,7 +1144,15 @@ class TrackTesting (Scene):
                 self.timerEnd = time.time()
                 validTime = not self.car.dead
                 if validTime:
-                    self.uploadTime(float("{:.2f}".format(self.timerEnd - self.timerStart)))
+                    raceTime = float("{:.2f}".format(self.timerEnd - self.timerStart))
+
+                    times = self.getTimes(self.trackEditor.mainTrack.UUID)
+                    if len(times) > 0:
+                        if times[0][0] > raceTime:
+                            timeDifference = float("{:.2f}".format(times[0][0] - raceTime))
+                            Message(self.UILayer, "New Highscore!", [f"You beat the current highscore ({secondToRaceTimer(times[0][0])})", f"by {timeDifference}s"] , "Continue", "close", (100, 100, 100))
+
+                    self.uploadTime(raceTime)
 
         self.car.previousSplineIndex = self.car.nearestSplineIndex
 
