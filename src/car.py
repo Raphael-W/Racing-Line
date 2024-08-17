@@ -124,7 +124,7 @@ class Car:
                     self.carWheelR.fill((255, 255, 255), special_flags = 5)  #BLEND_RGB_MAX
                     self.carWheelL.fill((255, 255, 255), special_flags = 5)  #BLEND_RGB_MAX
 
-            self.carSurface = self.pygame.Surface((500, 963), self.pygame.SRCALPHA).convert_alpha()
+            self.carSurface = self.pygame.Surface((520, 963), self.pygame.SRCALPHA).convert_alpha()
             self.carSurface.blit(self.transformedCarBody, self.carBodyRect)
             self.carSurface.blit(self.transformedCarWheelR, self.carWheelRRect)
             self.carSurface.blit(self.transformedCarWheelL, self.carWheelLRect)

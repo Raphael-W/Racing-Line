@@ -68,6 +68,13 @@ programUI = Layer(screen, pygame, mainFont, directories)
 
 fpsLabel = Label(programUI, 15, (118, 30), "NE", "", (200, 200, 200))
 
+def deleteTrackTimes(UUID):
+    conn = sqlite3.connect(directories["raceTimes"])
+    cursor = conn.cursor()
+    cursor.execute(f'''DELETE FROM TIMES WHERE UUID = "{UUID}"''')
+    conn.commit()
+    conn.close()
+
 class Scene:
     def __init__(self):
         self.name = "Scene"
@@ -264,9 +271,9 @@ class TrackEditor (Scene):
                                           self.removeReferenceImageIcon, self.hideReferenceImageButton,
                                           self.hideReferenceImageIcon,self.trackResSlider,
                                           self.trackResLabel, self.trackWidthSlider, self.trackWidthLabel,
-                                          self.viewModeDropdown, self.viewModeLabel, self.antialiasingSwitch,
-                                          self.antialiasingLabel, self.switchEndsSwitch, self.switchEndsLabel,
-                                          self.undoButton, self.undoIcon,
+                                          self.viewModeDropdown, self.viewModeLabel, self.racingLineSwitch, self.racingLineLabel,
+                                          self.antialiasingSwitch, self.antialiasingLabel, self.switchEndsSwitch,
+                                          self.switchEndsLabel, self.undoButton, self.undoIcon,
                                           self.redoButton, self.redoIcon],
                                           layerIndex = 0)
 
@@ -438,14 +445,6 @@ class TrackEditor (Scene):
             y = line * frequency + offset[1]
             pygame.draw.line(screen, lineColor, (0, y), (self.screenWidth, y), lineWidth)
 
-    def deleteTrackTimes(self, UUID):
-        conn = sqlite3.connect(directories["raceTimes"])
-        cursor = conn.cursor()
-        cursor.execute(f'''DELETE FROM TIMES WHERE UUID = "{UUID}"''')
-        conn.commit()
-        conn.close()
-
-
     #Saves track to directory specified by user.
     def saveTrack(self, saveNewDirectory = False):
         trackData = self.mainTrack.getSaveState()
@@ -566,7 +565,7 @@ class TrackEditor (Scene):
         def discardTrack():
             message.close()
             if self.saveDirectory is None:
-                self.deleteTrackTimes(self.mainTrack.UUID)
+                deleteTrackTimes(self.mainTrack.UUID)
             loadTrack(tempDirectory)
 
         if tempDirectory is None:
@@ -593,7 +592,7 @@ class TrackEditor (Scene):
         def discardTrack():
             message.close()
             if self.saveDirectory is None:
-                self.deleteTrackTimes(self.mainTrack.UUID)
+                deleteTrackTimes(self.mainTrack.UUID)
             clearTrackSequence()
 
         def clearTrackSequence():
@@ -635,7 +634,7 @@ class TrackEditor (Scene):
         def discardTrack():
             global running
             if self.saveDirectory is None:
-                self.deleteTrackTimes(self.mainTrack.UUID)
+                deleteTrackTimes(self.mainTrack.UUID)
             running = False
 
         if self.closeCount == 0:
@@ -1011,7 +1010,13 @@ class TrackTesting (Scene):
         self.speedometer = Label(self.UILayer, 30, (180, 100), "SE", "121mph", self.colours["white"], bold = True)
         self.timer = Label(self.UILayer, 17, (180, 65), "SE", "00:00.00", (200, 200, 200))
         self.controlsLabel = Label(self.UILayer, 13, (50, 50), "SW", "Use WASD, arrow keys or a controller  |  'R' (keyboard) or 'X' (controller) to reset | 'P' to pause", self.colours["white"], bold = True)
+
         self.viewLeaderboardButton = Button(self.UILayer, (50, 120), "SW", (200, 40), "View Leaderboard", 15, (100, 100, 100), action = self.viewLeaderboard)
+        self.leaderboardView = None
+
+        self.deleteRaceTimesButton = Button(self.UILayer, (105, 335), "SE", (30, 30), "", 12, (66, 41, 41), action = self.deleteRaceTimes, show = False)
+        self.deleteRaceTimesIcon = Image(self.UILayer, (self.deleteRaceTimesButton.posX - 1, self.deleteRaceTimesButton.posY - 1), "SE", directories["bin"], 0.7, colour = (200, 200, 200), show = False)
+
         self.pauseButton = Button(self.UILayer, (30, 70), "", (40, 40), "", 15, (100, 100, 100), action = lambda: self.togglePause(True))
         self.pauseIcon = Image(self.UILayer, (37, 77), "", directories["pause"], 1, (200, 200, 200))
         self.playIcon = Image(self.UILayer, (37, 77), "", directories["play"], 1, (200, 200, 200))
@@ -1037,6 +1042,23 @@ class TrackTesting (Scene):
         self.car.dead = False
         self.timer.text = secondToRaceTimer(0)
         self.timer.colour = (200, 200, 200)
+
+    def deleteRaceTimes(self):
+        def delete():
+            deleteTrackTimes(self.trackEditor.mainTrack.UUID)
+            message.close()
+            self.viewLeaderboard()
+
+        def cancel():
+            message.close()
+            self.viewLeaderboard()
+
+        self.leaderboardView.close()
+        self.deleteRaceTimesButton.show = False
+        self.deleteRaceTimesIcon.show = False
+
+        message = Message(self.UILayer, "Sure?", ["You are about to delete the race times", "for this track"], "Cancel", cancel,
+                        "grey", "Delete", delete, "red")
 
     def uploadTime(self, raceTime):
         conn = sqlite3.connect(directories["raceTimes"])
@@ -1064,6 +1086,11 @@ class TrackTesting (Scene):
         return times
 
     def viewLeaderboard(self):
+        def closeLeaderboard():
+            self.leaderboardView.close()
+            self.deleteRaceTimesButton.show = False
+            self.deleteRaceTimesIcon.show = False
+
         times = self.getTimes(self.trackEditor.mainTrack.UUID)
 
         leaderboardMessages = []
@@ -1082,7 +1109,10 @@ class TrackTesting (Scene):
                     lineText = f"{"{:<15}".format(f"{number}.")}-            "
                     leaderboardMessages.append(lineText)
 
-        leaderboardView = Message(self.UILayer, "Leaderboard", leaderboardMessages, dimensions = (400, 270))
+        self.leaderboardView = Message(self.UILayer, "Leaderboard", leaderboardMessages, dimensions = (400, 270), closeAction = closeLeaderboard, layerIndex = 0)
+        if len(times) > 0:
+            self.deleteRaceTimesButton.show = True
+            self.deleteRaceTimesIcon.show = True
 
     def togglePause(self, userPaused = False):
         self.pause = not self.pause
@@ -1224,6 +1254,13 @@ class TrackTesting (Scene):
         else:
             self.pauseIcon.show = True
             self.playIcon.show = False
+
+        if self.deleteRaceTimesButton.show:
+            self.deleteRaceTimesButton.posX = (self.screenWidth / 2) + 180
+            self.deleteRaceTimesButton.posY = (self.screenHeight / 2) + 120
+
+            self.deleteRaceTimesIcon.posX = self.deleteRaceTimesButton.posX - 1
+            self.deleteRaceTimesIcon.posY = self.deleteRaceTimesButton.posY - 1
 
         self.UILayer.display(self.screenWidth, self.screenHeight, self.events)
 
