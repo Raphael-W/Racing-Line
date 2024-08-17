@@ -141,10 +141,8 @@ def pixToMiles(pixels, scale):
     return int(meters * 2.237)
 
 def secondToRaceTimer(inputSeconds):
-    inputSeconds += 0.0099 #Avoids errors if input is perfect second
     mins = "{:02}".format(int(inputSeconds // 60))
-    secs = "{:02}".format(int(inputSeconds % 60))
-    ms =  "{:02}".format(int(str(inputSeconds - int(inputSeconds)).split('.')[1][:2]))
+    secs =  f"{(inputSeconds % 60):05.2f}"
 
-    return f"{mins}:{secs}.{ms}"
+    return f"{mins}:{secs}"
 

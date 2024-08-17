@@ -55,6 +55,8 @@ directories = {"mainFont": "assets/fonts/MonoFont.ttf",
                "bin": "assets/icons/bin.png",
                "hide": "assets/icons/hide.png",
                "show": "assets/icons/show.png",
+               "pause": "assets/icons/pause.png",
+               "play": "assets/icons/play.png",
                "f1Car": "assets/sprites/f1_car.png",
                "f1Wheel": "assets/sprites/f1_wheel.png",}
 
@@ -122,6 +124,11 @@ class SceneManager:
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_TAB:
+                    if self.currentScene == 1 and not self.scenes[1].pause:
+                        self.scenes[1].togglePause()
+                    elif self.currentScene == 0 and self.scenes[1].pause and not self.scenes[1].userPaused:
+                        self.scenes[1].togglePause()
+
                     self.currentScene = (self.currentScene + 1) % len(self.scenes)
                     while self.currentScene in self.changeSceneDropdown.disabledIndexes:
                         self.currentScene = (self.currentScene + 1) % len(self.scenes)
@@ -441,9 +448,6 @@ class TrackEditor (Scene):
 
     #Saves track to directory specified by user.
     def saveTrack(self, saveNewDirectory = False):
-        def closeError(sender):
-            sender.close()
-
         trackData = self.mainTrack.getSaveState()
         trackData["properties"]["referenceImageScale"] = self.referenceImageScale
 
@@ -581,13 +585,13 @@ class TrackEditor (Scene):
 
     #Clears current track, asks user before clearing
     def newTrack(self):
-        def saveTrackFirst(sender):
-            sender.close()
+        def saveTrackFirst():
+            message.close()
             self.saveTrack()
             clearTrackSequence()
 
-        def discardTrack(sender):
-            sender.close()
+        def discardTrack():
+            message.close()
             if self.saveDirectory is None:
                 self.deleteTrackTimes(self.mainTrack.UUID)
             clearTrackSequence()
@@ -608,7 +612,7 @@ class TrackEditor (Scene):
             self.saveDirectory = None
 
         if not self.mainTrack.isSaved():
-            Message(self.UILayer, "Sure?", "You currently have an unsaved track open", "Save", saveTrackFirst, "grey",
+            message = Message(self.UILayer, "Sure?", "You currently have an unsaved track open", "Save", saveTrackFirst, "grey",
                     "Discard", discardTrack, "red")
 
         elif self.saveDirectory is not None:
@@ -623,7 +627,7 @@ class TrackEditor (Scene):
             unsavedTrackError.close()
             self.closeCount = 0
 
-        def saveTrackFirst(sender):
+        def saveTrackFirst():
             global running
             self.saveTrack()
             running = False
@@ -978,8 +982,7 @@ class TrackTesting (Scene):
         self.offsetPosition = (0, 0)
         self.zoom = 2
 
-        self.screenWidth = 0
-        self.screenHeight = 0
+        self.screenWidth, self.screenHeight = screen.get_size()
         self.mousePosX = 0
         self.mousePosY = 0
 
@@ -1007,13 +1010,23 @@ class TrackTesting (Scene):
         self.UILayer = Layer(screen, pygame, mainFont, directories)
         self.speedometer = Label(self.UILayer, 30, (180, 100), "SE", "121mph", self.colours["white"], bold = True)
         self.timer = Label(self.UILayer, 17, (180, 65), "SE", "00:00.00", (200, 200, 200))
-        self.controlsLabel = Label(self.UILayer, 13, (50, 50), "SW", "Use WASD, arrow keys or a controller  |  'R' (keyboard) or 'X' (controller) to reset", self.colours["white"], bold = True)
+        self.controlsLabel = Label(self.UILayer, 13, (50, 50), "SW", "Use WASD, arrow keys or a controller  |  'R' (keyboard) or 'X' (controller) to reset | 'P' to pause", self.colours["white"], bold = True)
         self.viewLeaderboardButton = Button(self.UILayer, (50, 120), "SW", (200, 40), "View Leaderboard", 15, (100, 100, 100), action = self.viewLeaderboard)
+        self.pauseButton = Button(self.UILayer, (30, 70), "", (40, 40), "", 15, (100, 100, 100), action = lambda: self.togglePause(True))
+        self.pauseIcon = Image(self.UILayer, (37, 77), "", directories["pause"], 1, (200, 200, 200))
+        self.playIcon = Image(self.UILayer, (37, 77), "", directories["play"], 1, (200, 200, 200))
 
         self.car = Car(pygame, screen, directories, self.trackEditor.mainTrack)
 
         self.timerStart = None
         self.timerEnd = None
+
+        self.pause = False
+        self.pauseStart = None
+        self.userPaused = False
+
+        self.transparentSurface = pygame.Surface((self.screenWidth, self.screenHeight), pygame.SRCALPHA)
+        pygame.draw.rect(self.transparentSurface, (50, 50, 50, 200), (0, 0, self.screenWidth, self.screenHeight))
 
     def reset(self):
         self.car.reset()
@@ -1032,10 +1045,21 @@ class TrackTesting (Scene):
         conn.commit()
         conn.close()
 
+    def deleteSlowTimes(self):
+        times = self.getTimes(self.trackEditor.mainTrack.UUID)
+        if len(times) > 10:
+            slowestAcceptableTime = times[9]
+
+            conn = sqlite3.connect(directories["raceTimes"])
+            cursor = conn.cursor()
+            cursor.execute(f'''DELETE FROM TIMES WHERE UUID = "{self.trackEditor.mainTrack.UUID}" and (time > {slowestAcceptableTime[0]} or (time = {slowestAcceptableTime[0]} and date > "{slowestAcceptableTime[1]}"))''')
+            conn.commit()
+            conn.close()
+
     def getTimes(self, UUID):
         conn = sqlite3.connect(directories["raceTimes"])
         cursor = conn.cursor()
-        cursor.execute(f"SELECT time, date FROM TIMES WHERE UUID = '{UUID}' ORDER BY time")
+        cursor.execute(f"SELECT time, date FROM TIMES WHERE UUID = '{UUID}' ORDER BY time, date")
         times = cursor.fetchall()
         return times
 
@@ -1050,13 +1074,24 @@ class TrackTesting (Scene):
                 if len(times) > i:
                     splitDate = (times[i][1].split(' ')[0]).split('-')
                     date = f"{splitDate[2]}/{splitDate[1]}/{splitDate[0]}"
-                    lineText = f"{i + 1}.  {secondToRaceTimer(times[i][0])}     {date}"
+                    number = "{:>2}".format(i + 1)
+                    lineText = f"{number}.  {secondToRaceTimer(times[i][0])}     {date}"
                     leaderboardMessages.append(lineText)
                 else:
-                    lineText = f"{"{:<14}".format(f"{i + 1}.")}-            "
+                    number = "{:>2}".format(i + 1)
+                    lineText = f"{"{:<15}".format(f"{number}.")}-            "
                     leaderboardMessages.append(lineText)
 
         leaderboardView = Message(self.UILayer, "Leaderboard", leaderboardMessages, dimensions = (400, 270))
+
+    def togglePause(self, userPaused = False):
+        self.pause = not self.pause
+        if self.pause:
+            self.userPaused = userPaused
+            self.pauseStart = time.time()
+        else:
+            if self.timerStart is not None:
+                self.timerStart += (time.time() - self.pauseStart)
 
     #Where all the events are passed to be processed
     def handleEvents(self, events):
@@ -1098,6 +1133,8 @@ class TrackTesting (Scene):
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_r:
                     self.reset()
+                if event.key == pygame.K_p:
+                    self.togglePause(True)
 
     def update(self):
         self.offsetPosition = ((-self.car.position.x * self.zoom) + (self.screenWidth / 2), (-self.car.position.y * self.zoom) + (self.screenHeight / 2))
@@ -1115,10 +1152,12 @@ class TrackTesting (Scene):
 
             if len(self.trackEditor.mainTrack.points) >= 2:
                 self.reset()
+                self.trackEditor.mainTrack.deKink()
 
         self.trackEditor.mainTrack.draw(self.colours, True, "Display", True)
 
-        self.car.update(self.steeringInput, self.accelerationInput, self.offsetPosition, self.zoom, deltaTime)
+        if not self.pause:
+            self.car.update(self.steeringInput, self.accelerationInput, self.offsetPosition, self.zoom, deltaTime)
         self.car.display()
 
         if (self.timerStart is None) and (self.car.position != self.trackEditor.mainTrack.getStartPos()[0]):
@@ -1139,6 +1178,10 @@ class TrackTesting (Scene):
         if cheated:
             self.car.dead = True
 
+        def closeMessage():
+            message.close()
+            self.togglePause()
+
         if crossedFinishLine:
             if (self.timerEnd is None) and (self.timerStart is not None) and (not self.car.offTrack):
                 self.timerEnd = time.time()
@@ -1150,26 +1193,37 @@ class TrackTesting (Scene):
                     if len(times) > 0:
                         if times[0][0] > raceTime:
                             timeDifference = float("{:.2f}".format(times[0][0] - raceTime))
-                            Message(self.UILayer, "New Highscore!", [f"You beat the current highscore ({secondToRaceTimer(times[0][0])})", f"by {timeDifference}s"] , "Continue", "close", (100, 100, 100))
+                            self.togglePause(True)
+                            message = Message(self.UILayer, "New Highscore!", [f"You beat the current highscore ({secondToRaceTimer(times[0][0])})", f"by {timeDifference}s"] , "Continue", closeMessage, (100, 100, 100), closeAction = closeMessage)
 
                     self.uploadTime(raceTime)
+                    self.deleteSlowTimes()
 
         self.car.previousSplineIndex = self.car.nearestSplineIndex
 
         self.speedometer.text = f"{pixToMiles(self.car.velocity.x, self.car.scale)} mph"
 
-        if self.timerStart is not None:
-            timerEnd = time.time()
-            if self.timerEnd is not None:
-                timerEnd = self.timerEnd
-            timerValue = timerEnd - self.timerStart
-            self.timer.text = secondToRaceTimer(timerValue)
+        if not self.pause:
+            if self.timerStart is not None:
+                timerEnd = time.time()
+                if self.timerEnd is not None:
+                    timerEnd = self.timerEnd
+                timerValue = timerEnd - self.timerStart
+                self.timer.text = secondToRaceTimer(timerValue)
 
-        if (self.timerStart is not None) and (self.timerEnd is None):
-            if self.car.dead:
-                self.timer.colour = (200, 0, 0)
-            else:
-                self.timer.colour = (200, 200, 200)
+            if (self.timerStart is not None) and (self.timerEnd is None):
+                if self.car.dead:
+                    self.timer.colour = (200, 0, 0)
+                else:
+                    self.timer.colour = (200, 200, 200)
+
+        if self.pause:
+            screen.blit(self.transparentSurface, (0, 0))
+            self.pauseIcon.show = False
+            self.playIcon.show = True
+        else:
+            self.pauseIcon.show = True
+            self.playIcon.show = False
 
         self.UILayer.display(self.screenWidth, self.screenHeight, self.events)
 
