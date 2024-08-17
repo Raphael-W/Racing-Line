@@ -61,6 +61,7 @@
             -10.815114520120607
         ]
     ],
+    "UUID": "cf77c556-5c00-11ef-9fe4-004238cc4e20",
     "properties": {
         "width": 22.4,
         "trackRes": 40,
@@ -69,6 +70,5 @@
         "finishDir": true,
         "referenceImage": null,
         "referenceImageScale": 1
-    },
-    "UUID": "cf77c556-5c00-11ef-9fe4-004238cc4e20"
+    }
 }

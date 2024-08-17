@@ -515,7 +515,7 @@ class Accordion(UIElement):
             element.show = not self.collapse
 
 class Message(UIElement):
-    def __init__(self, layer, title, message, button1Text, button1Action, button1Colour, button2Text = None, button2Action = None, button2Colour = None, xAction = None, show = True, layerIndex = -1):
+    def __init__(self, layer, title, message, button1Text = None, button1Action = None, button1Colour = None, button2Text = None, button2Action = None, button2Colour = None, closeAction = None, dimensions = (400, 150), show = True, layerIndex = -1):
         super().__init__(layer, (0, 0), "", show, layerIndex)
 
         self.message = message
@@ -529,13 +529,12 @@ class Message(UIElement):
         self.button2Action = button2Action
         self.button2Colour = button2Colour
 
-        self.xAction = xAction
+        self.xAction = closeAction
 
         self.greyColour = (120, 120, 120)
         self.redColour = (95, 25, 25)
 
-        self.width = 400
-        self.height = 150
+        self.width, self.height = dimensions
 
         self.posX = (self.layer.screenWidth / 2) - (self.width / 2)
         self.posY = (self.layer.screenHeight / 2) - (self.height / 2)
@@ -545,9 +544,8 @@ class Message(UIElement):
         self.messageFont = layer.pygame.freetype.Font(layer.fontName, 15)
         self.titleFont = layer.pygame.freetype.Font(layer.fontName, 25)
 
-        self.messageSize = self.messageFont.get_rect(self.message).size
-        self.messageBoundingBox = self.layer.pygame.Rect((self.posX, self.posY), (self.messageSize[0], self.messageSize[1]))
-        self.messageBoundingBox.center = self.boundingBox.center
+        self.messagesBoundingBox = []
+        self.messagesSize = []
 
         self.titleSize = self.titleFont.get_rect(self.title).size
         self.titleBoundingBox = self.layer.pygame.Rect((self.posX, self.posY), (self.titleSize[0], self.titleSize[1]))
@@ -557,38 +555,46 @@ class Message(UIElement):
                                   self.greyColour, action = self.closeButton)
         self.closeImage = Image(layer, (self.posX + self.width - 38, self.posY + 12), "", self.layer.directories["cross"], 1, colour = (200, 200, 200))
 
-        if button2Text is None:
-            centreButtonColour = self.greyColour
-            if self.button1Colour == "red":
-                centreButtonColour = self.redColour
+        if button1Text is not None:
+            if button2Text is None:
+                centreButtonColour = self.greyColour
+                if self.button1Colour == "red":
+                    centreButtonColour = self.redColour
 
-            self.centreButton = Button(layer, (self.posX + 10, (self.posY + self.height) - 40), "",
-                                       (self.width - 20, 30), button1Text, 15, centreButtonColour,
-                                       action = lambda: button1Action(self))
+                self.centreButton = Button(layer, (self.posX + 10, (self.posY + self.height) - 40), "",
+                                           (self.width - 20, 30), button1Text, 15, centreButtonColour,
+                                           action = lambda: button1Action(self))
 
-        else:
-            leftButtonColour = self.greyColour
-            if self.button1Colour == "red":
-                leftButtonColour = self.redColour
+            else:
+                leftButtonColour = self.greyColour
+                if self.button1Colour == "red":
+                    leftButtonColour = self.redColour
 
-            rightButtonColour = self.greyColour
-            if self.button2Colour == "red":
-                rightButtonColour = self.redColour
+                rightButtonColour = self.greyColour
+                if self.button2Colour == "red":
+                    rightButtonColour = self.redColour
 
-            self.leftButton = Button(layer, (self.posX + 10, (self.posY + self.height) - 40), "",
-                                     ((self.width / 2) - 20, 30), button1Text, 15, leftButtonColour,
-                                     action = lambda: button1Action(self))
-            self.rightButton = Button(layer, (self.posX + 10 + (self.width / 2), (self.posY + self.height) - 40), "",
-                                      ((self.width / 2) - 20, 30), button2Text, 15, rightButtonColour,
-                                      action = lambda: button2Action(self))
+                self.leftButton = Button(layer, (self.posX + 10, (self.posY + self.height) - 40), "",
+                                         ((self.width / 2) - 20, 30), button1Text, 15, leftButtonColour,
+                                         action = lambda: button1Action(self))
+                self.rightButton = Button(layer, (self.posX + 10 + (self.width / 2), (self.posY + self.height) - 40), "",
+                                          ((self.width / 2) - 20, 30), button2Text, 15, rightButtonColour,
+                                          action = lambda: button2Action(self))
 
     def update(self):
         self.posX = (self.layer.screenWidth / 2) - (self.width / 2)
         self.posY = (self.layer.screenHeight / 2) - (self.height / 2)
         self.boundingBox = self.layer.pygame.Rect(self.posX, self.posY, self.width, self.height)
 
-        self.messageBoundingBox = self.layer.pygame.Rect((self.posX, self.posY),(self.messageSize[0], self.messageSize[1]))
-        self.messageBoundingBox.center = self.boundingBox.center
+        self.messagesBoundingBox = []
+        self.messagesSize = []
+        if isinstance(self.message, str):
+            self.message = [self.message]
+
+        for lineIndex in range(len(self.message)):
+            self.messagesSize.append(self.messageFont.get_rect(self.message[lineIndex]).size)
+            self.messagesBoundingBox.append(self.layer.pygame.Rect((self.posX, self.posY), (self.messagesSize[lineIndex][0], self.messagesSize[lineIndex][1])))
+            self.messagesBoundingBox[lineIndex].center = self.boundingBox.center
 
         self.titleBoundingBox = self.layer.pygame.Rect((self.posX, self.posY), (self.titleSize[0], self.titleSize[1]))
         self.titleBoundingBox.center = self.boundingBox.center
@@ -596,11 +602,12 @@ class Message(UIElement):
         self.closeButton.posX, self.closeButton.posY = (self.posX + self.width - 40, self.posY + 10)
         self.closeImage.posX, self.closeImage.posY = (self.posX + self.width - 38, self.posY + 12)
 
-        if self.button2Text is None:
-            self.centreButton.posX, self.centreButton.posY = (self.posX + 10, (self.posY + self.height) - 40)
-        else:
-            self.leftButton.posX, self.leftButton.posY = (self.posX + 10, (self.posY + self.height) - 40)
-            self.rightButton.posX, self.rightButton.posY = (self.posX + 10 + (self.width / 2), (self.posY + self.height) - 40)
+        if self.button1Text is not None:
+            if self.button2Text is None:
+                self.centreButton.posX, self.centreButton.posY = (self.posX + 10, (self.posY + self.height) - 40)
+            else:
+                self.leftButton.posX, self.leftButton.posY = (self.posX + 10, (self.posY + self.height) - 40)
+                self.rightButton.posX, self.rightButton.posY = (self.posX + 10 + (self.width / 2), (self.posY + self.height) - 40)
 
     def display(self):
         transparentSurface = self.layer.pygame.Surface((self.layer.screenWidth, self.layer.screenHeight), self.layer.pygame.SRCALPHA)
@@ -609,14 +616,16 @@ class Message(UIElement):
 
         self.layer.pygame.draw.rect(self.layer.screen, (70, 70, 70), (self.posX, self.posY, self.width, self.height), border_radius = 15)
         self.titleFont.render_to(self.layer.screen, (self.titleBoundingBox.centerx - (self.titleSize[0] / 2), self.posY + 20), self.title, (200, 200, 200))
-        self.messageFont.render_to(self.layer.screen, (self.messageBoundingBox.centerx - (self.messageSize[0] / 2), self.posY + 60), self.message, (200, 200, 200))
+        for lineIndex in range(len(self.message)):
+            self.messageFont.render_to(self.layer.screen, (self.messagesBoundingBox[lineIndex].centerx - (self.messagesSize[lineIndex][0] / 2), self.posY + 60 + (lineIndex * 20)), self.message[lineIndex], (200, 200, 200))
 
     def close(self):
-        if self.button2Text is None:
-            self.layer.elements.remove(self.centreButton)
-        else:
-            self.layer.elements.remove(self.leftButton)
-            self.layer.elements.remove(self.rightButton)
+        if self.button1Text is not None:
+            if self.button2Text is None:
+                self.layer.elements.remove(self.centreButton)
+            else:
+                self.layer.elements.remove(self.leftButton)
+                self.layer.elements.remove(self.rightButton)
 
         self.layer.elements.remove(self.closeButton)
         self.layer.elements.remove(self.closeImage)

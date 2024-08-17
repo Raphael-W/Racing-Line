@@ -1,7 +1,6 @@
 import json
 import sqlite3
 import time
-import uuid
 
 from jsonschema import validate
 
@@ -152,7 +151,6 @@ class TrackEditor (Scene):
 
         self.trackRes = 20
         self.mainTrack = Track(self.trackRes, pygame, screen)
-        self.UUID = str(uuid.uuid1())
 
         self.screenWidth = screen.get_size()[0]
         self.screenHeight = screen.get_size()[1]
@@ -436,6 +434,14 @@ class TrackEditor (Scene):
             y = line * frequency + offset[1]
             pygame.draw.line(screen, lineColor, (0, y), (self.screenWidth, y), lineWidth)
 
+    def deleteTrackTimes(self, UUID):
+        conn = sqlite3.connect(directories["raceTimes"])
+        cursor = conn.cursor()
+        cursor.execute(f'''DELETE FROM TIMES WHERE UUID = "{UUID}"''')
+        conn.commit()
+        conn.close()
+
+
     #Saves track to directory specified by user.
     def saveTrack(self, saveNewDirectory = False):
         def closeError(sender):
@@ -443,7 +449,6 @@ class TrackEditor (Scene):
 
         trackData = self.mainTrack.getSaveState()
         trackData["properties"]["referenceImageScale"] = self.referenceImageScale
-        trackData["UUID"] = self.UUID
 
         def getFileName():
             root = tk.Tk()
@@ -519,7 +524,7 @@ class TrackEditor (Scene):
 
                     self.referenceImageScale = trackProperties["referenceImageScale"]
 
-                    self.UUID = trackData["UUID"]
+                    self.mainTrack.UUID = trackData["UUID"]
 
                     if trackProperties["referenceImage"] is not None:
                         referenceImageData = PIL.Image.open(BytesIO(base64.b64decode(trackProperties["referenceImage"])))
@@ -562,6 +567,8 @@ class TrackEditor (Scene):
 
         def discardTrack(sender):
             sender.close()
+            if self.saveDirectory is None:
+                self.deleteTrackTimes(self.mainTrack.UUID)
             loadTrack(tempDirectory)
 
         if tempDirectory is None:
@@ -573,7 +580,8 @@ class TrackEditor (Scene):
                 Message(self.UILayer, "Invalid File", "Please select a valid file", "OK", closeError, "grey")
 
             if tempDirectory != '' and self.mainTrack.isSaved() == False and validDir:
-                Message(self.UILayer, "Sure?", "You currently have an unsaved track open", "Save", saveTrackFirst, "grey","Discard", discardTrack, "red")
+                Message(self.UILayer, "Sure?", "You currently have an unsaved track open", "Save", saveTrackFirst,
+                        "grey", "Discard", discardTrack, "red")
             else:
                 loadTrack(tempDirectory)
 
@@ -586,6 +594,8 @@ class TrackEditor (Scene):
 
         def discardTrack(sender):
             sender.close()
+            if self.saveDirectory is None:
+                self.deleteTrackTimes(self.mainTrack.UUID)
             clearTrackSequence()
 
         def clearTrackSequence():
@@ -604,7 +614,8 @@ class TrackEditor (Scene):
             self.saveDirectory = None
 
         if not self.mainTrack.isSaved():
-            Message(self.UILayer, "Sure?", "You currently have an unsaved track open", "Save", saveTrackFirst, "grey", "Discard", discardTrack, "red")
+            Message(self.UILayer, "Sure?", "You currently have an unsaved track open", "Save", saveTrackFirst, "grey",
+                    "Discard", discardTrack, "red")
 
         elif self.saveDirectory is not None:
             self.saveTrack()
@@ -625,10 +636,14 @@ class TrackEditor (Scene):
 
         def discardTrack(sender):
             global running
+            if self.saveDirectory is None:
+                self.deleteTrackTimes(self.mainTrack.UUID)
             running = False
 
         if self.closeCount == 0:
-            unsavedTrackError = Message(self.UILayer, "Sure?", "You currently have an unsaved track open", "Save", saveTrackFirst, "grey", "Discard", discardTrack, "red", xAction = lambda: closeError(unsavedTrackError))
+            unsavedTrackError = Message(self.UILayer, "Sure?", "You currently have an unsaved track open", "Save",
+                                        saveTrackFirst, "grey", "Discard", discardTrack, "red",
+                                        closeAction = lambda: closeError(unsavedTrackError))
         self.closeCount += 1
 
     #Undoes previous action
@@ -1000,6 +1015,7 @@ class TrackTesting (Scene):
         self.speedometer = Label(self.UILayer, 30, (180, 100), "SE", "121mph", self.colours["white"], bold = True)
         self.timer = Label(self.UILayer, 17, (180, 65), "SE", "00:00.00", (200, 200, 200))
         self.controlsLabel = Label(self.UILayer, 13, (50, 50), "SW", "Use WASD, arrow keys or a controller  |  'R' (keyboard) or 'X' (controller) to reset", self.colours["white"], bold = True)
+        self.viewLeaderboardButton = Button(self.UILayer, (50, 120), "SW", (200, 40), "View Leaderboard", 15, (100, 100, 100), action = self.viewLeaderboard)
 
         self.car = Car(pygame, screen, directories, self.trackEditor.mainTrack)
 
@@ -1017,12 +1033,33 @@ class TrackTesting (Scene):
         self.timer.colour = (200, 200, 200)
 
     def uploadTime(self, raceTime):
-        print("Uploaded")
         conn = sqlite3.connect(directories["raceTimes"])
         cursor = conn.cursor()
-        cursor.execute(f'''INSERT INTO TIMES VALUES ('{self.trackEditor.UUID}', {raceTime}, datetime('now','localtime'))''')
+        cursor.execute(f'''INSERT INTO TIMES VALUES ('{self.trackEditor.mainTrack.UUID}', {raceTime}, datetime('now','localtime'))''')
         conn.commit()
         conn.close()
+
+    def viewLeaderboard(self):
+        conn = sqlite3.connect(directories["raceTimes"])
+        cursor = conn.cursor()
+        cursor.execute(f"SELECT time, date FROM TIMES WHERE UUID = '{self.trackEditor.mainTrack.UUID}' ORDER BY time")
+        times = cursor.fetchall()
+
+        leaderboardMessages = []
+        if len(times) == 0:
+            leaderboardMessages = ['', '', '', '', 'No times yet...']
+        else:
+            for i in range(10):
+                if len(times) > i:
+                    splitDate = (times[i][1].split(' ')[0]).split('-')
+                    date = f"{splitDate[2]}/{splitDate[1]}/{splitDate[0]}"
+                    lineText = f"{i + 1}.  {secondToRaceTimer(times[i][0])}     {date}"
+                    leaderboardMessages.append(lineText)
+                else:
+                    lineText = f"{"{:<14}".format(f"{i + 1}.")}-            "
+                    leaderboardMessages.append(lineText)
+
+        leaderboardView = Message(self.UILayer, "Leaderboard", leaderboardMessages, dimensions = (400, 270))
 
     #Where all the events are passed to be processed
     def handleEvents(self, events):

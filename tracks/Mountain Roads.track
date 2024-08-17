@@ -69,6 +69,7 @@
             2142
         ]
     ],
+    "UUID": "d2130f9d-5c00-11ef-b020-004238cc4e20",
     "properties": {
         "width": 15.6,
         "trackRes": 52,
@@ -77,6 +78,5 @@
         "finishDir": true,
         "referenceImage": null,
         "referenceImageScale": 1
-    },
-    "UUID": "d2130f9d-5c00-11ef-b020-004238cc4e20"
+    }
 }

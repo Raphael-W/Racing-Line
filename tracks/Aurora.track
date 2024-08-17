@@ -105,6 +105,7 @@
             -334.00000000000006
         ]
     ],
+    "UUID": "cc232020-5c00-11ef-97b2-004238cc4e20",
     "properties": {
         "width": 12.6,
         "trackRes": 45,
@@ -113,6 +114,5 @@
         "finishDir": true,
         "referenceImage": null,
         "referenceImageScale": 1
-    },
-    "UUID": "cc232020-5c00-11ef-97b2-004238cc4e20"
+    }
 }

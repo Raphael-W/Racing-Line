@@ -2,6 +2,7 @@ from utils import *
 from history import *
 
 import base64
+import uuid
 
 #Checks if point on track gets closer to the centre than it should (indicating a kink)
 def isPointKinked(point, linePoints, width):
@@ -125,6 +126,8 @@ class Track:
         self.pygame = pygame
         self.screen = screen
 
+        self.UUID = str(uuid.uuid1())
+
         #Visual Track Points
         self.__mainPolyLeftEdge = []
         self.__mainPolyRightEdge = []
@@ -202,6 +205,7 @@ class Track:
                       "referenceImage": referenceImageData}
 
         return {"points"    : points,
+                "UUID": self.UUID,
                 "properties": properties}
 
     #Returns track edges
