@@ -38,6 +38,7 @@ running = True
 
 deltaTime = 0
 
+#executionDir = os.path.dirname(os.path.dirname(sys.executable))
 executionDir = os.path.dirname(os.path.dirname(__file__))
 directories = {"mainFont": "assets/fonts/MonoFont.ttf",
                "trackSchema": "assets/schemas/trackSchema.json",
@@ -58,10 +59,14 @@ directories = {"mainFont": "assets/fonts/MonoFont.ttf",
                "pause": "assets/icons/pause.png",
                "play": "assets/icons/play.png",
                "f1Car": "assets/sprites/f1_car.png",
-               "f1Wheel": "assets/sprites/f1_wheel.png",}
+               "f1Wheel": "assets/sprites/f1_wheel.png",
+               "logo": "assets/icons/logo.png"}
 
 #Makes above relative paths absolute
 directories = {item: os.path.normpath(os.path.join(executionDir, directory)) for (item, directory) in directories.items()}
+
+icon = pygame.image.load(directories["logo"])
+pygame.display.set_icon(icon)
 
 mainFont = directories["mainFont"]
 programUI = Layer(screen, pygame, mainFont, directories)
@@ -392,6 +397,9 @@ class TrackEditor (Scene):
             return error
         def getFileName():
             root = tk.Tk()
+            logo = tk.PhotoImage(file = directories["logo"])
+            root.iconphoto(True, logo)
+
             root.withdraw()
             root.wm_attributes('-topmost', 1)
             imageExtensions = r"*.png *.jpeg *.jpg *.ppm *.gif *.tiff *.bmp"
@@ -452,6 +460,9 @@ class TrackEditor (Scene):
 
         def getFileName():
             root = tk.Tk()
+            logo = tk.PhotoImage(file = directories["logo"])
+            root.iconphoto(True, logo)
+
             root.wm_attributes('-topmost', 1)
             root.withdraw()
             fileSelected = asksaveasfilename(title = "Save Track", initialfile = 'Untitled.track', defaultextension = ".track", filetypes = [("Track Files", "*.track")])
@@ -551,6 +562,9 @@ class TrackEditor (Scene):
 
         def getFileName():
             root = tk.Tk()
+            logo = tk.PhotoImage(file = directories["logo"])
+            root.iconphoto(True, logo)
+
             root.withdraw()
             root.wm_attributes('-topmost', 1)
             fileSelected = askopenfilename(title = "Open Track", defaultextension = ".track", filetypes = [("Track Files", "*.track")])
@@ -1100,13 +1114,13 @@ class TrackTesting (Scene):
             for i in range(10):
                 if len(times) > i:
                     splitDate = (times[i][1].split(' ')[0]).split('-')
-                    date = f"{splitDate[2]}/{splitDate[1]}/{splitDate[0]}"
+                    date = f"{splitDate[2]}/{splitDate[1]}/{splitDate[0][-2:]}"
                     number = "{:>2}".format(i + 1)
                     lineText = f"{number}.  {secondToRaceTimer(times[i][0])}     {date}"
                     leaderboardMessages.append(lineText)
                 else:
                     number = "{:>2}".format(i + 1)
-                    lineText = f"{"{:<15}".format(f"{number}.")}-            "
+                    lineText = f"{"{:<15}".format(f"{number}.")}-          "
                     leaderboardMessages.append(lineText)
 
         self.leaderboardView = Message(self.UILayer, "Leaderboard", leaderboardMessages, dimensions = (400, 270), closeAction = closeLeaderboard, layerIndex = 0)

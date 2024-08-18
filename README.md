@@ -50,3 +50,4 @@ Example tracks can be located in `tracks/`
 - Goodwood Circuit
 - IDKWTFIDA
 - Spiral Wonders
+- Loop de Track

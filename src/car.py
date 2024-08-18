@@ -77,12 +77,13 @@ class Car:
         if len(self.track.points) >= 2:
             previousIndex = self.nearestSplineIndex
             listLength = len(self.track.splinePoints)
+            trackRes = int(self.track.perSegRes)
 
             if self.nearestSplineIndex is None:
                 pointsIndex = list(range(listLength))
                 points = self.track.splinePoints
             else:
-                pointsIndex = [i % listLength for i in range(previousIndex - 10, previousIndex + 10)]
+                pointsIndex = [i % listLength for i in range(previousIndex - trackRes, previousIndex + trackRes)]
                 points = [self.track.splinePoints[i] for i in pointsIndex]
 
             tree = KDTree(points)
