@@ -115,7 +115,7 @@ class SceneManager:
 
     def updateCurrentScene(self):
         if len(self.scenes[self.getSceneIndex("Track Editor")].mainTrack.points) <= 1:
-            self.changeSceneDropdown.disabledIndexes = [self.getSceneIndex("Track Testing")]
+            self.changeSceneDropdown.disabledIndexes = [self.getSceneIndex("Racing")]
         else:
             self.changeSceneDropdown.disabledIndexes = []
 
@@ -985,7 +985,7 @@ class TrackEditor (Scene):
         self.trackLayer.display(self.screenWidth, self.screenHeight, self.events, self.offsetPosition, self.zoom)
         self.UILayer.display(self.screenWidth, self.screenHeight, self.events)
 
-class TrackTesting (Scene):
+class TrackRacing (Scene):
     def __init__(self, trackEditor):
         super().__init__()
         self.trackEditor = trackEditor
@@ -1023,10 +1023,11 @@ class TrackTesting (Scene):
         self.UILayer = Layer(screen, pygame, mainFont, directories)
         self.speedometer = Label(self.UILayer, 30, (180, 100), "SE", "121mph", self.colours["white"], bold = True)
         self.timer = Label(self.UILayer, 17, (180, 65), "SE", "00:00.00", (200, 200, 200))
-        self.controlsLabel = Label(self.UILayer, 13, (50, 50), "SW", "Use WASD, arrow keys or a controller  |  'R' (keyboard) or 'X' (controller) to reset | 'P' to pause", self.colours["white"], bold = True)
 
-        self.viewLeaderboardButton = Button(self.UILayer, (50, 120), "SW", (200, 40), "View Leaderboard", 15, (100, 100, 100), action = self.viewLeaderboard)
+        self.viewLeaderboardButton = Button(self.UILayer, (50, 90), "SW", (200, 40), "View Leaderboard", 15, (100, 100, 100), action = self.viewLeaderboard)
         self.leaderboardView = None
+
+        self.viewLeaderboardButton = Button(self.UILayer, (270, 90), "SW", (200, 40), "View Controls", 15, (100, 100, 100), action = self.viewControls)
 
         self.deleteRaceTimesButton = Button(self.UILayer, (105, 335), "SE", (30, 30), "", 12, (66, 41, 41), action = self.deleteRaceTimes, show = False)
         self.deleteRaceTimesIcon = Image(self.UILayer, (self.deleteRaceTimesButton.posX - 1, self.deleteRaceTimesButton.posY - 1), "SE", directories["bin"], 0.7, colour = (200, 200, 200), show = False)
@@ -1128,6 +1129,13 @@ class TrackTesting (Scene):
             self.deleteRaceTimesButton.show = True
             self.deleteRaceTimesIcon.show = True
 
+    def viewControls(self):
+        allControls = ["Keyboard:", "Use WASD/arrow keys to move", "'R' to reset", "'P' to pause",
+                       "",
+                       "Controller:", "R2 to accelerate, L2 to brake", "Left joy to steer", "'X' to reset", "'Menu' to pause"]
+
+        Message(self.UILayer, "Controls", allControls, dimensions = (400, 270), layerIndex = 0)
+
     def togglePause(self, userPaused = False):
         self.pause = not self.pause
         if self.pause:
@@ -1174,6 +1182,8 @@ class TrackTesting (Scene):
             if event.type == pygame.JOYBUTTONDOWN:
                 if pygame.joystick.Joystick(0).get_button(2): #X
                     self.reset()
+                if pygame.joystick.Joystick(0).get_button(6): #Menu
+                    self.togglePause(True)
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_r:
@@ -1280,11 +1290,11 @@ class TrackTesting (Scene):
         self.UILayer.display(self.screenWidth, self.screenHeight, self.events)
 
 trackEditorScene = TrackEditor()
-trackTestingScene = TrackTesting(trackEditorScene)
+trackRacingScene = TrackRacing(trackEditorScene)
 
 ProgramSceneManager = SceneManager()
 ProgramSceneManager.addScene(trackEditorScene, "Track Editor")
-ProgramSceneManager.addScene(trackTestingScene, "Track Testing")
+ProgramSceneManager.addScene(trackRacingScene, "Racing")
 
 ProgramSceneManager.setScene("Track Editor")
 
