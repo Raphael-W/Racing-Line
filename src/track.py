@@ -244,6 +244,7 @@ class Track:
     def changeWidth(self, value):
         self.width = value
         self.computeTrackEdges()
+        self.computeRacingLine()
         self.offsetAllTrackPoints()
 
     #Called when user stops setting width (lets go of track width slider)
@@ -593,11 +594,11 @@ class Track:
                     self.__mainPolyLeftEdge[point] = self.__offset_mainPolyLeftEdge[point] = calculateSide(self.splinePoints, point, 5)
                     self.__mainPolyRightEdge[point] = self.__offset_mainPolyRightEdge[point] = calculateSide(self.splinePoints, point, -5)
 
-                    self.__leftBorderInnerEdge[point] = self.__offset_leftBorderInnerEdge[point] = calculateSide(self.splinePoints, point, (self.width * 5))
-                    self.__leftBorderOuterEdge[point] = self.__offset_leftBorderOuterEdge[point] = calculateSide(self.splinePoints, point, (self.width * 5) + 7)
+                    self.__leftBorderInnerEdge[point] = self.__offset_leftBorderInnerEdge[point] = calculateSide(self.splinePoints, point, (self.width * (1 / self.scale)))
+                    self.__leftBorderOuterEdge[point] = self.__offset_leftBorderOuterEdge[point] = calculateSide(self.splinePoints, point, (self.width * (1 / self.scale)) + 3)
 
-                    self.__rightBorderInnerEdge[point] = self.__offset_rightBorderInnerEdge[point] = calculateSide(self.splinePoints, point, -(self.width * 5))
-                    self.__rightBorderOuterEdge[point] = self.__offset_rightBorderOuterEdge[point] = calculateSide(self.splinePoints, point, -((self.width * 5) + 7))
+                    self.__rightBorderInnerEdge[point] = self.__offset_rightBorderInnerEdge[point] = calculateSide(self.splinePoints, point, -(self.width * (1 / self.scale)))
+                    self.__rightBorderOuterEdge[point] = self.__offset_rightBorderOuterEdge[point] = calculateSide(self.splinePoints, point, -((self.width * (1 / self.scale)) + 3))
 
     def computeRacingLine(self):
         racingLine = []
@@ -833,6 +834,45 @@ class Track:
                         self.pygame.gfxdraw.aapolygon(self.screen, mainCurvePolygon, programColours["curve"])
                     self.pygame.gfxdraw.filled_polygon(self.screen, mainCurvePolygon, programColours["curve"])
 
+            if viewMode in ["Display"]:
+                checkeredHeight = (1 * self.zoomValue * (1 / self.scale))
+                checkeredWidthCount = round((self.width * (1 / self.scale) * self.zoomValue) / checkeredHeight)
+                checkeredWidth = (self.width * (1 / self.scale) * self.zoomValue) / checkeredWidthCount
+                checkeredHeight = checkeredWidth
+
+                startPos, startAngle, startIndex, startDir = self.getStartPos()
+
+                if self.finishDir:
+                    startLeftCoord = int(self.__offset_leftBorderInnerEdge[startIndex][0]), int(
+                        self.__offset_leftBorderInnerEdge[startIndex][1])
+                else:
+                    startLeftCoord = int(self.__offset_rightBorderInnerEdge[startIndex][0]), int(
+                        self.__offset_rightBorderInnerEdge[startIndex][1])
+
+                for y in range(-1, 1):
+                    for x in range(checkeredWidthCount):
+                        topLeft = startLeftCoord[0] - (cosDeg(startAngle) * (checkeredHeight * y)) - (
+                                sinDeg(startAngle) * (checkeredWidth * x)), startLeftCoord[1] + (
+                                          sinDeg(startAngle) * (checkeredHeight * y)) - (
+                                          cosDeg(startAngle) * (checkeredWidth * x))
+
+                        corner1 = topLeft
+                        corner2 = topLeft[0] - (cosDeg(startAngle) * checkeredHeight), topLeft[1] + (
+                                sinDeg(startAngle) * checkeredHeight)
+                        corner3 = topLeft[0] - (cosDeg(startAngle) * checkeredHeight) - (
+                                sinDeg(startAngle) * checkeredWidth), topLeft[1] + (
+                                          sinDeg(startAngle) * checkeredHeight) - (cosDeg(startAngle) * checkeredWidth)
+                        corner4 = topLeft[0] - (sinDeg(startAngle) * checkeredWidth), topLeft[1] - (
+                                cosDeg(startAngle) * checkeredWidth)
+
+                        if (x + y) % 2 == 0:
+                            checkeredColour = (0, 0, 0)
+                        else:
+                            checkeredColour = (200, 200, 200)
+
+                        checkeredSquarePoints = [corner1, corner2, corner3, corner4]
+                        self.pygame.draw.polygon(self.screen, checkeredColour, checkeredSquarePoints)
+
             if viewMode in ["Spline Dots"]:
                 for dot in self.__offset_splinePoints:
                     if antialiasing:
@@ -849,35 +889,6 @@ class Track:
                     colour = programColours["controlPoint"]
 
                 point.draw(colour, self.screen, self.pygame, self.offsetValue, self.zoomValue)
-
-        if viewMode in ["Display"]:
-            checkeredHeight = (12 * self.zoomValue)
-            checkeredWidthCount = int((self.width * (1 / self.scale) * self.zoomValue) // checkeredHeight)
-            checkeredWidth = checkeredHeight + (((self.width * self.scale * self.zoomValue) % checkeredHeight) / checkeredWidthCount)
-
-            startPos, startAngle, startIndex, startDir = self.getStartPos()
-
-            if self.finishDir:
-                startLeftCoord = int(self.__offset_leftBorderInnerEdge[startIndex][0]), int(self.__offset_leftBorderInnerEdge[startIndex][1])
-            else:
-                startLeftCoord = int(self.__offset_rightBorderInnerEdge[startIndex][0]), int(self.__offset_rightBorderInnerEdge[startIndex][1])
-
-            for y in range(4):
-                for x in range(checkeredWidthCount):
-                    topLeft = startLeftCoord[0] - (cosDeg(startAngle) * (checkeredHeight * y)) - (sinDeg(startAngle) * (checkeredWidth * x)), startLeftCoord[1] + (sinDeg(startAngle) * (checkeredHeight * y)) - (cosDeg(startAngle) * (checkeredWidth * x))
-
-                    corner1 = topLeft
-                    corner2 = topLeft[0] - (cosDeg(startAngle) * checkeredHeight), topLeft[1] + (sinDeg(startAngle) * checkeredHeight)
-                    corner3 = topLeft[0] - (cosDeg(startAngle) * checkeredHeight) - (sinDeg(startAngle) * checkeredWidth), topLeft[1] + (sinDeg(startAngle) * checkeredHeight) - (cosDeg(startAngle) * checkeredWidth)
-                    corner4 = topLeft[0] - (sinDeg(startAngle) * checkeredWidth), topLeft[1] - (cosDeg(startAngle) * checkeredWidth)
-
-                    if (x + y) % 2 == 0:
-                        checkeredColour = (0, 0, 0)
-                    else:
-                        checkeredColour = (200, 200, 200)
-
-                    checkeredSquarePoints = [corner1, corner2, corner3, corner4]
-                    self.pygame.draw.polygon(self.screen, checkeredColour, checkeredSquarePoints)
 
         if len(self.points) >= 3 and self.showRacingLine:
             racingLinePolygon = formPolygon(self.offset_leftRacingLineSpline, self.offset_rightRacingLineSpline, close = self.closed)

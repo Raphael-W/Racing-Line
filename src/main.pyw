@@ -247,7 +247,7 @@ class TrackEditor (Scene):
         self.trackResSlider = Slider(self.UILayer, 15, self.colours["white"], self.colours["controlPoint"], (225, 278), "SE", 1, 100, (10, 100), value = self.mainTrack.perSegRes, action = self.mainTrack.changeRes, finishedUpdatingAction = self.mainTrack.changeResComplete, increment = 1)
         self.trackResLabel = Label(self.UILayer, 15, (330, 283), "SE", "Track Res", self.colours["white"])
 
-        self.trackWidthSlider = Slider(self.UILayer, 15, self.colours["white"], self.colours["controlPoint"],(224, 243), "SE", 1, 100, (10, 30), value = self.mainTrack.width, action = self.mainTrack.changeWidth, finishedUpdatingAction = self.mainTrack.changeWidthComplete)
+        self.trackWidthSlider = Slider(self.UILayer, 15, self.colours["white"], self.colours["controlPoint"],(224, 243), "SE", 1, 100, (10, 30), value = self.mainTrack.width, suffix = 'm', action = self.mainTrack.changeWidth, finishedUpdatingAction = self.mainTrack.changeWidthComplete)
         self.trackWidthLabel = Label(self.UILayer, 15, (295, 248), "SE", "Width", self.colours["white"])
 
         self.racingLineSwitch = Switch(self.UILayer, (130, 175), "SE", 0.8, value = False)
@@ -465,7 +465,7 @@ class TrackEditor (Scene):
 
             root.wm_attributes('-topmost', 1)
             root.withdraw()
-            fileSelected = asksaveasfilename(title = "Save Track", initialfile = 'Untitled.track', defaultextension = ".track", filetypes = [("Track Files", "*.track")])
+            fileSelected = asksaveasfilename(title = "Save Track", initialfile = 'Untitled.track', defaultextension = ".track", filetypes = [("Track Files", "*.track")], initialdir =  os.path.normpath(os.path.join(executionDir, 'tracks/')))
             root.destroy()
             return fileSelected
 
@@ -567,7 +567,7 @@ class TrackEditor (Scene):
 
             root.withdraw()
             root.wm_attributes('-topmost', 1)
-            fileSelected = askopenfilename(title = "Open Track", defaultextension = ".track", filetypes = [("Track Files", "*.track")])
+            fileSelected = askopenfilename(title = "Open Track", defaultextension = ".track", filetypes = [("Track Files", "*.track")], initialdir =  os.path.normpath(os.path.join(executionDir, 'tracks/')))
             root.destroy()
             return fileSelected
 
@@ -994,6 +994,8 @@ class TrackRacing (Scene):
 
         self.offsetPosition = (0, 0)
         self.zoom = 2
+        self.upperZoomLimit = 2.5
+        self.lowerZoomLimit = 0.1
 
         self.screenWidth, self.screenHeight = screen.get_size()
         self.mousePosX = 0
@@ -1027,7 +1029,7 @@ class TrackRacing (Scene):
         self.viewLeaderboardButton = Button(self.UILayer, (50, 90), "SW", (200, 40), "View Leaderboard", 15, (100, 100, 100), action = self.viewLeaderboard)
         self.leaderboardView = None
 
-        self.viewLeaderboardButton = Button(self.UILayer, (270, 90), "SW", (200, 40), "View Controls", 15, (100, 100, 100), action = self.viewControls)
+        self.viewControlsButton = Button(self.UILayer, (270, 90), "SW", (200, 40), "View Controls", 15, (100, 100, 100), action = self.viewControls)
 
         self.deleteRaceTimesButton = Button(self.UILayer, (105, 335), "SE", (30, 30), "", 12, (66, 41, 41), action = self.deleteRaceTimes, show = False)
         self.deleteRaceTimesIcon = Image(self.UILayer, (self.deleteRaceTimesButton.posX - 1, self.deleteRaceTimesButton.posY - 1), "SE", directories["bin"], 0.7, colour = (200, 200, 200), show = False)
@@ -1035,6 +1037,9 @@ class TrackRacing (Scene):
         self.pauseButton = Button(self.UILayer, (30, 70), "", (40, 40), "", 15, (100, 100, 100), action = lambda: self.togglePause(True))
         self.pauseIcon = Image(self.UILayer, (37, 77), "", directories["pause"], 1, (200, 200, 200))
         self.playIcon = Image(self.UILayer, (37, 77), "", directories["play"], 1, (200, 200, 200))
+
+        self.zoomAdjustmentSlider = Slider(self.UILayer, 15, (200, 200, 200), self.colours["controlPoint"], (100, 120), "SW", 1, 105, (self.lowerZoomLimit, self.upperZoomLimit), 2.0001, precision = 1, action = self.updateZoom, suffix = 'x')
+        self.zoomAdjustmentLabel = Label(self.UILayer, 15, (50, 122), "SW", "Zoom", (200, 200, 200))
 
         self.car = Car(pygame, screen, directories, self.trackEditor.mainTrack)
 
@@ -1045,8 +1050,8 @@ class TrackRacing (Scene):
         self.pauseStart = None
         self.userPaused = False
 
-        self.transparentSurface = pygame.Surface((self.screenWidth, self.screenHeight), pygame.SRCALPHA)
-        pygame.draw.rect(self.transparentSurface, (50, 50, 50, 200), (0, 0, self.screenWidth, self.screenHeight))
+    def updateZoom(self, value):
+        self.zoom = value
 
     def reset(self):
         self.car.reset()
@@ -1273,7 +1278,9 @@ class TrackRacing (Scene):
                     self.timer.colour = (200, 200, 200)
 
         if self.pause:
-            screen.blit(self.transparentSurface, (0, 0))
+            transparentSurface = pygame.Surface((self.screenWidth, self.screenHeight), pygame.SRCALPHA)
+            pygame.draw.rect(transparentSurface, (50, 50, 50, 200), (0, 0, self.screenWidth, self.screenHeight))
+            screen.blit(transparentSurface, (0, 0))
             self.pauseIcon.show = False
             self.playIcon.show = True
         else:
@@ -1298,6 +1305,7 @@ ProgramSceneManager.addScene(trackRacingScene, "Racing")
 
 ProgramSceneManager.setScene("Track Editor")
 
+
 while running:
     screenWidth, screenHeight = screen.get_size()
 
@@ -1310,5 +1318,4 @@ while running:
 
     pygame.display.flip()
     deltaTime = clock.tick(60) / 1000 #Refresh Rate
-
 pygame.quit()

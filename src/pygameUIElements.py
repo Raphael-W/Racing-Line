@@ -155,7 +155,7 @@ class Label (UIElement):
         self.font.render_to(self.layer.screen, (self.contextualPosX, self.contextualPosY), self.text, self.colour)
 
 class Slider (UIElement):
-    def __init__(self, layer, fontSize, barColour, handleColour, pos, stick, size, length, valueRange, value = 0, action = None, increment = None, finishedUpdatingAction = None, show = True, disabled = False, hideLabel = False, layerIndex = -1):
+    def __init__(self, layer, fontSize, barColour, handleColour, pos, stick, size, length, valueRange, value = 0, action = None, increment = None, precision = None, suffix = None, finishedUpdatingAction = None, show = True, disabled = False, hideLabel = False, layerIndex = -1):
         super().__init__(layer, pos, stick, show, layerIndex)
 
         self.barColour = barColour
@@ -174,6 +174,8 @@ class Slider (UIElement):
         self.valueRange = valueRange
         self.value = value
         self.increment = increment
+        self.precision = precision
+        self.suffix = suffix
         if not (valueRange[0] <= value <= valueRange[1]): self.value = valueRange[0]
 
         self.mouseHovering = False
@@ -250,7 +252,12 @@ class Slider (UIElement):
         bar = self.layer.pygame.Rect(self.contextualPosX, self.contextualPosY, self.length, int(7 * self.size))
         self.layer.pygame.draw.rect(self.layer.screen, self.displayBarColour, bar, 0, 100)
         if not self.hideLabel:
-            self.font.render_to(self.layer.screen, (self.contextualPosX + self.length + 17, self.contextualPosY - 3), str(int(self.value)), self.displayBarColour)
+            displayValue = str(int(self.value))
+            if self.precision is not None:
+                displayValue = str(round(self.value, self.precision))
+            if self.suffix is not None:
+                displayValue += self.suffix
+            self.font.render_to(self.layer.screen, (self.contextualPosX + self.length + 17, self.contextualPosY - 3), displayValue, self.displayBarColour)
 
         self.layer.pygame.gfxdraw.aacircle(self.layer.screen, int(self.contextualPosX + self.handleX), int(self.contextualPosY + (int(7 * self.size)) / 2), self.handleSize, self.displayColour)
         self.layer.pygame.gfxdraw.filled_circle(self.layer.screen, int(self.contextualPosX + self.handleX), int(self.contextualPosY + (int(7 * self.size)) / 2), self.handleSize, self.displayColour)
