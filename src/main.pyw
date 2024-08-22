@@ -29,7 +29,7 @@ if os.name == "nt":
 
 pygame.init()
 pygame.display.set_caption("Racing Line Finder")
-screen = pygame.display.set_mode((1280, 649), pygame.RESIZABLE) #1280, 720
+screen = pygame.display.set_mode((1280, 720), pygame.RESIZABLE)
 clock = pygame.time.Clock()
 
 pygame.event.set_allowed([pygame.QUIT, pygame.KEYDOWN, pygame.MOUSEBUTTONDOWN])
@@ -994,8 +994,8 @@ class TrackRacing (Scene):
 
         self.offsetPosition = (0, 0)
         self.zoom = 2
-        self.upperZoomLimit = 2.5
-        self.lowerZoomLimit = 0.1
+        self.upperZoomLimit = 3
+        self.lowerZoomLimit = 0.5
 
         self.screenWidth, self.screenHeight = screen.get_size()
         self.mousePosX = 0
@@ -1155,6 +1155,8 @@ class TrackRacing (Scene):
     def handleEvents(self, events):
         global running
 
+        self.controllers = [pygame.joystick.Joystick(i) for i in range(pygame.joystick.get_count())]
+
         self.accelerationInput = 0
         self.steeringInput = 0
 
@@ -1199,7 +1201,6 @@ class TrackRacing (Scene):
     def update(self):
         self.offsetPosition = ((-self.car.position.x * self.zoom) + (self.screenWidth / 2), (-self.car.position.y * self.zoom) + (self.screenHeight / 2))
         self.trackEditor.mainTrack.updateOffsetValues(self.offsetPosition, self.zoom)
-        self.controllers = [pygame.joystick.Joystick(i) for i in range(pygame.joystick.get_count())]
 
         self.screenWidth, self.screenHeight = screen.get_size()
         self.mousePosX = pygame.mouse.get_pos()[0]
