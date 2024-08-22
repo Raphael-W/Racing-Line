@@ -1030,13 +1030,10 @@ class TrackRacing (Scene):
         self.leaderboardView = None
 
         self.viewControlsButton = Button(self.UILayer, (270, 90), "SW", (200, 40), "View Controls", 15, (100, 100, 100), action = self.viewControls)
+        self.controlsView = None
 
         self.deleteRaceTimesButton = Button(self.UILayer, (105, 335), "SE", (30, 30), "", 12, (66, 41, 41), action = self.deleteRaceTimes, show = False)
         self.deleteRaceTimesIcon = Image(self.UILayer, (self.deleteRaceTimesButton.posX - 1, self.deleteRaceTimesButton.posY - 1), "SE", directories["bin"], 0.7, colour = (200, 200, 200), show = False)
-
-        self.pauseButton = Button(self.UILayer, (30, 70), "", (40, 40), "", 15, (100, 100, 100), action = lambda: self.togglePause(True))
-        self.pauseIcon = Image(self.UILayer, (37, 77), "", directories["pause"], 1, (200, 200, 200))
-        self.playIcon = Image(self.UILayer, (37, 77), "", directories["play"], 1, (200, 200, 200))
 
         self.zoomAdjustmentSlider = Slider(self.UILayer, 15, (200, 200, 200), self.colours["controlPoint"], (100, 120), "SW", 1, 105, (self.lowerZoomLimit, self.upperZoomLimit), 2.0001, precision = 1, action = self.updateZoom, suffix = 'x')
         self.zoomAdjustmentLabel = Label(self.UILayer, 15, (50, 122), "SW", "Zoom", (200, 200, 200))
@@ -1106,40 +1103,46 @@ class TrackRacing (Scene):
         return times
 
     def viewLeaderboard(self):
-        def closeLeaderboard():
+        if self.leaderboardView in self.UILayer.elements:
             self.leaderboardView.close()
-            self.deleteRaceTimesButton.show = False
-            self.deleteRaceTimesIcon.show = False
-
-        times = self.getTimes(self.trackEditor.mainTrack.UUID)
-
-        leaderboardMessages = []
-        if len(times) == 0:
-            leaderboardMessages = ['', '', '', '', 'No times yet...']
         else:
-            for i in range(10):
-                if len(times) > i:
-                    splitDate = (times[i][1].split(' ')[0]).split('-')
-                    date = f"{splitDate[2]}/{splitDate[1]}/{splitDate[0][-2:]}"
-                    number = "{:>2}".format(i + 1)
-                    lineText = f"{number}.  {secondToRaceTimer(times[i][0])}     {date}"
-                    leaderboardMessages.append(lineText)
-                else:
-                    number = "{:>2}".format(i + 1)
-                    lineText = f"{"{:<15}".format(f"{number}.")}-          "
-                    leaderboardMessages.append(lineText)
+            def closeLeaderboard():
+                self.leaderboardView.close()
+                self.deleteRaceTimesButton.show = False
+                self.deleteRaceTimesIcon.show = False
 
-        self.leaderboardView = Message(self.UILayer, "Leaderboard", leaderboardMessages, dimensions = (400, 270), closeAction = closeLeaderboard, layerIndex = 0)
-        if len(times) > 0:
-            self.deleteRaceTimesButton.show = True
-            self.deleteRaceTimesIcon.show = True
+            times = self.getTimes(self.trackEditor.mainTrack.UUID)
+
+            leaderboardMessages = []
+            if len(times) == 0:
+                leaderboardMessages = ['', '', '', '', 'No times yet...']
+            else:
+                for i in range(10):
+                    if len(times) > i:
+                        splitDate = (times[i][1].split(' ')[0]).split('-')
+                        date = f"{splitDate[2]}/{splitDate[1]}/{splitDate[0][-2:]}"
+                        number = "{:>2}".format(i + 1)
+                        lineText = f"{number}.  {secondToRaceTimer(times[i][0])}     {date}"
+                        leaderboardMessages.append(lineText)
+                    else:
+                        number = "{:>2}".format(i + 1)
+                        lineText = f"{"{:<15}".format(f"{number}.")}-          "
+                        leaderboardMessages.append(lineText)
+
+            self.leaderboardView = Message(self.UILayer, "Leaderboard", leaderboardMessages, dimensions = (400, 270), closeAction = closeLeaderboard, layerIndex = 0)
+            if len(times) > 0:
+                self.deleteRaceTimesButton.show = True
+                self.deleteRaceTimesIcon.show = True
 
     def viewControls(self):
-        allControls = ["Keyboard:", "Use WASD/arrow keys to move", "'R' to reset", "'P' to pause",
-                       "",
-                       "Controller:", "R2 to accelerate, L2 to brake", "Left joy to steer", "'X' to reset", "'Menu' to pause"]
+        if self.controlsView in self.UILayer.elements:
+            self.controlsView.close()
+        else:
+            allControls = ["Keyboard:", "Use WASD/arrow keys to move", "'R' to reset", "'P' to pause",
+                           "",
+                           "Controller:", "R2 to accelerate, L2 to brake", "Left joy to steer", "'X' to reset", "'Menu' to pause"]
 
-        Message(self.UILayer, "Controls", allControls, dimensions = (400, 270), layerIndex = 0)
+            self.controlsView = Message(self.UILayer, "Controls", allControls, dimensions = (400, 270), layerIndex = 0)
 
     def togglePause(self, userPaused = False):
         self.pause = not self.pause
@@ -1197,6 +1200,10 @@ class TrackRacing (Scene):
                     self.reset()
                 if event.key == pygame.K_p:
                     self.togglePause(True)
+                if event.key == pygame.K_l:
+                    self.viewLeaderboard()
+                if event.key == pygame.K_c:
+                    self.viewControls()
 
     def update(self):
         self.offsetPosition = ((-self.car.position.x * self.zoom) + (self.screenWidth / 2), (-self.car.position.y * self.zoom) + (self.screenHeight / 2))
@@ -1282,11 +1289,6 @@ class TrackRacing (Scene):
             transparentSurface = pygame.Surface((self.screenWidth, self.screenHeight), pygame.SRCALPHA)
             pygame.draw.rect(transparentSurface, (50, 50, 50, 200), (0, 0, self.screenWidth, self.screenHeight))
             screen.blit(transparentSurface, (0, 0))
-            self.pauseIcon.show = False
-            self.playIcon.show = True
-        else:
-            self.pauseIcon.show = True
-            self.playIcon.show = False
 
         if self.deleteRaceTimesButton.show:
             self.deleteRaceTimesButton.posX = (self.screenWidth / 2) + 180
