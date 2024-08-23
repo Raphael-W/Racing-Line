@@ -694,6 +694,8 @@ class TrackEditor (Scene):
     def handleEvents(self, events):
         global running
 
+        self.mainTrack.history.checkIfSaved()
+
         self.events = events
         for event in events:
             if event.type == pygame.QUIT:
@@ -844,6 +846,14 @@ class TrackEditor (Scene):
         if (self.mainTrack.referenceImageDir is not None) and self.referenceImageVisibility:
             self.referenceImageRect = self.scaledReferenceImage.get_rect(center = self.offsetPosition)
             screen.blit(self.scaledReferenceImage, self.referenceImageRect)
+
+        if self.mainTrack.referenceImageDir is None:
+            self.hideReferenceImageButton.disabled = True
+            self.removeReferenceImageButton.disabled = True
+            self.hideReferenceImageIcon.updateImage(directories["hide"])
+        else:
+            self.hideReferenceImageButton.disabled = False
+            self.removeReferenceImageButton.disabled = False
 
         if not (self.userSettingScale or self.userSettingFinish) and (not self.UIClick):
             self.mainTrack.update((self.mousePosX - self.offsetPosition[0]) / self.zoom, (self.mousePosY - self.offsetPosition[1]) / self.zoom, self.zoom, self.screenWidth, self.screenHeight, self.screenBorder, self.offsetPosition, screenRect, directories)

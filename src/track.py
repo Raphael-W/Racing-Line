@@ -436,7 +436,6 @@ class Track:
                 elif action.command == "SET FINISH":
                     self.finishIndex = action.params[0][0]
                     self.finishDir = action.params[0][1]
-        self.history.checkIfSaved()
         return actions
 
     #Handles redoing of previously undone actions
@@ -465,7 +464,6 @@ class Track:
                 elif action.command == "SET FINISH":
                     self.finishIndex = action.params[1][0]
                     self.finishDir = action.params[1][1]
-        self.history.checkIfSaved()
         return actions
 
     def returnPointCoords(self):
