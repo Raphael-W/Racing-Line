@@ -107,7 +107,19 @@ class SceneManager:
         self.changeSceneDropdown.values = self.getSceneNames()
 
     def setScene(self, newScene):
-        self.currentScene = self.getSceneIndex(newScene)
+        if self.currentScene == 1 and not self.scenes[1].pause:
+            self.scenes[1].togglePause()
+        elif self.currentScene == 0 and self.scenes[1].pause and not self.scenes[1].userPaused:
+            self.scenes[1].togglePause()
+
+        if isinstance(newScene, str):
+            self.currentScene = self.getSceneIndex(newScene)
+        else:
+            self.currentScene = newScene
+
+        while self.currentScene in self.changeSceneDropdown.disabledIndexes:
+            self.currentScene = (self.currentScene + 1) % len(self.scenes)
+
         self.changeSceneDropdown.index = self.currentScene
 
     def getSceneIndex(self, name):
@@ -130,22 +142,14 @@ class SceneManager:
             if event.type == pygame.QUIT:
                 trackEditorSceneIndex = self.getSceneIndex("Track Editor")
                 if not self.scenes[trackEditorSceneIndex].mainTrack.isSaved():
-                    self.setScene("Track Editor")
+                    self.setScene(0)
                 else:
                     running = False
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_TAB:
-                    if self.currentScene == 1 and not self.scenes[1].pause:
-                        self.scenes[1].togglePause()
-                    elif self.currentScene == 0 and self.scenes[1].pause and not self.scenes[1].userPaused:
-                        self.scenes[1].togglePause()
-
-                    self.currentScene = (self.currentScene + 1) % len(self.scenes)
-                    while self.currentScene in self.changeSceneDropdown.disabledIndexes:
-                        self.currentScene = (self.currentScene + 1) % len(self.scenes)
-
-                    self.changeSceneDropdown.index = self.currentScene
+                    nextScene = (self.currentScene + 1) % len(self.scenes)
+                    self.setScene(nextScene)
 
         if len(self.scenes) > 0:
             self.scenes[self.currentScene].handleEvents(events)
@@ -1103,14 +1107,15 @@ class TrackRacing (Scene):
         return times
 
     def viewLeaderboard(self):
-        if self.leaderboardView in self.UILayer.elements:
+        def closeLeaderboard():
             self.leaderboardView.close()
-        else:
-            def closeLeaderboard():
-                self.leaderboardView.close()
-                self.deleteRaceTimesButton.show = False
-                self.deleteRaceTimesIcon.show = False
+            self.deleteRaceTimesButton.show = False
+            self.deleteRaceTimesIcon.show = False
 
+
+        if self.leaderboardView in self.UILayer.elements:
+            closeLeaderboard()
+        else:
             times = self.getTimes(self.trackEditor.mainTrack.UUID)
 
             leaderboardMessages = []
@@ -1306,7 +1311,7 @@ ProgramSceneManager = SceneManager()
 ProgramSceneManager.addScene(trackEditorScene, "Track Editor")
 ProgramSceneManager.addScene(trackRacingScene, "Racing")
 
-ProgramSceneManager.setScene("Track Editor")
+ProgramSceneManager.setScene(0)
 
 
 while running:
