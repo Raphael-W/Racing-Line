@@ -3,3 +3,4 @@ jsonschema
 pillow
 numpy
 scipy
+tabulate

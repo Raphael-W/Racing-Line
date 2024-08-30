@@ -1,0 +1,26 @@
+{
+    "points": [
+        [
+            -1962.7469105933862,
+            -127.53776676315165
+        ],
+        [
+            -1514.777446418947,
+            -127.7066127615306
+        ],
+        [
+            508.2976072290623,
+            -127.7066127615306
+        ]
+    ],
+    "UUID": "12c46b72-63d4-11ef-b618-dc1ba137b8ff",
+    "properties": {
+        "width": 12,
+        "trackRes": 20,
+        "closed": false,
+        "finishIndex": 1.0,
+        "finishDir": true,
+        "referenceImage": null,
+        "referenceImageScale": 1
+    }
+}
