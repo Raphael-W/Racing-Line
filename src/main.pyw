@@ -175,8 +175,8 @@ class TrackEditor (Scene):
         self.trackRes = 20
         self.mainTrack = Track(self.trackRes, pygame, screen)
 
-        self.screenWidth = screen.get_size()[0]
-        self.screenHeight = screen.get_size()[1]
+        self.screenWidth = self.previousScreenWidth = screen.get_size()[0]
+        self.screenHeight = self.previousScreenHeight = screen.get_size()[1]
 
         self.mousePosX = 0
         self.mousePosY = 0
@@ -820,11 +820,26 @@ class TrackEditor (Scene):
     def update(self):
         self.mainTrack.updateOffsetValues(self.offsetPosition, self.zoom)
 
+        self.previousScreenWidth = self.screenWidth
+        self.previousScreenHeight = self.screenHeight
+
         self.screenWidth, self.screenHeight = screen.get_size()
         self.mousePosX = pygame.mouse.get_pos()[0]
         self.mousePosY = pygame.mouse.get_pos()[1]
 
         screen.fill(self.colours["background"])
+
+        if (self.previousScreenWidth != self.screenWidth) or (self.previousScreenHeight != self.screenHeight):
+            widthDiff = abs(self.screenWidth - self.previousScreenWidth)
+            heightDiff = abs(self.screenHeight - self.previousScreenHeight)
+            if widthDiff > heightDiff:
+                self.zoom *= (self.screenHeight / self.previousScreenHeight)
+            else:
+                self.zoom *= (self.screenWidth / self.previousScreenWidth)
+
+            self.zoom = min(max(self.zoom, self.lowerZoomLimit), self.upperZoomLimit)
+            self.offsetPosition = ((self.screenWidth / self.previousScreenWidth) * self.offsetPosition[0],
+                                   (self.screenHeight / self.previousScreenHeight) * self.offsetPosition[1])
 
         #Allows screen to be moved around pivot
         if pygame.mouse.get_pressed()[1]:
