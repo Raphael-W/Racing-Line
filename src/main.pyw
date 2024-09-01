@@ -621,6 +621,7 @@ class TrackEditor (Scene):
             self.trackWidthSlider.updateValue(self.mainTrack.width, update = False)
 
             self.viewModeDropdown.index = 0
+            self.viewMode = self.viewModeDropdown.values[0]
 
             self.racingLineSwitch.value = False
             self.antialiasingSwitch.value = False
@@ -1081,6 +1082,7 @@ class TrackRacing (Scene):
 
     def reset(self):
         self.car.reset()
+        self.offsetPosition = ((-self.car.position.x * self.zoom) + (self.screenWidth / 2), (-self.car.position.y * self.zoom) + (self.screenHeight / 2))
 
         self.timerStart = None
         self.timerEnd = None
@@ -1247,10 +1249,8 @@ class TrackRacing (Scene):
 
         if self.uniquenessToken != self.trackEditor.mainTrack.getUniquenessToken(): #Track has changed
             self.uniquenessToken = self.trackEditor.mainTrack.getUniquenessToken()
-
             if len(self.trackEditor.mainTrack.points) >= 2:
                 self.reset()
-                self.trackEditor.mainTrack.deKink()
 
         self.trackEditor.mainTrack.draw(self.colours, True, "Display", True)
 

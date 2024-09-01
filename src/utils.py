@@ -8,14 +8,6 @@ def pointDistance(point1, point2):
 
     return math.sqrt(((y2 - y1) ** 2) + ((x1 - x2) ** 2))
 
-#Calculate gradient of line, formed by 2 points
-def gradient(point1, point2):
-    x1, y1 = point1
-    x2, y2 = point2
-    if (x2 - x1) == 0:
-        return 0
-    return (y2 - y1) / (x2 - x1)
-
 #Calculate the angle between 3 points
 def angle(point1, point2, point3):
     distance12 = pointDistance(point1, point2) #

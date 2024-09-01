@@ -4,15 +4,6 @@ from history import *
 import base64
 import uuid
 
-#Checks if point on track gets closer to the centre than it should (indicating a kink)
-def isPointKinked(point, linePoints, width):
-    width = width / 2
-
-    for pointIndex in range(len(linePoints)):
-        if pointDistance(point, linePoints[pointIndex]) < (width - 1): return True
-
-    return False
-
 #Main mathematical formula for track curve
 def calculateSpline(control_points, t):
     control_points = [control_points[1]] + control_points + [control_points[-2]]
@@ -214,7 +205,7 @@ class Track:
 
     #Used to check whether the track has been changed
     def getUniquenessToken(self):
-        edgeCheck = self.getEdgePoints()
+        edgeCheck = self.getEdgePoints()[0]
         finishCheck = self.getStartPos()
         return str(edgeCheck) + str(finishCheck)
 
@@ -684,35 +675,6 @@ class Track:
         self.computeSpline(updatePoints = updatePoints)
         self.computeTrackEdges(updatePoints = updatePoints)
         self.computeRacingLine()
-
-        self.offsetAllTrackPoints()
-
-    #Loops over every point finding where a kink starts and ends, before removing it
-    def deKink(self):
-        extendedSplinePoints = extendPoints(self.splinePoints)
-
-        updateRange = (1, len(self.splinePoints))
-        nonKinkCoordLeftInner = self.__leftBorderInnerEdge[0]
-        nonKinkCoordLeftOuter = self.__leftBorderOuterEdge[0]
-
-        nonKinkCoordRightInner = self.__rightBorderInnerEdge[0]
-        nonKinkCoordRightOuter = self.__rightBorderOuterEdge[0]
-
-        for seg in range(*updateRange):
-            detectionRange = (max(seg - (2 * self.perSegRes), 0), min(seg + (2 * self.perSegRes), len(self.__leftBorderInnerEdge)))
-            if isPointKinked(self.__leftBorderInnerEdge[seg], extendedSplinePoints[detectionRange[0]: detectionRange[1]], (self.width * (1 / self.scale))):
-                self.__leftBorderInnerEdge[seg] = nonKinkCoordLeftInner
-                self.__leftBorderOuterEdge[seg] = nonKinkCoordLeftOuter
-            else:
-                nonKinkCoordLeftInner = self.__leftBorderInnerEdge[seg]
-                nonKinkCoordLeftOuter = self.__leftBorderOuterEdge[seg]
-
-            if isPointKinked(self.__rightBorderInnerEdge[seg], extendedSplinePoints[detectionRange[0]: detectionRange[1]], (self.width * (1 / self.scale))):
-                self.__rightBorderInnerEdge[seg] = nonKinkCoordRightInner
-                self.__rightBorderOuterEdge[seg] = nonKinkCoordRightOuter
-            else:
-                nonKinkCoordRightInner = self.__rightBorderInnerEdge[seg]
-                nonKinkCoordRightOuter = self.__rightBorderOuterEdge[seg]
 
         self.offsetAllTrackPoints()
 
