@@ -522,7 +522,7 @@ class Accordion(UIElement):
             element.show = not self.collapse
 
 class Message(UIElement):
-    def __init__(self, layer, title, message, button1Text = None, button1Action = None, button1Colour = None, button2Text = None, button2Action = None, button2Colour = None, closeAction = None, dimensions = (400, 150), show = True, layerIndex = -1):
+    def __init__(self, layer, title, message, button1Text = None, button1Action = None, button1Colour = None, button2Text = None, button2Action = None, button2Colour = None, closeAction = None, dimensions = (400, 150), linePadding = 25, show = True, layerIndex = -1):
         super().__init__(layer, (0, 0), "", show, layerIndex)
 
         self.message = message
@@ -548,6 +548,7 @@ class Message(UIElement):
         self.redColour = (95, 25, 25)
 
         self.width, self.height = dimensions
+        self.linePadding = linePadding
 
         self.posX = (self.layer.screenWidth / 2) - (self.width / 2)
         self.posY = (self.layer.screenHeight / 2) - (self.height / 2)
@@ -594,6 +595,32 @@ class Message(UIElement):
                                           ((self.width / 2) - 20, 30), button2Text, 15, rightButtonColour,
                                           action = lambda: self.button2Action())
 
+    def wrapText(self, text, padding):
+        if isinstance(text, str):
+            textLength = self.messageFont.get_rect(text).size[0]
+            acceptedLength = (self.width - (2 * padding))
+            if textLength <= acceptedLength:
+                return [text]
+            else:
+                message = []
+                currentLine = []
+                lineLength = 0
+                splitText = text.split()
+                for word in splitText:
+                    wordLength = self.messageFont.get_rect(word + " ").size[0]
+                    if (lineLength + wordLength) <= acceptedLength:
+                        currentLine.append(word)
+                        lineLength += wordLength
+                    else:
+                        message.append(" ".join(currentLine))
+                        lineLength = wordLength
+                        currentLine = [word]
+                message.append(" ".join(currentLine))
+
+                return message
+        else:
+            return text
+
     def update(self):
         self.posX = (self.layer.screenWidth / 2) - (self.width / 2)
         self.posY = (self.layer.screenHeight / 2) - (self.height / 2)
@@ -602,7 +629,7 @@ class Message(UIElement):
         self.messagesBoundingBox = []
         self.messagesSize = []
         if isinstance(self.message, str):
-            self.message = [self.message]
+            self.message = self.wrapText(self.message, self.linePadding)
 
         for lineIndex in range(len(self.message)):
             self.messagesSize.append(self.messageFont.get_rect(self.message[lineIndex]).size)

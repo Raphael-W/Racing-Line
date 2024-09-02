@@ -1105,8 +1105,16 @@ class TrackRacing (Scene):
         self.deleteRaceTimesButton.show = False
         self.deleteRaceTimesIcon.show = False
 
-        message = Message(self.UILayer, "Sure?", ["You are about to delete the race times", "for this track"], "Cancel", cancel,
+        message = Message(self.UILayer, "Sure?", "You are about to delete the race times for this track", "Cancel", cancel,
                         "grey", "Delete", delete, "red")
+
+    def outdatedTimes(self):
+        def delete():
+            deleteTrackTimes(self.trackEditor.mainTrack.UUID)
+            message.close()
+
+        message = Message(self.UILayer, "Reset Times?", "The track has been modified since you last set a race time", "Ignore", "close",
+                        "grey", "Reset times", delete, "red")
 
     def uploadTime(self, raceTime):
         conn = sqlite3.connect(directories["raceTimes"])
@@ -1251,6 +1259,8 @@ class TrackRacing (Scene):
             self.uniquenessToken = self.trackEditor.mainTrack.getUniquenessToken()
             if len(self.trackEditor.mainTrack.points) >= 2:
                 self.reset()
+                if len(self.getTimes(self.trackEditor.mainTrack.UUID)) > 0:
+                    self.outdatedTimes()
 
         self.trackEditor.mainTrack.draw(self.colours, True, "Display", True)
 
@@ -1292,7 +1302,7 @@ class TrackRacing (Scene):
                         if times[0][0] > raceTime:
                             timeDifference = float("{:.2f}".format(times[0][0] - raceTime))
                             self.togglePause(True)
-                            message = Message(self.UILayer, "New Highscore!", [f"You beat the current highscore ({secondToRaceTimer(times[0][0])})", f"by {timeDifference}s"] , "Continue", closeMessage, (100, 100, 100), closeAction = closeMessage)
+                            message = Message(self.UILayer, "New Highscore!", f"You beat the current highscore ({secondToRaceTimer(times[0][0])}) by {timeDifference}s" , "Continue", closeMessage, (100, 100, 100), linePadding = 10, closeAction = closeMessage)
 
                     self.uploadTime(raceTime)
                     self.deleteSlowTimes()
