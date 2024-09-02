@@ -1021,6 +1021,7 @@ class TrackRacing (Scene):
         self.trackEditor = trackEditor
         self.screenBorder = 5
         self.uniquenessToken = None
+        self.previousTrackUUID = None
 
         self.offsetPosition = (0, 0)
         self.zoom = 2
@@ -1256,11 +1257,13 @@ class TrackRacing (Scene):
         screen.fill(self.colours["background"])
 
         if self.uniquenessToken != self.trackEditor.mainTrack.getUniquenessToken(): #Track has changed
-            self.uniquenessToken = self.trackEditor.mainTrack.getUniquenessToken()
             if len(self.trackEditor.mainTrack.points) >= 2:
                 self.reset()
-                if len(self.getTimes(self.trackEditor.mainTrack.UUID)) > 0:
+                if (len(self.getTimes(self.trackEditor.mainTrack.UUID)) > 0) and (self.uniquenessToken is not None) and (self.previousTrackUUID == self.trackEditor.mainTrack.UUID):
                     self.outdatedTimes()
+
+            self.uniquenessToken = self.trackEditor.mainTrack.getUniquenessToken()
+            self.previousTrackUUID = self.trackEditor.mainTrack.UUID
 
         self.trackEditor.mainTrack.draw(self.colours, True, "Display", True)
 

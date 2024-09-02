@@ -106,8 +106,8 @@ class Car:
 
     def display(self):
         if self.show:
-            self.transformedCarWheelR = self.pygame.transform.rotate(self.carWheelR, (self.steeringInput * self.maxTurningAngle))
-            self.transformedCarWheelL = self.pygame.transform.rotate(self.carWheelL, (self.steeringInput * self.maxTurningAngle))
+            self.transformedCarWheelR = self.pygame.transform.rotate(self.carWheelR, (self.steeringInput * self.maxTurningAngle * 0.5))
+            self.transformedCarWheelL = self.pygame.transform.rotate(self.carWheelL, (self.steeringInput * self.maxTurningAngle * 0.5))
 
             self.carWheelRRect = self.transformedCarWheelR.get_rect()
             self.carWheelLRect = self.transformedCarWheelL.get_rect()
