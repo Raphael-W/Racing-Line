@@ -462,143 +462,102 @@ class TrackEditor (Scene):
         trackData = self.mainTrack.getSaveState()
         trackData["properties"]["referenceImageScale"] = self.referenceImageScale
 
-        def getFileName():
-            root = tk.Tk()
-            logo = tk.PhotoImage(file = directories["logo"])
-            root.iconphoto(True, logo)
-
-            root.wm_attributes('-topmost', 1)
-            root.withdraw()
-            fileSelected = asksaveasfilename(title = "Save Track", initialfile = 'Untitled.track', defaultextension = ".track", filetypes = [("Track Files", "*.track")], initialdir =  os.path.normpath(os.path.join(executionDir, 'tracks/')))
-            root.destroy()
-            return fileSelected
-
-        validFile = True
-        if self.saveDirectory is None or saveNewDirectory:
-            tempDirectory = getFileName()
-            if tempDirectory != '':
-                validFile = os.path.isdir(os.path.dirname(tempDirectory))
-            else:
-                validFile = False
-        else:
-            tempDirectory = self.saveDirectory
-
-        if validFile:
+        def saveToFile(receivedName):
             try:
-                with open(tempDirectory, "w") as outputFile:
-                    json.dump(trackData, outputFile, indent=4)
-                    pygame.display.set_caption(os.path.splitext(os.path.basename(tempDirectory))[0] + " - " + tempDirectory)
-                    self.saveDirectory = tempDirectory
+                with open(receivedName, "w") as outputFile:
+                    json.dump(trackData, outputFile, indent = 4)
+                    pygame.display.set_caption(os.path.splitext(os.path.basename(receivedName))[0] + " - " + receivedName)
+                    self.saveDirectory = receivedName
                     self.mainTrack.save()
 
             except Exception as error:
                 Message(self.UILayer, "Can't Save", str(error), "OK", "close", "grey")
                 self.saveDirectory = None
 
-        elif not validFile and tempDirectory != '':
-            Message(self.UILayer, "Can't Save", "Please select a valid directory", "OK", "close", "grey")
-            self.saveDirectory = None
+        if saveNewDirectory or self.saveDirectory is None:
+            fileSaver = FileSaver(self.UILayer, os.path.normpath(os.path.join(executionDir, "tracks/")), saveToFile)
+        else:
+            saveToFile(self.saveDirectory)
 
     #Opens track from specific directory specified by user. Track is checked first
     def openTrack(self, tempDirectory = None):
         def validateTrackFile(directory):
-            error = None
+            error = False
             try:
                 with open(directory) as loadFile:
                     try:
                         trackData = json.load(loadFile)
                         validate(instance = trackData, schema = self.trackFileSchema)
                     except:
-                        error = "Invalid"
+                        error = True
+            except:
+                error = True
 
-            except Exception as errorMessage:
-                error = errorMessage
-
-            return error
+            return not error
 
         def loadTrack(directory):
-            validFile = validateTrackFile(directory)
-            if validFile is None:
-                with open(directory) as loadFile:
-                    trackData = json.load(loadFile)
+            with open(directory) as loadFile:
+                trackData = json.load(loadFile)
 
-                    pointCoords = trackData["points"]
-                    self.mainTrack.loadTrackPoints(pointCoords)
+                pointCoords = trackData["points"]
+                self.mainTrack.loadTrackPoints(pointCoords)
 
-                    trackProperties = trackData["properties"]
+                trackProperties = trackData["properties"]
 
-                    self.trackWidthSlider.updateValue(trackProperties["width"], update = False)
-                    self.mainTrack.width = trackProperties["width"]
+                self.trackWidthSlider.updateValue(trackProperties["width"], update = False)
+                self.mainTrack.width = trackProperties["width"]
 
-                    self.trackResSlider.updateValue(trackProperties["trackRes"], update = False)
-                    self.mainTrack.perSegRes = trackProperties["trackRes"]
+                self.trackResSlider.updateValue(trackProperties["trackRes"], update = False)
+                self.mainTrack.perSegRes = trackProperties["trackRes"]
 
-                    self.mainTrack.finishIndex = trackProperties["finishIndex"]
-                    self.mainTrack.finishDir = trackProperties["finishDir"]
-                    self.mainTrack.updateCloseStatus(trackProperties["closed"], update = False)
+                self.mainTrack.finishIndex = trackProperties["finishIndex"]
+                self.mainTrack.finishDir = trackProperties["finishDir"]
+                self.mainTrack.updateCloseStatus(trackProperties["closed"], update = False)
 
-                    self.referenceImageScale = trackProperties["referenceImageScale"]
+                self.referenceImageScale = trackProperties["referenceImageScale"]
 
-                    self.mainTrack.UUID = trackData["UUID"]
+                self.mainTrack.UUID = trackData["UUID"]
 
-                    if trackProperties["referenceImage"] is not None:
-                        referenceImageData = PIL.Image.open(BytesIO(base64.b64decode(trackProperties["referenceImage"])))
-                        referenceImageSaveDir = os.path.normpath(os.path.join(executionDir, "temp"))
+                if trackProperties["referenceImage"] is not None:
+                    referenceImageData = PIL.Image.open(BytesIO(base64.b64decode(trackProperties["referenceImage"])))
+                    referenceImageSaveDir = os.path.normpath(os.path.join(executionDir, "temp"))
 
-                        if not os.path.exists(referenceImageSaveDir):
-                            os.makedirs(referenceImageSaveDir)
+                    if not os.path.exists(referenceImageSaveDir):
+                        os.makedirs(referenceImageSaveDir)
 
-                        referenceImageSaveDir = os.path.normpath(os.path.join(executionDir, "temp/referenceImage.png"))
-                        referenceImageData.save(referenceImageSaveDir)
-                        self.mainTrack.referenceImageDir = referenceImageSaveDir
-                        self.setReferenceImage(referenceImageSaveDir, userPerformed = False)
+                    referenceImageSaveDir = os.path.normpath(os.path.join(executionDir, "temp/referenceImage.png"))
+                    referenceImageData.save(referenceImageSaveDir)
+                    self.mainTrack.referenceImageDir = referenceImageSaveDir
+                    self.setReferenceImage(referenceImageSaveDir, userPerformed = False)
 
-                    self.mainTrack.computeTrack()
-                    self.mainTrack.save()
+                self.mainTrack.computeTrack()
+                self.mainTrack.save()
 
-                    self.saveDirectory = directory
-                    self.recentreFrame()
+                self.saveDirectory = directory
+                self.recentreFrame()
 
-            elif validFile == "Invalid":
-                Message(self.UILayer, "Invalid File", "Please select a valid file", "OK", "close", "grey")
-            else:
-                Message(self.UILayer, "Can't Open", str(validFile), "OK", "close", "grey")
+        def directoryReceived(receivedDir):
+            def saveTrackFirst():
+                message.close()
+                self.saveTrack()
+                loadTrack(receivedDir)
 
-        def getFileName():
-            root = tk.Tk()
-            logo = tk.PhotoImage(file = directories["logo"])
-            root.iconphoto(True, logo)
+            def discardTrack():
+                message.close()
+                if self.saveDirectory is None:
+                    deleteTrackTimes(self.mainTrack.UUID)
+                loadTrack(receivedDir)
 
-            root.withdraw()
-            root.wm_attributes('-topmost', 1)
-            fileSelected = askopenfilename(title = "Open Track", defaultextension = ".track", filetypes = [("Track Files", "*.track")], initialdir =  os.path.normpath(os.path.join(executionDir, 'tracks/')))
-            root.destroy()
-            return fileSelected
-
-        def saveTrackFirst():
-            message.close()
-            self.saveTrack()
-            loadTrack(tempDirectory)
-
-        def discardTrack():
-            message.close()
-            if self.saveDirectory is None:
-                deleteTrackTimes(self.mainTrack.UUID)
-            loadTrack(tempDirectory)
-
-        if tempDirectory is None:
-            tempDirectory = getFileName()
-
-        if tempDirectory != '':
-            validDir = os.path.isfile(tempDirectory)
-            if not validDir:
-                message = Message(self.UILayer, "Invalid File", "Please select a valid file", "OK", "close", "grey")
-
-            if tempDirectory != '' and self.mainTrack.isSaved() == False and validDir:
+            if receivedDir != '' and self.mainTrack.isSaved() == False:
                 message = Message(self.UILayer, "Sure?", "You currently have an unsaved track open", "Save", saveTrackFirst,
                         "grey", "Discard", discardTrack, "red")
             else:
-                loadTrack(tempDirectory)
+                loadTrack(receivedDir)
+
+        if tempDirectory is None:
+            filePicker = FilePicker(self.UILayer, "Tracks", os.path.normpath(os.path.join(executionDir, "tracks/")), [".track"], directoryReceived, validateTrackFile)
+        else:
+            directoryReceived(tempDirectory)
 
     #Clears current track, asks user before clearing
     def newTrack(self):
@@ -738,7 +697,7 @@ class TrackEditor (Scene):
                 self.UIClick = True
 
             #Set offset pivot
-            if event.type == pygame.MOUSEWHEEL:
+            if event.type == pygame.MOUSEWHEEL and not(self.UILayer.mouseOnLayer((self.mousePosX, self.mousePosY))):
                 if event.y > 0:
                     if self.zoom < self.upperZoomLimit:
                         beforeZoom = self.zoom
