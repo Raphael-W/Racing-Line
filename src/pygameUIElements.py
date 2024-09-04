@@ -1,5 +1,8 @@
 import os
 import time
+
+import pygame
+
 class UIElement:
     def __init__(self, layer, pos, stick, show = True, layerIndex = -1):
         self.contextualPosX = pos[0]
@@ -393,7 +396,7 @@ class Image(UIElement):
         self.boundingBox = self.image.get_rect()
 
 class TextInput(UIElement):
-    def __init__(self, layer, pos, stick, dimensions, fontSize, placeholder = "", text = "", suffix = "", characterWhitelist = (), enterAction = None, show = True, bgColour = (100, 100, 100, 100), layerIndex = -1):
+    def __init__(self, layer, pos, stick, dimensions, fontSize, placeholder = "", text = "", suffix = "", characterWhitelist = (), characterBlackList = (), enterAction = None, show = True, bgColour = (100, 100, 100, 100), layerIndex = -1):
         super().__init__(layer, pos, stick, show, layerIndex)
 
         self.width, self.height = dimensions
@@ -403,6 +406,7 @@ class TextInput(UIElement):
         self.suffix = suffix
 
         self.characterWhitelist = characterWhitelist
+        self.characterBlackList = characterBlackList
         self.font = layer.pygame.freetype.Font(layer.fontName, self.fontSize)
         self.enterAction = enterAction
 
@@ -418,6 +422,8 @@ class TextInput(UIElement):
 
         self.show = show
 
+        self.maxLength = ((self.width - 10) // (self.font.get_rect('a').width + 2)) - len(self.suffix)
+
     def update(self):
         self.updateContextualPos()
 
@@ -428,15 +434,6 @@ class TextInput(UIElement):
 
         for letter in self.layer.events:
             if letter.type == 768: #int version of 'pygame.KEYDOWN'
-                letterUni = letter.unicode
-                if letterUni.lower() in self.characterWhitelist:
-
-                    self.timeAtFlash = time.time()
-                    self.showTypingBar = True
-
-                    self.text = self.text[:self.cursorIndex] + letterUni + self.text[self.cursorIndex:]
-                    self.cursorIndex += 1
-
                 if letter.key == self.layer.pygame.K_BACKSPACE:
                     if self.cursorIndex > 0:
                         self.text = self.text[:self.cursorIndex - 1] + self.text[self.cursorIndex:]
@@ -451,6 +448,14 @@ class TextInput(UIElement):
                 if letter.key == self.layer.pygame.K_RETURN:
                     if self.enterAction is not None:
                         self.enterAction(self.text)
+
+            if letter.type == 771: #int version of 'pygame.TEXTINPUT'
+                letterUni = letter.text
+                if ((letterUni.lower() in self.characterWhitelist) or len(self.characterWhitelist) == 0) and (letterUni.lower() not in self.characterBlackList) and len(self.text) < self.maxLength:
+                    self.timeAtFlash = time.time()
+                    self.showTypingBar = True
+                    self.text = self.text[:self.cursorIndex] + letterUni + self.text[self.cursorIndex:]
+                    self.cursorIndex += 1
 
     def display(self):
         transparentSurface = self.layer.pygame.Surface((self.width, self.height), self.layer.pygame.SRCALPHA)
@@ -815,13 +820,15 @@ class FilePicker(UIElement):
         self.scrollColour = (0, 0, 0)
 
         self.scrollBarHovering = False
-        self.stepBeforeClick = True
+        self.stepBeforeScroll = True
+        self.stepBeforeSelect = True
         self.scrollSelected = False
         self.selectedYOffset = 0
 
         self.itemHovering = False
         self.itemIndexHovering = 0
         self.itemIndexSelected = None
+        self.selectedItem = None
 
         self.messageFont = layer.pygame.freetype.Font(layer.fontName, 18)
         self.titleFont = layer.pygame.freetype.Font(layer.fontName, 25)
@@ -830,7 +837,7 @@ class FilePicker(UIElement):
         self.openButton = Button(layer, (0, 0), "", (self.width - 40, 40), "Open", 18, (150, 150, 150), disabled = True, action = self.openTrack)
         self.closeButton = Button(layer, (0, 0), "", (30, 30), "", 10, (122, 43, 43), action = self.closeWindow)
         self.closeImage = Image(layer, (0, 0), "", self.layer.directories["cross"], 1, colour = (200, 200, 200))
-        self.searchBar = TextInput(layer, (0, 0), "", (self.width - 90, 30), 18, "Search", bgColour = (70, 70, 70, 255), characterWhitelist = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 'e', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ' ', '(', ')', '-'])
+        self.searchBar = TextInput(layer, (0, 0), "", (self.width - 90, 30), 18, "Search", bgColour = (70, 70, 70, 255), characterBlackList = ["\\", "/", ":", "*", "?", '"', "<", ">", "|"])
 
     def closeWindow(self):
         self.close()
@@ -840,9 +847,9 @@ class FilePicker(UIElement):
         self.searchBar.close()
 
     def openTrack(self):
-        self.closeWindow()
-        self.fileDirectory = os.path.join(self.directory, self.limitedList[self.itemIndexSelected])
+        self.fileDirectory = os.path.join(self.directory, self.selectedItem)
         self.openAction(self.fileDirectory)
+        self.closeWindow()
 
     def update(self):
         if self.fileList is None:
@@ -885,11 +892,11 @@ class FilePicker(UIElement):
         self.scrollBarHovering = (((self.boxCornerX + self.width) - 50 <= mousePos[0] <= ((self.boxCornerX + self.width) - 50) + 15) and
                                   (self.boxCornerY + 60 + self.scrollHeight <= mousePos[1] <= (self.boxCornerY + 60 + self.scrollHeight + scrollHeight)))
 
-        self.scrollSelected = self.layer.pygame.mouse.get_pressed()[0] and (self.scrollSelected or self.stepBeforeClick)
-        if self.scrollSelected and self.stepBeforeClick:
+        self.scrollSelected = self.layer.pygame.mouse.get_pressed()[0] and (self.scrollSelected or self.stepBeforeScroll)
+        if self.scrollSelected and self.stepBeforeScroll:
             self.selectedYOffset = mousePos[1] - (self.boxCornerY + 60 + self.scrollHeight)
 
-        self.stepBeforeClick = self.scrollBarHovering and not (self.layer.pygame.mouse.get_pressed()[0]) and (not self.scrollSelected)
+        self.stepBeforeScroll = self.scrollBarHovering and not (self.layer.pygame.mouse.get_pressed()[0]) and (not self.scrollSelected)
 
         if not self.scrollBarHovering and not self.scrollSelected:
             self.scrollColour = (70, 70, 70)
@@ -908,12 +915,24 @@ class FilePicker(UIElement):
         self.scrollHeight = max(0, min(self.scrollHeight, 235 - 235 * self.viewProportion))
 
         self.itemHovering = ((self.boxCornerX + 10 <= mousePos[0] <= self.boxCornerX + self.width - 70) and
-                             (self.boxCornerY + 70 <= mousePos[1] <= self.boxCornerY + 69 + self.height - 140))
+                             (self.boxCornerY + 95 <= mousePos[1] <= self.boxCornerY + 69 + self.height - 140))
+
         if self.itemHovering:
             unOffsetMouseY = (mousePos[1] + (self.scrollHeight * self.scrollExaggeration)) - self.boxCornerY - 95
             self.itemIndexHovering = int((unOffsetMouseY // 30))
-            if self.layer.pygame.mouse.get_pressed()[0] and self.itemIndexHovering < len(self.limitedList):
+            if self.layer.pygame.mouse.get_pressed()[0] and self.itemIndexHovering < len(self.limitedList) and self.stepBeforeSelect and self.itemIndexHovering >= 0:
                 self.itemIndexSelected = self.itemIndexHovering
+                if self.selectedItem == self.limitedList[self.itemIndexSelected]:
+                    self.openTrack()
+
+                self.selectedItem = self.limitedList[self.itemIndexSelected]
+
+        self.stepBeforeSelect = self.itemHovering and not (self.layer.pygame.mouse.get_pressed()[0])
+
+        if self.selectedItem is not None:
+            self.openButton.disabled = False
+        else:
+            self.openButton.disabled = True
 
     def display(self):
         transparentSurface = self.layer.pygame.Surface((self.layer.screenWidth, self.layer.screenHeight), self.layer.pygame.SRCALPHA)
@@ -928,14 +947,11 @@ class FilePicker(UIElement):
 
         trackListSurface = self.layer.pygame.Surface((self.width, self.height - 155), self.layer.pygame.SRCALPHA)
 
-        if self.itemHovering and self.itemIndexHovering < len(self.limitedList):
+        if self.itemHovering and 0 <= self.itemIndexHovering < len(self.limitedList):
             self.layer.pygame.draw.rect(trackListSurface, (80, 80, 80), (20, (30 * self.itemIndexHovering) - (self.scrollHeight * self.scrollExaggeration) + 3, self.width - 90, 30), border_radius = 20)
 
-        if self.itemIndexSelected is not None:
+        if self.selectedItem is not None and self.selectedItem in self.limitedList:
             self.layer.pygame.draw.rect(trackListSurface, (60, 60, 60), (20, (30 * self.itemIndexSelected) - (self.scrollHeight * self.scrollExaggeration) + 3, self.width - 90, 30), border_radius = 20)
-            self.openButton.disabled = False
-        else:
-            self.openButton.disabled = True
 
         for itemIndex in range(len(self.limitedList)):
             self.messageFont.render_to(trackListSurface, (30, (30 * itemIndex) - (self.scrollHeight * self.scrollExaggeration) + 10), os.path.splitext(self.limitedList[itemIndex])[0], (200, 200, 200, 255))
@@ -964,7 +980,7 @@ class FileSaver(UIElement):
         self.boxCornerY = 0
 
         self.saveButton = Button(layer, (0, 0), "", (self.width - 40, 40), "Save", 18, (150, 150, 150), disabled = True, action = self.saveTrack)
-        self.fileNameInput = TextInput(layer, (0, 0), "", (self.width - 40, 50), 18, "Filename", bgColour = (70, 70, 70, 255), characterWhitelist = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 'e', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ' ', '(', ')', '-'])
+        self.fileNameInput = TextInput(layer, (0, 0), "", (self.width - 40, 50), 18, "Filename", bgColour = (70, 70, 70, 255), characterBlackList = ["\\", "/", ":", "*", "?", '"', "<", ">", "|"])
         self.closeButton = Button(layer, (0, 0), "", (30, 30), "", 10, (122, 43, 43), action = self.closeWindow)
         self.closeImage = Image(layer, (0, 0), "", self.layer.directories["cross"], 1, colour = (200, 200, 200))
 
