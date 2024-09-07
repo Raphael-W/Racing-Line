@@ -8,10 +8,9 @@ import pygame
 import pygame.gfxdraw
 import pygame.freetype
 
-from tkinter.filedialog import asksaveasfilename, askopenfilename
+from tkinter.filedialog import askopenfilename
 import tkinter as tk
 
-import os
 import sys
 
 import PIL.Image
@@ -38,10 +37,10 @@ running = True
 
 deltaTime = 0
 
-#executionDir = os.path.dirname(os.path.dirname(sys.executable))
 executionDir = os.path.dirname(os.path.dirname(__file__))
 directories = {"mainFont": "assets/fonts/MonoFont.ttf",
-               "trackSchema": "assets/schemas/trackSchema.json",
+               "trackSchema": "assets/JSON/trackSchema.json",
+               "preferences": "assets/JSON/preferences.json",
                "raceTimes": "databases/raceTimes.db",
                "recentreButton": "assets/icons/aim.png",
                "finishLine": "assets/icons/flag.png",
@@ -60,7 +59,8 @@ directories = {"mainFont": "assets/fonts/MonoFont.ttf",
                "play": "assets/icons/play.png",
                "f1Car": "assets/sprites/f1_car.png",
                "f1Wheel": "assets/sprites/f1_wheel.png",
-               "logo": "assets/icons/logo.png"}
+               "logo": "assets/icons/logo.png",
+               "tracks": "tracks/"}
 
 #Makes above relative paths absolute
 directories = {item: os.path.normpath(os.path.join(executionDir, directory)) for (item, directory) in directories.items()}
@@ -226,42 +226,45 @@ class TrackEditor (Scene):
 
         # ------------ CONFIG ACCORDION ------------
 
-        self.saveButton = Button(self.UILayer, (330, 492.5), "SE", (123.75, 30), "Save", 12, (100, 100, 100), action = self.saveTrack)
-        self.saveAsButton = Button(self.UILayer, (198.75, 492.5), "SE", (123.75, 30), "Save As", 12, (100, 100, 100), action = lambda: self.saveTrack(saveNewDirectory = True))
-        self.openTrackButton = Button(self.UILayer, (330, 455), "SE", (123.75, 30), "Open", 12, (100, 100, 100), action = self.openTrack)
-        self.newTrackButton = Button(self.UILayer, (198.75, 455), "SE", (123.75, 30), "New", 12, (100, 100, 100), action = self.newTrack)
+        self.saveButton = Button(self.UILayer, (330, 522.5), "SE", (123.75, 30), "Save", 12, (100, 100, 100), action = self.saveTrack)
+        self.saveAsButton = Button(self.UILayer, (198.75, 522.5), "SE", (123.75, 30), "Save As", 12, (100, 100, 100), action = lambda: self.saveTrack(saveNewDirectory = True))
+        self.openTrackButton = Button(self.UILayer, (330, 485), "SE", (123.75, 30), "Open", 12, (100, 100, 100), action = self.openTrack)
+        self.newTrackButton = Button(self.UILayer, (198.75, 485), "SE", (123.75, 30), "New", 12, (100, 100, 100), action = self.newTrack)
 
-        self.setFinishButton = Button(self.UILayer, (330, 410), "SE", (80, 60), "Set Finish", 10, (100, 100, 100), (0, -18), action = self.setFinish)
+        self.setFinishButton = Button(self.UILayer, (330, 440), "SE", (80, 60), "Set Finish", 10, (100, 100, 100), (0, -18), action = self.setFinish)
         self.setFinishImage = Image(self.UILayer, (self.setFinishButton.posX - 28, self.setFinishButton.posY - 10), "SE", directories["finishLine"], 1, colour = (30, 30, 30))
 
-        self.setScaleButton = Button(self.UILayer, (242.5, 410), "SE", (80, 60), "Set Scale", 10, (100, 100, 100), (0, -18), action = self.setScale)
+        self.setScaleButton = Button(self.UILayer, (242.5, 440), "SE", (80, 60), "Set Scale", 10, (100, 100, 100), (0, -18), action = self.setScale)
         self.scaleImage = Image(self.UILayer, (self.setScaleButton.posX - 28, self.setScaleButton.posY - 10), "SE", directories["scale"], 1, colour = (30, 30, 30))
 
-        self.recentreButton = Button(self.UILayer, (155, 410), "SE", (80, 60), "Recentre", 10, (100, 100, 100), (0, -18), action = self.recentreFrame)
+        self.recentreButton = Button(self.UILayer, (155, 440), "SE", (80, 60), "Recentre", 10, (100, 100, 100), (0, -18), action = self.recentreFrame)
         self.recentreImage = Image(self.UILayer, (self.recentreButton.posX - 27, self.recentreButton.posY - 10), "SE", directories["recentreButton"], 1, colour = (30, 30, 30))
 
-        self.setReferenceImageButton = Button(self.UILayer, (330, 335), "SE", (185, 30), "Set Reference Image", 12, (100, 100, 100), textOffset = (0, -1), action = self.setReferenceImage)
+        self.setReferenceImageButton = Button(self.UILayer, (330, 365), "SE", (185, 30), "Set Reference Image", 12, (100, 100, 100), textOffset = (0, -1), action = self.setReferenceImage)
 
-        self.removeReferenceImageButton = Button(self.UILayer, (105, 335), "SE", (30, 30), "", 12, (66, 41, 41), action = self.clearReferenceImage)
+        self.removeReferenceImageButton = Button(self.UILayer, (105, 365), "SE", (30, 30), "", 12, (66, 41, 41), action = self.clearReferenceImage)
         self.removeReferenceImageIcon = Image(self.UILayer, (self.removeReferenceImageButton.posX - 1, self.removeReferenceImageButton.posY - 1), "SE", directories["bin"], 0.7, colour = (200, 200, 200))
 
-        self.hideReferenceImageButton = Button(self.UILayer, (140, 335), "SE", (30, 30), "", 12, (100, 100, 100), action = self.toggleReferenceImageVisibility)
+        self.hideReferenceImageButton = Button(self.UILayer, (140, 365), "SE", (30, 30), "", 12, (100, 100, 100), action = self.toggleReferenceImageVisibility)
         self.hideReferenceImageIcon = Image(self.UILayer, (self.hideReferenceImageButton.posX - 1, self.hideReferenceImageButton.posY - 1), "SE", directories["hide"], 0.7, colour = (200, 200, 200))
 
-        self.trackResSlider = Slider(self.UILayer, 15, self.colours["white"], self.colours["controlPoint"], (225, 278), "SE", 1, 100, (10, 100), value = self.mainTrack.perSegRes, action = self.mainTrack.changeRes, finishedUpdatingAction = self.mainTrack.changeResComplete, increment = 1)
-        self.trackResLabel = Label(self.UILayer, 15, (330, 283), "SE", "Track Res", self.colours["white"])
+        self.trackResSlider = Slider(self.UILayer, 15, self.colours["white"], self.colours["controlPoint"], (225, 308), "SE", 1, 100, (10, 100), value = self.mainTrack.perSegRes, action = self.mainTrack.changeRes, finishedUpdatingAction = self.mainTrack.changeResComplete, increment = 1)
+        self.trackResLabel = Label(self.UILayer, 15, (330, 313), "SE", "Track Res", self.colours["white"])
 
-        self.trackWidthSlider = Slider(self.UILayer, 15, self.colours["white"], self.colours["controlPoint"],(224, 243), "SE", 1, 100, (10, 30), value = self.mainTrack.width, suffix = 'm', action = self.mainTrack.changeWidth, finishedUpdatingAction = self.mainTrack.changeWidthComplete)
-        self.trackWidthLabel = Label(self.UILayer, 15, (295, 248), "SE", "Width", self.colours["white"])
+        self.trackWidthSlider = Slider(self.UILayer, 15, self.colours["white"], self.colours["controlPoint"],(224, 273), "SE", 1, 100, (10, 30), value = self.mainTrack.width, suffix = 'm', action = self.mainTrack.changeWidth, finishedUpdatingAction = self.mainTrack.changeWidthComplete)
+        self.trackWidthLabel = Label(self.UILayer, 15, (295, 278), "SE", "Width", self.colours["white"])
 
-        self.racingLineSwitch = Switch(self.UILayer, (130, 175), "SE", 0.8, value = False)
-        self.racingLineLabel = Label(self.UILayer, 15, (290, 173), "SE", "Racing Line", self.colours["white"])
+        self.racingLineSwitch = Switch(self.UILayer, (130, 205), "SE", 0.8, value = False)
+        self.racingLineLabel = Label(self.UILayer, 15, (290, 203), "SE", "Racing Line", self.colours["white"])
 
-        self.antialiasingSwitch = Switch(self.UILayer, (130, 147), "SE", 0.8, value = False)
-        self.antialiasingLabel = Label(self.UILayer, 15, (300, 145), "SE", "Antialiasing", self.colours["white"])
+        self.antialiasingSwitch = Switch(self.UILayer, (130, 177), "SE", 0.8, value = False)
+        self.antialiasingLabel = Label(self.UILayer, 15, (300, 175), "SE", "Antialiasing", self.colours["white"])
 
-        self.switchEndsSwitch = Switch(self.UILayer, (130, 117), "SE", 0.8, value = False)
-        self.switchEndsLabel = Label(self.UILayer, 15, (299, 115), "SE", "Switch front", self.colours["white"])
+        self.switchEndsSwitch = Switch(self.UILayer, (130, 147), "SE", 0.8, value = False)
+        self.switchEndsLabel = Label(self.UILayer, 15, (299, 145), "SE", "Switch front", self.colours["white"])
+
+        self.autoResSwitch = Switch(self.UILayer, (130, 117), "SE", 0.8, value = False, action = self.setAutoRes)
+        self.autoResLabel = Label(self.UILayer, 15, (263, 115), "SE", "Auto Res", self.colours["white"])
 
         self.undoButton = Button(self.UILayer, (330, 95), "SE", (30, 30), "", 12, (100, 100, 100), action = self.undo)
         self.undoIcon = Image(self.UILayer, (self.undoButton.posX - 2, self.undoButton.posY - 2), "SE", directories["undo"], 0.8, colour = self.colours["white"])
@@ -269,10 +272,10 @@ class TrackEditor (Scene):
         self.redoButton = Button(self.UILayer, (295, 95), "SE", (30, 30), "", 12, (100, 100, 100), action = self.redo)
         self.redoIcon = Image(self.UILayer, (self.redoButton.posX - 2, self.redoButton.posY - 2), "SE", directories["redo"], 0.8, colour = self.colours["white"])
 
-        self.viewModeDropdown = Dropdown(self.UILayer, (225, 210), "SE", (150, 25),["Track", "Skeleton", "Curve", "Spline Dots", "Display"], 0, action = self.setViewMode)
-        self.viewModeLabel = Label(self.UILayer, 15, (330, 205), "SE", "View Mode", (200, 200, 200))
+        self.viewModeDropdown = Dropdown(self.UILayer, (225, 240), "SE", (150, 25),["Track", "Skeleton", "Curve", "Spline Dots", "Display"], 0, action = self.setViewMode)
+        self.viewModeLabel = Label(self.UILayer, 15, (330, 235), "SE", "View Mode", (200, 200, 200))
 
-        self.configAccordion = Accordion(self.UILayer, (50, 50), "SE", (305, 505), "Untitled Track",
+        self.configAccordion = Accordion(self.UILayer, (50, 50), "SE", (305, 535), "Untitled Track",
                                          [self.saveButton, self.saveAsButton, self.openTrackButton, self.newTrackButton,
                                           self.setFinishButton, self.setFinishImage, self.setScaleButton,
                                           self.scaleImage, self.recentreButton, self.recentreImage,
@@ -294,8 +297,80 @@ class TrackEditor (Scene):
 
         self.realDistanceTextInput = TextInput(self.UILayer, (20, 120), "S", (180, 50), 15, "Real Distance (m)", "", "m", ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '.'], enterAction = self.completeScaling, show = False)
 
+        self.getUserPreferences()
+        self.userValues = self.returnUserValues()
+
+        self.checkForDeletedTracks()
+
         if len(sys.argv) > 1:
             self.openTrack(sys.argv[1])
+
+    def updateUserPreferences(self):
+        trackRes = self.mainTrack.perSegRes
+        if self.autoResSwitch.value:
+            trackRes = "auto"
+
+        with open(directories["preferences"], "w") as outputFile:
+            preferences = {"trackRes": trackRes,
+                           "antialiasing": self.antialiasingSwitch.value,
+                           "racingLine": self.racingLineSwitch.value}
+
+            json.dump(preferences, outputFile, indent = 4)
+
+    def getUserPreferences(self):
+        with open(directories["preferences"]) as loadFile:
+            preferenceData = json.load(loadFile)
+            if preferenceData["trackRes"] == "auto":
+                self.autoResSwitch.updateValue(True)
+            else:
+                self.trackResSlider.updateValue(preferenceData["trackRes"])
+
+            self.antialiasingSwitch.updateValue(preferenceData["antialiasing"])
+            self.racingLineSwitch.updateValue(preferenceData["racingLine"])
+
+    def returnUserValues(self):
+        return [self.trackResSlider.value, self.autoResSwitch.value, self.antialiasingSwitch.value, self.racingLineSwitch.value]
+
+    def checkForDeletedTracks(self):
+        def SQLReady(UUID):
+            return f'"{UUID}"'
+
+        fileList = []
+        tracksDirectory = directories["tracks"]
+
+        for item in os.listdir(tracksDirectory):
+            fullDir = os.path.join(tracksDirectory, item)
+            isFile = os.path.isfile(fullDir)
+            isCorrectExtension = os.path.splitext(fullDir)[1] == ".track"
+            isValid = self.validateTrackFile(fullDir)
+            if isFile and isCorrectExtension and isValid:
+                fileList.append(os.path.join(tracksDirectory, item))
+
+        UUIDlist = []
+        for track in fileList:
+            with open(track) as loadFile:
+                UUIDlist.append(json.load(loadFile)["UUID"])
+        SQLUUIDlist = ', '.join(map(SQLReady, UUIDlist))
+
+        conn = sqlite3.connect(directories["raceTimes"])
+        cursor = conn.cursor()
+        cursor.execute(f'''DELETE FROM TIMES WHERE UUID NOT IN ({SQLUUIDlist})''')
+        conn.commit()
+        conn.close()
+
+    def validateTrackFile(self, directory):
+        error = False
+        try:
+            with open(directory) as loadFile:
+                try:
+                    trackData = json.load(loadFile)
+                    validate(instance = trackData, schema = self.trackFileSchema)
+                except:
+                    error = True
+        except:
+            error = True
+
+        return not error
 
     #Fit track to screen, in the middle
     def recentreFrame(self):
@@ -371,6 +446,9 @@ class TrackEditor (Scene):
         self.mainTrack.finishDir = self.finishDir
 
         self.userSettingFinish = False
+
+    def setAutoRes(self, value):
+        self.mainTrack.setAutoRes(value)
 
     def setViewMode(self, mode):
         self.viewMode = mode
@@ -475,26 +553,12 @@ class TrackEditor (Scene):
                 self.saveDirectory = None
 
         if saveNewDirectory or self.saveDirectory is None:
-            fileSaver = FileSaver(self.UILayer, os.path.normpath(os.path.join(executionDir, "tracks/")), saveToFile)
+            fileSaver = FileSaver(self.UILayer, directories["tracks"], saveToFile)
         else:
             saveToFile(self.saveDirectory)
 
     #Opens track from specific directory specified by user. Track is checked first
     def openTrack(self, tempDirectory = None):
-        def validateTrackFile(directory):
-            error = False
-            try:
-                with open(directory) as loadFile:
-                    try:
-                        trackData = json.load(loadFile)
-                        validate(instance = trackData, schema = self.trackFileSchema)
-                    except:
-                        error = True
-            except:
-                error = True
-
-            return not error
-
         def loadTrack(directory):
             with open(directory) as loadFile:
                 trackData = json.load(loadFile)
@@ -506,9 +570,6 @@ class TrackEditor (Scene):
 
                 self.trackWidthSlider.updateValue(trackProperties["width"], update = False)
                 self.mainTrack.width = trackProperties["width"]
-
-                self.trackResSlider.updateValue(trackProperties["trackRes"], update = False)
-                self.mainTrack.perSegRes = trackProperties["trackRes"]
 
                 self.mainTrack.finishIndex = trackProperties["finishIndex"]
                 self.mainTrack.finishDir = trackProperties["finishDir"]
@@ -555,7 +616,7 @@ class TrackEditor (Scene):
                 loadTrack(receivedDir)
 
         if tempDirectory is None:
-            filePicker = FilePicker(self.UILayer, "Tracks", os.path.normpath(os.path.join(executionDir, "tracks/")), [".track"], directoryReceived, validateTrackFile)
+            filePicker = FilePicker(self.UILayer, "Tracks", directories["tracks"], [".track"], directoryReceived, self.validateTrackFile)
         else:
             directoryReceived(tempDirectory)
 
@@ -582,9 +643,8 @@ class TrackEditor (Scene):
             self.viewModeDropdown.index = 0
             self.viewMode = self.viewModeDropdown.values[0]
 
-            self.racingLineSwitch.value = False
-            self.antialiasingSwitch.value = False
             self.switchEndsSwitch.value = False
+            self.getUserPreferences()
 
             self.saveDirectory = None
 
@@ -937,6 +997,16 @@ class TrackEditor (Scene):
         self.mouseXLabel.text = ("x: " + str(int(((self.mousePosX * 1) - self.offsetPosition[0]) / self.zoom)))
         self.mouseYLabel.text = ("y: " + str(int(((self.mousePosY * 1) - self.offsetPosition[1]) / self.zoom)))
         self.scaleLabel.text = ("view: " + str(int(self.zoom * 100)) + "%")
+
+        if self.mainTrack.autoRes:
+            self.trackResSlider.disabled = True
+            self.trackResSlider.updateValue(self.mainTrack.perSegRes, False)
+        else:
+            self.trackResSlider.disabled = False
+
+        if (self.userValues != self.returnUserValues()) and not pygame.mouse.get_pressed()[0]:
+            self.updateUserPreferences()
+            self.userValues = self.returnUserValues()
 
         #Checks if there are any items left to undo
         if len(self.mainTrack.history.undoStack) == 0:

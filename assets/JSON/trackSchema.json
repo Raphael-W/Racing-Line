@@ -22,11 +22,6 @@
           "minimum": 10,
           "maximum": 30
         },
-        "trackRes": {
-          "type": "number",
-          "minimum": 20,
-          "maximum": 100
-        },
         "closed": {
           "type": "boolean"
         },
@@ -49,7 +44,6 @@
       },
       "required": [
         "width",
-        "trackRes",
         "closed",
         "finishIndex",
         "finishDir",

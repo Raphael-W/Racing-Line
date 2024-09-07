@@ -7,6 +7,7 @@ cur.execute("SELECT * FROM TIMES")
 allData = cur.fetchall()
 print("Race Times Database:\n")
 print(tabulate(allData, headers=['UUID', 'Time', 'Date'], tablefmt='github'))
+print(f"\nCount: {len(allData)}")
 print()
 
 query = None
@@ -16,6 +17,7 @@ while query != '':
         cur.execute(query)
         selectedData = allData = cur.fetchall()
         print(tabulate(allData, tablefmt = 'github'))
+        print(f"\nCount: {len(allData)}")
     except Exception as error:
         print(error)
 

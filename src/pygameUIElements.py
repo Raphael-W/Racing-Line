@@ -300,6 +300,11 @@ class Switch (UIElement):
         self.pointSelected = False
         self.mouseDownLast = False
 
+    def updateValue(self, value):
+        self.value = value
+        if self.action is not None:
+            self.action(value)
+
     def update(self):
         self.updateContextualPos()
 
@@ -317,7 +322,7 @@ class Switch (UIElement):
             self.pointSelected = False
 
             if self.action is not None:
-                self.action()
+                self.action(self.value)
 
         if self.value:
             self.colour = self.trueColour
@@ -934,6 +939,12 @@ class FilePicker(UIElement):
         else:
             self.openButton.disabled = True
 
+        if self.selectedItem is not None:
+            for event in self.layer.events:
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_RETURN:
+                        self.openTrack()
+
     def display(self):
         transparentSurface = self.layer.pygame.Surface((self.layer.screenWidth, self.layer.screenHeight), self.layer.pygame.SRCALPHA)
         self.layer.pygame.draw.rect(transparentSurface, (50, 50, 50, 200), (0, 0, self.layer.screenWidth, self.layer.screenHeight))
@@ -1016,6 +1027,11 @@ class FileSaver(UIElement):
             self.saveButton.disabled = False
         else:
             self.saveButton.disabled = True
+
+        for event in self.layer.events:
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:
+                    self.saveTrack()
 
     def display(self):
         transparentSurface = self.layer.pygame.Surface((self.layer.screenWidth, self.layer.screenHeight), self.layer.pygame.SRCALPHA)

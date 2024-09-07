@@ -92,7 +92,6 @@
     "UUID": "9afb84fa-60d9-11ef-9507-dc1ba137b8ff",
     "properties": {
         "width": 18.4,
-        "trackRes": 20,
         "closed": true,
         "finishIndex": 0.2999999999999998,
         "finishDir": true,

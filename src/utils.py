@@ -138,3 +138,10 @@ def secondToRaceTimer(inputSeconds):
 
     return f"{mins}:{secs}"
 
+def bearing(pos1, pos2):
+    changeX = pos2[0] - pos1[0]
+    changeY = pos2[1] - pos1[1]
+
+    bearingAngle = math.atan2(changeX, changeY)
+    bearingAngle = math.degrees(bearingAngle)
+    return bearingAngle % 360

@@ -149,6 +149,8 @@ class Track:
         self.closed = False
 
         self.perSegRes = resolution
+        self.autoRes = False
+        self.pointList = []
         self.scale = 0.2
         self.width = 12
 
@@ -172,13 +174,20 @@ class Track:
 
     #Clear track, and any settings
     def clear(self):
+        autoResValue = self.autoRes
         self.__init__(20, self.pygame, self.screen)
+        self.autoRes = autoResValue
 
     #Called when opening tracks from a save file, and is used to load in the track and its data
     def loadTrackPoints(self, pointCoords):
         self.clear()
         for point in pointCoords:
             self.add(ControlPoint(point[0], point[1]), update = False)
+
+    def setAutoRes(self, value):
+        self.autoRes = value
+        if value:
+            self.automaticallyAdjustRes()
 
     #Collects relevant data about track and combines it into a dictionary used for saving
     def getSaveState(self):
@@ -189,7 +198,6 @@ class Track:
 
         points = self.returnPointCoords()
         properties = {"width"      : self.width,
-                      "trackRes"   : self.perSegRes,
                       "closed"     : self.closed,
                       "finishIndex": self.finishIndex,
                       "finishDir"  : self.finishDir,
@@ -205,9 +213,10 @@ class Track:
 
     #Used to check whether the track has been changed
     def getUniquenessToken(self):
-        edgeCheck = self.getEdgePoints()[0]
-        finishCheck = self.getStartPos()
-        return str(edgeCheck) + str(finishCheck)
+        edgeCheck = self.returnPointCoords()
+        finishCheck = self.getStartPos()[-2:]
+        widthCheck = self.width
+        return str(edgeCheck) + str(finishCheck) + str(widthCheck)
 
     #Returns coordinates of start line
     def getStartPos(self):
@@ -224,7 +233,7 @@ class Track:
         trackAngle = 0 + math.degrees(math.atan2(finishCoord[0] - finishNeighbourCoord[0], (finishCoord[1] - finishNeighbourCoord[1]))) - 90
         startAngle = trackAngle + (finishDir * 180)
 
-        return self.splinePoints[int(finishIndex * self.perSegRes)], startAngle, int(finishIndex * self.perSegRes), finishDir
+        return finishCoord, startAngle, int(finishIndex * self.perSegRes), finishDir
 
     def save(self):
         self.history.saveTrack()
@@ -710,6 +719,16 @@ class Track:
         otherTrack.computeTrack()
         return otherTrack
 
+    def automaticallyAdjustRes(self):
+        if len(self.points) >= 3:
+            angles = []
+            trackPoints = self.returnPointCoords()
+            for i in range(1, len(self.points) - 1):
+                angles.append(angle(trackPoints[i - 1], trackPoints[i], trackPoints[i + 1]))
+            smallestAngle = (180 - (min(angles) - 10)) / 10
+            newRes = 10.289 * (math.e ** (0.1238 * smallestAngle))
+            self.changeRes(min(max(newRes, 10), 100))
+
     def update(self, mousePosX, mousePosY, zoom, screenWidth, screenHeight, screenBorder, offset, screenRect, directories):
         self.pointsSelected = [[self.points[point], point] for point in range(len(self.points)) if self.points[point].pointSelected]
 
@@ -761,6 +780,11 @@ class Track:
         if len(self.pointsSelected) > 0:
             updatePoints = [point[1] for point in self.pointsSelected]
             self.computeTrack(updatePoints = updatePoints)
+
+        if not self.pygame.mouse.get_pressed()[0] and self.autoRes:
+            if self.returnPointCoords() != self.pointList:
+                self.pointList = self.returnPointCoords()
+                self.automaticallyAdjustRes()
 
     #Main rendering algorithm for drawing track
     def draw(self, programColours, switchFront, viewMode, antialiasing):
