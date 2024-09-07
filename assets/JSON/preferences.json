@@ -1,5 +1,5 @@
 {
-    "trackRes": "auto",
+    "trackRes": 20,
     "antialiasing": true,
     "racingLine": false
 }
