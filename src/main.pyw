@@ -99,7 +99,7 @@ class SceneManager:
         self.scenes = []
         self.currentScene = 0
 
-        self.changeSceneDropdown = Dropdown(programUI, (30, 30), "", (190, 25), self.getSceneNames(), self.currentScene, action = self.setScene)
+        self.changeSceneDropdown = Dropdown(programUI, (30, 30), "", (200, 25), self.getSceneNames(), self.currentScene, action = self.setScene)
 
     def addScene(self, scene, name):
         scene.name = name
@@ -1107,6 +1107,13 @@ class TrackRacing (Scene):
         self.pauseStart = None
         self.userPaused = False
 
+        self.minimapPoints = []
+        self.miniMapSurface = pygame.Surface((0, 0))
+        self.miniMapScale = 0
+        self.topLeftCornerMiniMap = (0, 0)
+        self.miniMapThickness = 0
+        self.miniMapHeightOffset = 0
+
     def updateZoom(self, value):
         self.zoom = value
 
@@ -1224,6 +1231,54 @@ class TrackRacing (Scene):
                 self.timerStart += (time.time() - self.pauseStart)
                 self.pauseStart = None
 
+    def updateMiniMapPoints(self, width, height, thickness):
+        self.miniMapThickness = thickness
+        self.miniMapSurface = pygame.Surface((width, height), pygame.SRCALPHA)
+        trackPoints = self.trackEditor.mainTrack.splinePoints
+        xPoints = [point[0] for point in trackPoints]
+        yPoints = [point[1] for point in trackPoints]
+        self.topLeftCornerMiniMap = (min(xPoints), min(yPoints))
+
+        trackWidth = max(xPoints) - min(xPoints)
+        trackHeight = max(yPoints) - min(yPoints)
+
+        if (width/trackWidth) < (height/trackHeight):
+            self.miniMapScale = ((width - (thickness * 2))/trackWidth)
+        else:
+            self.miniMapScale = ((height - (thickness * 2))/trackHeight)
+
+        self.miniMapHeightOffset = height - (trackHeight * self.miniMapScale)
+
+        self.minimapPoints = []
+        for point in trackPoints:
+            newPosition = (((point[0] - self.topLeftCornerMiniMap[0]) * self.miniMapScale) + thickness, ((point[1] - self.topLeftCornerMiniMap[1]) * self.miniMapScale) - thickness + self.miniMapHeightOffset)
+            self.minimapPoints.append(newPosition)
+
+
+        leftSide = []
+        rightSide = []
+        for pIndex in range(len(self.minimapPoints)):
+            leftSide.append(calculateSide(self.minimapPoints, pIndex, -(thickness / 2)))
+            rightSide.append(calculateSide(self.minimapPoints, pIndex, (thickness / 2)))
+
+        polygon = formPolygon(leftSide, rightSide, close = self.trackEditor.mainTrack.closed)
+
+        pygame.draw.aalines(self.miniMapSurface, (200, 200, 200), self.trackEditor.mainTrack.closed, leftSide)
+        pygame.draw.aalines(self.miniMapSurface, (200, 200, 200), self.trackEditor.mainTrack.closed, rightSide)
+        pygame.draw.polygon(self.miniMapSurface, (200, 200, 200), polygon)
+
+    def displayMiniMap(self, pos, positions):
+        actualX = self.screenWidth - pos[0]
+        actualY = self.screenHeight - pos[1]
+        miniMapWithCarSurface = self.miniMapSurface.copy()
+        for car in positions:
+            carPos = (((car[0] - self.topLeftCornerMiniMap[0]) * self.miniMapScale) + self.miniMapThickness, ((car[1] - self.topLeftCornerMiniMap[1]) * self.miniMapScale) - self.miniMapThickness + self.miniMapHeightOffset)
+            pygame.gfxdraw.aacircle(miniMapWithCarSurface, int(carPos[0]), int(carPos[1]), 4, (200, 0, 0))
+            pygame.gfxdraw.filled_circle(miniMapWithCarSurface, int(carPos[0]), int(carPos[1]), 4, (200, 0, 0))
+
+        screen.blit(miniMapWithCarSurface, (actualX, actualY))
+
+
     #Where all the events are passed to be processed
     def handleEvents(self, events):
         global running
@@ -1288,6 +1343,7 @@ class TrackRacing (Scene):
         if self.uniquenessToken != self.trackEditor.mainTrack.getUniquenessToken(): #Track has changed
             if len(self.trackEditor.mainTrack.points) >= 2:
                 self.reset()
+                self.updateMiniMapPoints(200, 200, 6)
                 if (len(self.getTimes(self.trackEditor.mainTrack.UUID)) > 0) and (self.uniquenessToken is not None) and (self.previousTrackUUID == self.trackEditor.mainTrack.UUID):
                     self.outdatedTimes()
 
@@ -1342,6 +1398,7 @@ class TrackRacing (Scene):
         self.car.previousSplineIndex = self.car.nearestSplineIndex
 
         self.speedometer.text = f"{pixToMiles(self.car.velocity.x, self.car.scale)} mph"
+        self.speedometer.posX = (self.speedometer.textSize[0] / 2) + (self.timer.posX - (self.timer.textSize[0] / 2))
 
         if not self.pause or (self.pause and self.timerEnd is not None):
             if self.timerStart is not None:
@@ -1369,6 +1426,7 @@ class TrackRacing (Scene):
             self.deleteRaceTimesIcon.posX = self.deleteRaceTimesButton.posX - 1
             self.deleteRaceTimesIcon.posY = self.deleteRaceTimesButton.posY - 1
 
+        self.displayMiniMap((241, 320), [self.trackEditor.mainTrack.splinePoints[self.car.nearestSplineIndex]])
         self.UILayer.display(self.screenWidth, self.screenHeight, self.events)
 
 trackEditorScene = TrackEditor()

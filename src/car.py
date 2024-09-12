@@ -23,6 +23,7 @@ class Car:
         self.maxAcceleration = 120
         self.maxTurningAngle = 40
         self.brakeDeceleration = 200
+        self.grassDeceleration = 150
         self.freeDeceleration = 10
 
         self.width = mToPix(2, self.scale)
@@ -50,8 +51,9 @@ class Car:
 
         self.show = True
         self.offTrack = False
+        self.offCourse = False
         self.dead = False
-        self.previouslyOffTrack = False
+        self.previouslyOffCourse = False
 
         self.directories = directories
         self.track = track
@@ -99,10 +101,11 @@ class Car:
             width = self.track.width * (1 / self.track.scale)
             index = self.nearestSplineIndex + 1
 
-            self.previouslyOffTrack = self.offTrack
+            self.previouslyOffCourse = self.offCourse
             distanceFromCenter = lineToPointDistance(points[(index - 1) % len(points)], points[(index + 1) % (len(points))], self.position)
             self.offTrack = distanceFromCenter[0] > (width / 2)
-            self.dead = self.dead or self.offTrack
+            self.offCourse = distanceFromCenter[0] > ((width + 100) / 2)
+            self.dead = self.dead or self.offCourse
 
     def display(self):
         if self.show:
@@ -115,8 +118,8 @@ class Car:
             self.carWheelRRect.center = (436, 281)
             self.carWheelLRect.center = (64, 281)
 
-            if self.offTrack != self.previouslyOffTrack:
-                if self.offTrack:
+            if self.offCourse != self.previouslyOffCourse:
+                if self.offCourse:
                     self.carBody.fill((220, 0, 0), special_flags = 4) #BLEND_RGB_MIN
                     self.carWheelR.fill((220, 0, 0), special_flags = 4) #BLEND_RGB_MIN
                     self.carWheelL.fill((220, 0, 0), special_flags = 4) #BLEND_RGB_MIN
@@ -176,6 +179,8 @@ class Car:
                     self.acceleration = -self.velocity.x / deltaTime
 
         self.acceleration = max(-self.brakeDeceleration, min(self.acceleration, self.maxAcceleration))
+        if self.offTrack:
+            self.acceleration = -self.grassDeceleration
 
         self.steering = self.steeringInput * self.maxTurningAngle * deltaTime * 10
 
