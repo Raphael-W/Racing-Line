@@ -787,7 +787,10 @@ class Track:
                 self.automaticallyAdjustRes()
 
     #Main rendering algorithm for drawing track
-    def draw(self, programColours, switchFront, viewMode, antialiasing):
+    def draw(self, programColours, switchFront, viewMode, antialiasing, surface = None):
+        if surface is None:
+            surface = self.screen
+
         if len(self.points) >= 2:
             if viewMode in ["Track", "Skeleton", "Display"]:
                 for point in range(len(self.points) - 1):
@@ -795,28 +798,28 @@ class Track:
                     rightTrackEdgePolygon = formPolygon(self.__offset_rightBorderInnerEdge, self.__offset_rightBorderOuterEdge, slice((point * self.perSegRes), ((point + 1) * self.perSegRes) + 1), ((point == len(self.points) - 2) and self.closed))
 
                     if antialiasing:
-                        self.pygame.gfxdraw.aapolygon(self.screen, leftTrackEdgePolygon, programColours["white"])
-                    self.pygame.gfxdraw.filled_polygon(self.screen, leftTrackEdgePolygon, programColours["white"])
+                        self.pygame.gfxdraw.aapolygon(surface, leftTrackEdgePolygon, programColours["white"])
+                    self.pygame.gfxdraw.filled_polygon(surface, leftTrackEdgePolygon, programColours["white"])
 
                     if antialiasing:
-                        self.pygame.gfxdraw.aapolygon(self.screen, rightTrackEdgePolygon, programColours["white"])
-                    self.pygame.gfxdraw.filled_polygon(self.screen, rightTrackEdgePolygon, programColours["white"])
+                        self.pygame.gfxdraw.aapolygon(surface, rightTrackEdgePolygon, programColours["white"])
+                    self.pygame.gfxdraw.filled_polygon(surface, rightTrackEdgePolygon, programColours["white"])
 
             if viewMode in ["Track", "Display"]:
                 for point in range(len(self.points) - 1):
                     mainTrackPolygon = formPolygon(self.__offset_leftBorderInnerEdge, self.__offset_rightBorderInnerEdge, slice((point * self.perSegRes), ((point + 1) * self.perSegRes) + 1), ((point == len(self.points) - 2) and self.closed))
 
                     if antialiasing:
-                        self.pygame.gfxdraw.aapolygon(self.screen, mainTrackPolygon, programColours["mainTrack"])
-                    self.pygame.gfxdraw.filled_polygon(self.screen, mainTrackPolygon, programColours["mainTrack"])
+                        self.pygame.gfxdraw.aapolygon(surface, mainTrackPolygon, programColours["mainTrack"])
+                    self.pygame.gfxdraw.filled_polygon(surface, mainTrackPolygon, programColours["mainTrack"])
 
             if viewMode in ["Track", "Skeleton", "Curve"]:
                 for point in range(len(self.points) - 1):
                     mainCurvePolygon = formPolygon(self.__offset_mainPolyLeftEdge, self.__offset_mainPolyRightEdge, slice((point * self.perSegRes), ((point + 1) * self.perSegRes) + 1), ((point == len(self.points) - 2) and self.closed))
 
                     if antialiasing:
-                        self.pygame.gfxdraw.aapolygon(self.screen, mainCurvePolygon, programColours["curve"])
-                    self.pygame.gfxdraw.filled_polygon(self.screen, mainCurvePolygon, programColours["curve"])
+                        self.pygame.gfxdraw.aapolygon(surface, mainCurvePolygon, programColours["curve"])
+                    self.pygame.gfxdraw.filled_polygon(surface, mainCurvePolygon, programColours["curve"])
 
             if viewMode in ["Display"]:
                 checkeredHeight = (1 * self.zoomValue * (1 / self.scale))
@@ -855,13 +858,13 @@ class Track:
                             checkeredColour = (200, 200, 200)
 
                         checkeredSquarePoints = [corner1, corner2, corner3, corner4]
-                        self.pygame.draw.polygon(self.screen, checkeredColour, checkeredSquarePoints)
+                        self.pygame.draw.polygon(surface, checkeredColour, checkeredSquarePoints)
 
             if viewMode in ["Spline Dots"]:
                 for dot in self.__offset_splinePoints:
                     if antialiasing:
-                        self.pygame.gfxdraw.aacircle(self.screen, int(dot[0]), int(dot[1]), 4, programColours["curve"])
-                    self.pygame.gfxdraw.filled_circle(self.screen, int(dot[0]), int(dot[1]), 4, programColours["curve"])
+                        self.pygame.gfxdraw.aacircle(surface, int(dot[0]), int(dot[1]), 4, programColours["curve"])
+                    self.pygame.gfxdraw.filled_circle(surface, int(dot[0]), int(dot[1]), 4, programColours["curve"])
 
         if viewMode in ["Track", "Skeleton", "Curve", "Spline Dots"]:
             for pointIndex in range(len(self.points)):
@@ -872,10 +875,10 @@ class Track:
                 else:
                     colour = programColours["controlPoint"]
 
-                point.draw(colour, self.screen, self.pygame, self.offsetValue, self.zoomValue)
+                point.draw(colour, surface, self.pygame, self.offsetValue, self.zoomValue)
 
         if len(self.points) >= 3 and self.showRacingLine:
             racingLinePolygon = formPolygon(self.offset_leftRacingLineSpline, self.offset_rightRacingLineSpline, close = self.closed)
             if antialiasing:
-                self.pygame.gfxdraw.aapolygon(self.screen, racingLinePolygon, (140, 32, 32))
-            self.pygame.gfxdraw.filled_polygon(self.screen, racingLinePolygon, (140, 32, 32))
+                self.pygame.gfxdraw.aapolygon(surface, racingLinePolygon, (140, 32, 32))
+            self.pygame.gfxdraw.filled_polygon(surface, racingLinePolygon, (140, 32, 32))

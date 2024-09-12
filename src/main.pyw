@@ -1068,8 +1068,8 @@ class TrackRacing (Scene):
         pygame.joystick.init()
         self.controllers = [pygame.joystick.Joystick(i) for i in range(pygame.joystick.get_count())]
 
-        self.steeringInput = 0
-        self.accelerationInput = 0
+        self.steeringInput = [0, 0]
+        self.accelerationInput = [0, 0]
 
         self.colours = {"background": (101, 126, 51),
                         "curve": (128, 128, 128),
@@ -1098,7 +1098,13 @@ class TrackRacing (Scene):
         self.zoomAdjustmentSlider = Slider(self.UILayer, 15, (200, 200, 200), self.colours["controlPoint"], (100, 120), "SW", 1, 105, (self.lowerZoomLimit, self.upperZoomLimit), 2.0001, precision = 1, action = self.updateZoom, suffix = 'x')
         self.zoomAdjustmentLabel = Label(self.UILayer, 15, (50, 122), "SW", "Zoom", (200, 200, 200))
 
+        self.multiplayerSwitch = Switch(self.UILayer, (190, 157), "SW", 0.8, value = False, action = lambda x: self.reset())
+        self.multiplayerSwitch.trueColour = (38, 87, 38)
+        self.multiplayerSwitch.falseColour = (125, 55, 55)
+        self.multiplayerLabel = Label(self.UILayer, 15, (50, 155), "SW", "Split-Screen", (200, 200, 200))
+
         self.car = Car(pygame, screen, directories, self.trackEditor.mainTrack)
+        self.car2 = Car(pygame, screen, directories, self.trackEditor.mainTrack)
 
         self.timerStart = None
         self.timerEnd = None
@@ -1114,11 +1120,14 @@ class TrackRacing (Scene):
         self.miniMapThickness = 0
         self.miniMapHeightOffset = 0
 
+        self.splitScreen = False
+
     def updateZoom(self, value):
         self.zoom = value
 
     def reset(self):
         self.car.reset()
+        self.car2.reset()
         self.offsetPosition = ((-self.car.position.x * self.zoom) + (self.screenWidth / 2), (-self.car.position.y * self.zoom) + (self.screenHeight / 2))
 
         self.timerStart = None
@@ -1271,10 +1280,11 @@ class TrackRacing (Scene):
         actualX = self.screenWidth - pos[0]
         actualY = self.screenHeight - pos[1]
         miniMapWithCarSurface = self.miniMapSurface.copy()
-        for car in positions:
-            carPos = (((car[0] - self.topLeftCornerMiniMap[0]) * self.miniMapScale) + self.miniMapThickness, ((car[1] - self.topLeftCornerMiniMap[1]) * self.miniMapScale) - self.miniMapThickness + self.miniMapHeightOffset)
-            pygame.gfxdraw.aacircle(miniMapWithCarSurface, int(carPos[0]), int(carPos[1]), 4, (200, 0, 0))
-            pygame.gfxdraw.filled_circle(miniMapWithCarSurface, int(carPos[0]), int(carPos[1]), 4, (200, 0, 0))
+        colours = [(200, 0, 0), (0, 0, 200)]
+        for car in range(len(positions)):
+            carPos = (((positions[car][0] - self.topLeftCornerMiniMap[0]) * self.miniMapScale) + self.miniMapThickness, ((positions[car][1] - self.topLeftCornerMiniMap[1]) * self.miniMapScale) - self.miniMapThickness + self.miniMapHeightOffset)
+            pygame.gfxdraw.aacircle(miniMapWithCarSurface, int(carPos[0]), int(carPos[1]), 4, colours[car % 2])
+            pygame.gfxdraw.filled_circle(miniMapWithCarSurface, int(carPos[0]), int(carPos[1]), 4, colours[car % 2])
 
         screen.blit(miniMapWithCarSurface, (actualX, actualY))
 
@@ -1299,17 +1309,11 @@ class TrackRacing (Scene):
         #If arrow/WASD keys pressed, override controller input
         keys = pygame.key.get_pressed()
         if keys[pygame.K_UP] or keys[pygame.K_DOWN] or keys[pygame.K_RIGHT] or keys[pygame.K_LEFT] or keys[pygame.K_w] or keys[pygame.K_s] or keys[pygame.K_a] or keys[pygame.K_d]:
-            self.accelerationInput = 0
-            self.steeringInput = 0
+            self.accelerationInput = [0, 0]
+            self.steeringInput = [0, 0]
 
-        if keys[pygame.K_UP] or keys[pygame.K_w]:
-            self.accelerationInput = 1
-        if keys[pygame.K_DOWN] or keys[pygame.K_s]:
-            self.accelerationInput = -1
-        if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
-            self.steeringInput = 1
-        if keys[pygame.K_LEFT] or keys[pygame.K_a]:
-            self.steeringInput = -1
+        self.accelerationInput = [int(keys[pygame.K_UP]) - 2 * int(keys[pygame.K_DOWN]), int(keys[pygame.K_w]) - 2 * int(keys[pygame.K_s])]
+        self.steeringInput = [int(keys[pygame.K_RIGHT]) - 2 * int(keys[pygame.K_LEFT]), int(keys[pygame.K_d]) - 2 * int(keys[pygame.K_a])]
 
         self.events = events
         for event in events:
@@ -1338,6 +1342,8 @@ class TrackRacing (Scene):
         self.mousePosX = pygame.mouse.get_pos()[0]
         self.mousePosY = pygame.mouse.get_pos()[1]
 
+        self.splitScreen = self.multiplayerSwitch.value
+
         screen.fill(self.colours["background"])
 
         if self.uniquenessToken != self.trackEditor.mainTrack.getUniquenessToken(): #Track has changed
@@ -1350,11 +1356,45 @@ class TrackRacing (Scene):
             self.uniquenessToken = self.trackEditor.mainTrack.getUniquenessToken()
             self.previousTrackUUID = self.trackEditor.mainTrack.UUID
 
-        self.trackEditor.mainTrack.draw(self.colours, True, "Display", True)
+        if self.splitScreen:
+            self.offsetPosition = ((-self.car.position.x * self.zoom) + (self.screenWidth / 4), (-self.car.position.y * self.zoom) + (self.screenHeight / 2))
+            self.trackEditor.mainTrack.updateOffsetValues(self.offsetPosition, self.zoom)
+            leftSide = pygame.Surface(((self.screenWidth / 2), self.screenHeight), pygame.SRCALPHA)
+            self.trackEditor.mainTrack.draw(self.colours, True, "Display", True, surface = leftSide)
+            if not self.pause:
+                self.car.update(self.steeringInput[1], self.accelerationInput[1], self.offsetPosition, self.zoom, deltaTime)
 
-        if not self.pause:
-            self.car.update(self.steeringInput, self.accelerationInput, self.offsetPosition, self.zoom, deltaTime)
-        self.car.display()
+            self.offsetPosition = ((-self.car2.position.x * self.zoom) + (1 * (self.screenWidth / 4)), (-self.car2.position.y * self.zoom) + (self.screenHeight / 2))
+            self.trackEditor.mainTrack.updateOffsetValues(self.offsetPosition, self.zoom)
+            rightSide = pygame.Surface(((self.screenWidth / 2), self.screenHeight), pygame.SRCALPHA)
+            self.trackEditor.mainTrack.draw(self.colours, True, "Display", True, surface = rightSide)
+            if not self.pause:
+                self.car2.update(self.steeringInput[0], self.accelerationInput[0], self.offsetPosition, self.zoom, deltaTime)
+
+            self.car.offset = ((-self.car.position.x * self.zoom) + (self.screenWidth / 4), (-self.car.position.y * self.zoom) + (self.screenHeight / 2))
+            self.car2.offset = ((-self.car.position.x * self.zoom) + (self.screenWidth / 4), (-self.car.position.y * self.zoom) + (self.screenHeight / 2))
+            self.car.display(surface = leftSide)
+            self.car2.display(surface = leftSide)
+
+            self.car.offset = ((-self.car2.position.x * self.zoom) + (1 * (self.screenWidth / 4)), (-self.car2.position.y * self.zoom) + (self.screenHeight / 2))
+            self.car2.offset = ((-self.car2.position.x * self.zoom) + (1 * (self.screenWidth / 4)), (-self.car2.position.y * self.zoom) + (self.screenHeight / 2))
+            self.car.display(surface = rightSide)
+            self.car2.display(surface = rightSide)
+
+            screen.blit(leftSide, (0, 0))
+            screen.blit(rightSide, ((self.screenWidth / 2), 0))
+
+            pygame.draw.line(screen, (200, 200, 200), ((self.screenWidth / 2), 0),((self.screenWidth / 2), self.screenHeight), 10)
+
+        else:
+            self.trackEditor.mainTrack.draw(self.colours, True, "Display", True)
+
+            if not self.pause:
+                steering = min(self.steeringInput[0] + self.steeringInput[1], 1)
+                acceleration = min(self.accelerationInput[0] + self.accelerationInput[1], 1)
+                self.car.update(steering, acceleration, self.offsetPosition, self.zoom, deltaTime)
+                self.car2.update(0, 0, self.offsetPosition, self.zoom, deltaTime)
+            self.car.display()
 
         if (self.timerStart is None) and (self.car.position != self.trackEditor.mainTrack.getStartPos()[0]):
             self.timerStart = time.time()
@@ -1426,7 +1466,11 @@ class TrackRacing (Scene):
             self.deleteRaceTimesIcon.posX = self.deleteRaceTimesButton.posX - 1
             self.deleteRaceTimesIcon.posY = self.deleteRaceTimesButton.posY - 1
 
-        self.displayMiniMap((241, 320), [self.trackEditor.mainTrack.splinePoints[self.car.nearestSplineIndex]])
+        carPositions = [self.trackEditor.mainTrack.splinePoints[self.car.nearestSplineIndex]]
+        if self.splitScreen:
+            carPositions.append(self.trackEditor.mainTrack.splinePoints[self.car2.nearestSplineIndex])
+
+        self.displayMiniMap((241, 320), carPositions)
         self.UILayer.display(self.screenWidth, self.screenHeight, self.events)
 
 trackEditorScene = TrackEditor()

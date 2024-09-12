@@ -107,7 +107,10 @@ class Car:
             self.offCourse = distanceFromCenter[0] > ((width + 100) / 2)
             self.dead = self.dead or self.offCourse
 
-    def display(self):
+    def display(self, surface = None):
+        if surface is None:
+            surface = self.screen
+
         if self.show:
             self.transformedCarWheelR = self.pygame.transform.rotate(self.carWheelR, (self.steeringInput * self.maxTurningAngle * 0.5))
             self.transformedCarWheelL = self.pygame.transform.rotate(self.carWheelL, (self.steeringInput * self.maxTurningAngle * 0.5))
@@ -137,7 +140,7 @@ class Car:
             self.carSurface = self.pygame.transform.rotate(self.carSurface, self.rotation - 90)
             surfaceRect = self.carSurface.get_rect(center = offsetPoints(self.position, self.offset, self.zoom, True))
 
-            self.screen.blit(self.carSurface, (surfaceRect.x, surfaceRect.y))
+            surface.blit(self.carSurface, (surfaceRect.x, surfaceRect.y))
 
     def update(self, steeringInput, accelerationInput, offset, zoom, deltaTime):
         self.zoom = zoom
