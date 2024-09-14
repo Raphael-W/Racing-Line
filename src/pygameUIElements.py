@@ -269,13 +269,15 @@ class Slider (UIElement):
         self.layer.pygame.gfxdraw.aacircle(self.layer.screen, int(self.contextualPosX + self.handleX), int(self.contextualPosY + (int(7 * self.size)) / 2), self.handleSize, self.displayColour)
         self.layer.pygame.gfxdraw.filled_circle(self.layer.screen, int(self.contextualPosX + self.handleX), int(self.contextualPosY + (int(7 * self.size)) / 2), self.handleSize, self.displayColour)
 
-    def updateValue(self, value, update = True):
+    def updateValue(self, value, update = True, runFinalAction = False):
         if self.valueRange[0] <= value <= self.valueRange[1]:
             self.value = value
             self.handleX = (self.length / (self.valueRange[1] - self.valueRange[0])) * (value - self.valueRange[0])
 
             if self.action is not None and update:
                 self.action(self.value)
+            if self.finishedUpdatingAction is not None and runFinalAction:
+                self.finishedUpdatingAction(self.value)
 
 class Switch (UIElement):
     def __init__(self, layer, pos, stick, size, value = True, action = None, show = True, disabled = False, layerIndex = -1):

@@ -1101,7 +1101,7 @@ class TrackRacing (Scene):
         self.deleteRaceTimesButton = Button(self.UILayer, (105, 335), "SE", (30, 30), "", 12, (66, 41, 41), action = self.deleteRaceTimes, show = False)
         self.deleteRaceTimesIcon = Image(self.UILayer, (self.deleteRaceTimesButton.posX - 1, self.deleteRaceTimesButton.posY - 1), "SE", directories["bin"], 0.7, colour = (200, 200, 200), show = False)
 
-        self.zoomAdjustmentSlider = Slider(self.UILayer, 15, (200, 200, 200), self.colours["controlPoint"], (140, 130), "SW", 1, 105, (self.lowerZoomLimit, self.upperZoomLimit), 2.0001, precision = 1, increment = 0.1, action = self.updateZoom, suffix = 'x', finishedUpdatingAction = lambda x, y: self.updateUserPreferences())
+        self.zoomAdjustmentSlider = Slider(self.UILayer, 15, (200, 200, 200), self.colours["controlPoint"], (140, 130), "SW", 1, 105, (self.lowerZoomLimit, self.upperZoomLimit), 2.0001, precision = 1, increment = 0.1, action = self.updateZoom, suffix = 'x', finishedUpdatingAction = lambda x = None, y = None: self.updateUserPreferences())
         self.zoomAdjustmentLabel = Label(self.UILayer, 15, (80, 132), "SW", "Zoom", (200, 200, 200))
 
         self.multiplayerSwitch = Switch(self.UILayer, (220, 100), "SW", 0.8, value = False, action = self.toggleMultiplayer)
@@ -1354,11 +1354,11 @@ class TrackRacing (Scene):
 
             if event.type == pygame.MOUSEWHEEL:
                 if event.y > 0:
-                    self.zoomAdjustmentSlider.updateValue(float(min(self.upperZoomLimit, max(self.zoom + 0.1, self.lowerZoomLimit))))
+                    self.zoomAdjustmentSlider.updateValue(float(min(self.upperZoomLimit, max(self.zoom + 0.1, self.lowerZoomLimit))), runFinalAction = True)
 
                 elif event.y < 0:
                     if self.zoom > self.lowerZoomLimit:
-                        self.zoomAdjustmentSlider.updateValue(float(min(self.upperZoomLimit, max(self.zoom - 0.1, self.lowerZoomLimit))))
+                        self.zoomAdjustmentSlider.updateValue(float(min(self.upperZoomLimit, max(self.zoom - 0.1, self.lowerZoomLimit))), runFinalAction = True)
 
     def update(self):
         self.offsetPosition = ((-self.car.position.x * self.zoom) + (self.screenWidth / 2), (-self.car.position.y * self.zoom) + (self.screenHeight / 2))
