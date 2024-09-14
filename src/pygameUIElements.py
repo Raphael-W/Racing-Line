@@ -484,12 +484,13 @@ class TextInput(UIElement):
             self.layer.pygame.draw.line(self.layer.screen, (200, 200, 200), (self.contextualPosX + 10 + textWidth, self.contextualPosY + 7), (self.contextualPosX + 10 + textWidth, self.contextualPosY - 7 + self.height), 2)
 
 class Accordion(UIElement):
-    def __init__(self, layer, pos, stick, dimensions, title, elements, collapse = False, show = True, layerIndex = -1):
+    def __init__(self, layer, pos, stick, dimensions, title, elements, openDir = "l", collapse = False, show = True, layerIndex = 0):
         super().__init__(layer, pos, stick, show, layerIndex)
 
         self.width, self.height = dimensions
         self.displayWidth, self.displayHeight = dimensions
         self.collapsedSize = 50
+        self.openDir = openDir
 
         self.titleText = title
         self.titleLabel = Label(layer, 20, (0, 0), stick, self.titleText, (200, 200, 200))
@@ -497,8 +498,7 @@ class Accordion(UIElement):
         self.elements = elements + [self.titleLabel]
         self.collapse = collapse
 
-        self.collapseButton = Button(layer, (0, 0), stick, (30, 30), "", 15, (100, 100, 100), roundedCorners = 30,
-                                     action = self.toggleCollapse)
+        self.collapseButton = Button(layer, (0, 0), stick, (30, 30), "", 15, (100, 100, 100), roundedCorners = 30, action = self.toggleCollapse)
         self.collapseImage = Image(layer, (0, 0), stick, self.layer.directories["minus"], 1, colour = (200, 200, 200))
         self.expandImage = Image(layer, (0, 0), stick, self.layer.directories["plus"], 1, colour = (200, 200, 200))
 
@@ -519,26 +519,42 @@ class Accordion(UIElement):
             self.collapseImage.show = True
             self.expandImage.show = False
 
-        self.collapseImage.posX, self.collapseImage.posY = (self.posX + 38, (self.posY + self.displayHeight) - 12)
-        self.expandImage.posX, self.expandImage.posY = (self.posX + 38, (self.posY + self.displayHeight) - 12)
-        self.collapseButton.posX, self.collapseButton.posY = (self.posX + 40, (self.posY + self.displayHeight) - 10)
+        if self.openDir == "l":
+            self.collapseImage.posX, self.collapseImage.posY = (self.posX + 38, (self.posY + self.displayHeight) - 12)
+            self.expandImage.posX, self.expandImage.posY = (self.posX + 38, (self.posY + self.displayHeight) - 12)
+            self.collapseButton.posX, self.collapseButton.posY = (self.posX + 40, (self.posY + self.displayHeight) - 10)
+        else:
+            self.collapseImage.posX, self.collapseImage.posY = (self.posX + self.displayWidth - 38, (self.posY + self.displayHeight) - 12)
+            self.expandImage.posX, self.expandImage.posY = (self.posX + self.displayWidth - 38, (self.posY + self.displayHeight) - 12)
+            self.collapseButton.posX, self.collapseButton.posY = (self.posX + self.displayWidth - 40, (self.posY + self.displayHeight) - 10)
 
         self.titleLabel.text = self.titleText[:15]
         if len(self.titleText) > 15:
             self.titleLabel.text += "..."
-        self.titleLabel.posX, self.titleLabel.posY = ((self.displayWidth / 2) + (self.titleLabel.textSize[0] / 2) + self.posX, self.displayHeight - 25 + self.posY)
+
+        if self.openDir == "l":
+            self.titleLabel.posX, self.titleLabel.posY = ((self.displayWidth / 2) + (self.titleLabel.textSize[0] / 2) + self.posX, self.displayHeight - 25 + self.posY)
+        else:
+            self.titleLabel.posX, self.titleLabel.posY = ((self.displayWidth / 2) - (self.titleLabel.textSize[0] / 2) + self.posX, self.displayHeight - 25 + self.posY)
+
 
         self.boundingBox = self.layer.pygame.Rect((self.contextualPosX - self.displayWidth, self.contextualPosY - self.displayHeight), (self.displayWidth, self.displayHeight))
 
     def display(self):
         transparentSurface = self.layer.pygame.Surface(self.boundingBox.size, self.layer.pygame.SRCALPHA)
         self.layer.pygame.draw.rect(transparentSurface, (50, 50, 50, 200), (0, 0, self.displayWidth, self.displayHeight), border_radius = 15)
-        self.layer.screen.blit(transparentSurface, (self.contextualPosX - self.displayWidth, self.contextualPosY - self.displayHeight))
+        if self.openDir == "l":
+            self.layer.screen.blit(transparentSurface, (self.contextualPosX - self.displayWidth, self.contextualPosY - self.displayHeight))
+        else:
+            self.layer.screen.blit(transparentSurface, (self.contextualPosX, self.contextualPosY - self.displayHeight))
 
-    def toggleCollapse(self):
-        self.collapse = not self.collapse
+    def setCollapseStatus(self, value):
+        self.collapse = value
         for element in self.elements:
             element.show = not self.collapse
+
+    def toggleCollapse(self):
+        self.setCollapseStatus(not self.collapse)
 
 class Message(UIElement):
     def __init__(self, layer, title, message, button1Text = None, button1Action = None, button1Colour = None, button2Text = None, button2Action = None, button2Colour = None, closeAction = None, dimensions = (400, 150), linePadding = 25, show = True, layerIndex = -1):

@@ -729,6 +729,22 @@ class Track:
             newRes = 10.289 * (math.e ** (0.1238 * smallestAngle))
             self.changeRes(min(max(newRes, 10), 100))
 
+    def renderToSurface(self, programColours, zoom):
+        xPoints = [point[0] for point in self.splinePoints]
+        yPoints = [point[1] for point in self.splinePoints]
+
+        width = (max(xPoints) - min(xPoints))
+        height = (max(yPoints) - min(yPoints))
+
+        pixelTrackWidth = ((self.width + 5) * (1 / self.scale))
+        trackSurface = self.pygame.Surface(((width + pixelTrackWidth) * zoom, (height + pixelTrackWidth) * zoom), self.pygame.SRCALPHA)
+
+        self.zoomValue = zoom
+        self.offsetValue = ((-min(xPoints) + (pixelTrackWidth / 2)) * zoom, (-min(yPoints) + (pixelTrackWidth / 2)) * zoom)
+        self.offsetAllTrackPoints()
+        self.draw(programColours, False, "Display", False, trackSurface)
+        return trackSurface, self.offsetValue
+
     def update(self, mousePosX, mousePosY, zoom, screenWidth, screenHeight, screenBorder, offset, screenRect, directories):
         self.pointsSelected = [[self.points[point], point] for point in range(len(self.points)) if self.points[point].pointSelected]
 
