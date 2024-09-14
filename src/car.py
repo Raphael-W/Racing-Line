@@ -174,7 +174,7 @@ class Car:
 
             surface.blit(self.carSurface, (surfaceRect.x, surfaceRect.y))
 
-    def update(self, steeringInput, accelerationInput, deltaTime):
+    def update(self, steeringInput, accelerationInput, deltaTime, pause = False):
         self.modelMultiplier = self.zoom * (1 / 500) * self.width #0.02 at zoom = 1
 
         if len(self.carBody) == 0:
@@ -193,69 +193,70 @@ class Car:
         self.updateNearestSplineIndex()
         self.updateOffTrack()
 
-        self.steeringInput = -steeringInput
-        self.accelerationInput = accelerationInput
+        if not pause:
+            self.steeringInput = -steeringInput
+            self.accelerationInput = accelerationInput
 
-        if self.accelerationInput > 0:
-            if self.acceleration < 0:
-                self.acceleration = 0
+            if self.accelerationInput > 0:
+                if self.acceleration < 0:
+                    self.acceleration = 0
 
-            if self.velocity.x == 0:
-                self.acceleration = self.maxAcceleration
+                if self.velocity.x == 0:
+                    self.acceleration = self.maxAcceleration
+                else:
+                    self.acceleration = ((self.maxAcceleration * 100) / self.velocity.x) * self.accelerationInput
+
+            elif self.accelerationInput < 0:
+                self.acceleration = -self.brakeDeceleration * abs(self.accelerationInput)
+
             else:
-                self.acceleration = ((self.maxAcceleration * 100) / self.velocity.x) * self.accelerationInput
+                freeDeceleration = self.freeDeceleration
+                if self.offTrack:
+                    freeDeceleration = self.grassDeceleration
+                if abs(self.velocity.x) > deltaTime * freeDeceleration:
+                    self.acceleration = -math.copysign(freeDeceleration, self.velocity.x)
+                else:
+                    if deltaTime != 0:
+                        self.acceleration = -self.velocity.x / deltaTime
 
-        elif self.accelerationInput < 0:
-            self.acceleration = -self.brakeDeceleration * abs(self.accelerationInput)
+            self.acceleration = max(-self.brakeDeceleration, min(self.acceleration, self.maxAcceleration))
+            if self.offTrack and self.velocity.x > self.grassMaxSpeed:
+                self.acceleration = -self.grassDeceleration
 
-        else:
-            freeDeceleration = self.freeDeceleration
-            if self.offTrack:
-                freeDeceleration = self.grassDeceleration
-            if abs(self.velocity.x) > deltaTime * freeDeceleration:
-                self.acceleration = -math.copysign(freeDeceleration, self.velocity.x)
+            self.steering = self.steeringInput * self.maxTurningAngle * deltaTime * 10
+
+            self.velocity += (self.acceleration * deltaTime, 0)
+            self.velocity.x = max(min(self.velocity.x, self.maxSpeed), 0)
+            if self.offTrack and (not self.justCameOff or (self.velocity.x <= self.grassMaxSpeed)):
+                self.justCameOff = False
+                self.velocity.x = min(self.velocity.x, self.grassMaxSpeed)
+
+            if self.steering:
+                turningRadius = (self.wheelBase / math.sin(math.radians(self.steering))) + math.copysign((self.velocity.x / 10) ** 1.5, self.steering)
+                angularVelocity = self.velocity.x / turningRadius
             else:
-                if deltaTime != 0:
-                    self.acceleration = -self.velocity.x / deltaTime
+                angularVelocity = 0
 
-        self.acceleration = max(-self.brakeDeceleration, min(self.acceleration, self.maxAcceleration))
-        if self.offTrack and self.velocity.x > self.grassMaxSpeed:
-            self.acceleration = -self.grassDeceleration
+            self.position += self.velocity.rotate(-self.rotation) * deltaTime
+            self.rotation += math.degrees(angularVelocity) * deltaTime
 
-        self.steering = self.steeringInput * self.maxTurningAngle * deltaTime * 10
+            if (self.timerStart is None) and (self.position != self.startPos):
+                self.timerStart = time.time()
 
-        self.velocity += (self.acceleration * deltaTime, 0)
-        self.velocity.x = max(min(self.velocity.x, self.maxSpeed), 0)
-        if self.offTrack and (not self.justCameOff or (self.velocity.x <= self.grassMaxSpeed)):
-            self.justCameOff = False
-            self.velocity.x = min(self.velocity.x, self.grassMaxSpeed)
-
-        if self.steering:
-            turningRadius = (self.wheelBase / math.sin(math.radians(self.steering))) + math.copysign((self.velocity.x / 10) ** 1.5, self.steering)
-            angularVelocity = self.velocity.x / turningRadius
-        else:
-            angularVelocity = 0
-
-        self.position += self.velocity.rotate(-self.rotation) * deltaTime
-        self.rotation += math.degrees(angularVelocity) * deltaTime
-
-        if (self.timerStart is None) and (self.position != self.startPos):
-            self.timerStart = time.time()
-
-        if self.track.closed:
-            startPos, startAngle, startIndex, startDir = self.track.getStartPos()
-            if startDir:
-                self.crossedFinishLine = (self.previousSplineIndex == ((startIndex - 1) % len(self.track.splinePoints))) and (self.nearestSplineIndex == startIndex)
-                cheated = (self.previousSplineIndex == ((startIndex + 1) % len(self.track.splinePoints))) and (self.nearestSplineIndex == startIndex)
+            if self.track.closed:
+                startPos, startAngle, startIndex, startDir = self.track.getStartPos()
+                if startDir:
+                    self.crossedFinishLine = (self.previousSplineIndex == ((startIndex - 1) % len(self.track.splinePoints))) and (self.nearestSplineIndex == startIndex)
+                    cheated = (self.previousSplineIndex == ((startIndex + 1) % len(self.track.splinePoints))) and (self.nearestSplineIndex == startIndex)
+                else:
+                    self.crossedFinishLine = (self.previousSplineIndex == ((startIndex + 1) % len(self.track.splinePoints))) and (self.nearestSplineIndex == startIndex)
+                    cheated = (self.previousSplineIndex == ((startIndex - 1) % len(self.track.splinePoints))) and (self.nearestSplineIndex == startIndex)
             else:
-                self.crossedFinishLine = (self.previousSplineIndex == ((startIndex + 1) % len(self.track.splinePoints))) and (self.nearestSplineIndex == startIndex)
-                cheated = (self.previousSplineIndex == ((startIndex - 1) % len(self.track.splinePoints))) and (self.nearestSplineIndex == startIndex)
-        else:
-            self.crossedFinishLine = (self.nearestSplineIndex == len(self.track.splinePoints) - 1)
-            cheated = False
+                self.crossedFinishLine = (self.nearestSplineIndex == len(self.track.splinePoints) - 1)
+                cheated = False
 
-        if cheated:
-            self.dead = True
+            if cheated:
+                self.dead = True
 
-        self.previousSplineIndex = self.nearestSplineIndex
+            self.previousSplineIndex = self.nearestSplineIndex
         self.previousZoom = self.zoom

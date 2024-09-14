@@ -1343,7 +1343,7 @@ class TrackRacing (Scene):
         for event in events:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_r:
-                    if self.accelerationInput[0] + self.accelerationInput[1] == 0:
+                    if (self.accelerationInput[0] + self.accelerationInput[1] == 0) or not self.splitScreen:
                         self.reset()
                 if event.key == pygame.K_p:
                     self.togglePause(True)
@@ -1384,21 +1384,19 @@ class TrackRacing (Scene):
             self.previousTrackUUID = self.trackEditor.mainTrack.UUID
 
         if self.splitScreen:
-            if not self.pause:
-                acceleration = self.accelerationInput[0]
-                if self.car.timerStart is None and self.accelerationInput[1] == 0:
-                    acceleration = 0
-                self.car.update(self.steeringInput[0], acceleration, deltaTime)
+            acceleration = self.accelerationInput[0]
+            if self.car.timerStart is None and self.accelerationInput[1] == 0:
+                acceleration = 0
+            self.car.update(self.steeringInput[0], acceleration, deltaTime, self.pause)
 
             self.offsetPosition = ((-self.car.position.x * self.zoom) + (1 * (self.screenWidth / 4)), (-self.car.position.y * self.zoom) + (self.screenHeight / 2))
             rightSide = pygame.Surface(((self.screenWidth / 2), self.screenHeight), pygame.SRCALPHA)
             rightSide.blit(self.trackSurface, (self.offsetPosition[0] - self.originOffset[0], self.offsetPosition[1] - self.originOffset[1]))
 
-            if not self.pause:
-                acceleration = self.accelerationInput[1]
-                if self.car2.timerStart is None and self.accelerationInput[0] == 0:
-                    acceleration = 0
-                self.car2.update(self.steeringInput[1], acceleration, deltaTime)
+            acceleration = self.accelerationInput[1]
+            if self.car2.timerStart is None and self.accelerationInput[0] == 0:
+                acceleration = 0
+            self.car2.update(self.steeringInput[1], acceleration, deltaTime, self.pause)
 
             self.offsetPosition = ((-self.car2.position.x * self.zoom) + (self.screenWidth / 4), (-self.car2.position.y * self.zoom) + (self.screenHeight / 2))
             leftSide = pygame.Surface(((self.screenWidth / 2), self.screenHeight), pygame.SRCALPHA)
@@ -1417,11 +1415,10 @@ class TrackRacing (Scene):
             pygame.draw.line(screen, (200, 200, 200), ((self.screenWidth / 2), 0),((self.screenWidth / 2), self.screenHeight), 10)
 
         else:
-            if not self.pause:
-                steering = min(self.steeringInput[0] + self.steeringInput[1], 1)
-                acceleration = min(self.accelerationInput[0] + self.accelerationInput[1], 1)
-                self.car.update(steering, acceleration, deltaTime)
-                self.car2.update(0, 0, deltaTime)
+            steering = min(self.steeringInput[0] + self.steeringInput[1], 1)
+            acceleration = min(self.accelerationInput[0] + self.accelerationInput[1], 1)
+            self.car.update(steering, acceleration, deltaTime, self.pause)
+            self.car2.update(0, 0, deltaTime, self.pause)
 
             self.offsetPosition = ((-self.car.position.x * self.zoom) + (self.screenWidth / 2), (-self.car.position.y * self.zoom) + (self.screenHeight / 2))
             screen.blit(self.trackSurface, (self.offsetPosition[0] - self.originOffset[0], self.offsetPosition[1] - self.originOffset[1]))
@@ -1461,6 +1458,8 @@ class TrackRacing (Scene):
             self.timer2.show = True
             if self.car.timerStart is not None:
                 self.racePos.show = True
+            else:
+                self.racePos.show = False
 
             if (self.car.timerStart is not None) and (self.car.timerEnd is None):
                 startIndex = self.trackEditor.mainTrack.getStartPos()[2]
