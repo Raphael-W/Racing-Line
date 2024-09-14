@@ -1,5 +1,6 @@
 {
     "trackRes": 20,
     "antialiasing": true,
-    "racingLine": false
+    "racingLine": false,
+    "racingZoom": 2.0
 }
