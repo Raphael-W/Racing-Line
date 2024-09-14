@@ -228,7 +228,7 @@ class Slider (UIElement):
                     if self.increment is None:
                         self.handleX = mouseX - self.contextualPosX
                     else:
-                        gap = self.length / (self.valueRange[1] - self.valueRange[0] + 1)
+                        gap = (self.length / (self.valueRange[1] - self.valueRange[0])) * self.increment
                         handleX = int((mouseX - self.contextualPosX) / gap)
                         self.handleX = handleX * gap
 

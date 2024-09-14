@@ -309,12 +309,15 @@ class TrackEditor (Scene):
         if self.autoResSwitch.value:
             trackRes = "auto"
 
-        with open(directories["preferences"], "w") as outputFile:
-            preferences = {"trackRes": trackRes,
-                           "antialiasing": self.antialiasingSwitch.value,
-                           "racingLine": self.racingLineSwitch.value}
+        with open(directories["preferences"]) as loadFile:
+            preferenceData = json.load(loadFile)
 
-            json.dump(preferences, outputFile, indent = 4)
+        preferenceData["trackRes"] = trackRes
+        preferenceData["antialiasing"] = self.antialiasingSwitch.value
+        preferenceData["racingLine"] = self.racingLineSwitch.value
+
+        with open(directories["preferences"], "w") as outputFile:
+            json.dump(preferenceData, outputFile, indent = 4)
 
     def getUserPreferences(self):
         with open(directories["preferences"]) as loadFile:
@@ -1066,9 +1069,6 @@ class TrackRacing (Scene):
 
         self.deltaTime = 0
 
-        pygame.joystick.init()
-        self.controllers = [pygame.joystick.Joystick(i) for i in range(pygame.joystick.get_count())]
-
         self.steeringInput = [0, 0]
         self.accelerationInput = [0, 0]
 
@@ -1101,7 +1101,7 @@ class TrackRacing (Scene):
         self.deleteRaceTimesButton = Button(self.UILayer, (105, 335), "SE", (30, 30), "", 12, (66, 41, 41), action = self.deleteRaceTimes, show = False)
         self.deleteRaceTimesIcon = Image(self.UILayer, (self.deleteRaceTimesButton.posX - 1, self.deleteRaceTimesButton.posY - 1), "SE", directories["bin"], 0.7, colour = (200, 200, 200), show = False)
 
-        self.zoomAdjustmentSlider = Slider(self.UILayer, 15, (200, 200, 200), self.colours["controlPoint"], (140, 130), "SW", 1, 105, (self.lowerZoomLimit, self.upperZoomLimit), 2.0001, precision = 1, action = self.updateZoom, suffix = 'x')
+        self.zoomAdjustmentSlider = Slider(self.UILayer, 15, (200, 200, 200), self.colours["controlPoint"], (140, 130), "SW", 1, 105, (self.lowerZoomLimit, self.upperZoomLimit), 2.0001, precision = 1, increment = 0.1, action = self.updateZoom, suffix = 'x', finishedUpdatingAction = lambda x, y: self.updateUserPreferences())
         self.zoomAdjustmentLabel = Label(self.UILayer, 15, (80, 132), "SW", "Zoom", (200, 200, 200))
 
         self.multiplayerSwitch = Switch(self.UILayer, (220, 100), "SW", 0.8, value = False, action = self.toggleMultiplayer)
@@ -1131,10 +1131,27 @@ class TrackRacing (Scene):
 
         self.trackSurface = pygame.Surface((0, 0))
         self.originOffset = (0, 0)
-        self.previousZoom = self.zoom
+
+    def updateUserPreferences(self):
+        with open(directories["preferences"]) as loadFile:
+            preferenceData = json.load(loadFile)
+
+        preferenceData["racingZoom"] = self.zoom
+
+        with open(directories["preferences"], "w") as outputFile:
+            json.dump(preferenceData, outputFile, indent = 4)
+
+    def getUserPreferences(self):
+        with open(directories["preferences"]) as loadFile:
+            preferenceData = json.load(loadFile)
+            self.zoomAdjustmentSlider.updateValue(preferenceData["racingZoom"])
 
     def updateZoom(self, value):
-        self.zoom = value
+        self.zoom = round(value, 1)
+        self.reloadTrackSurface()
+
+    def reloadTrackSurface(self):
+        self.trackSurface, self.originOffset = self.trackEditor.mainTrack.renderToSurface(self.colours, self.zoom)
 
     def reset(self):
         self.car.reset(2 * int(self.splitScreen))
@@ -1242,11 +1259,9 @@ class TrackRacing (Scene):
         if self.controlsView in self.UILayer.elements:
             self.controlsView.close()
         else:
-            allControls = ["Keyboard:", "Use WASD/arrow keys to move", "'R' to reset", "'P' to pause",
-                           "",
-                           "Controller:", "R2 to accelerate, L2 to brake", "Left joy to steer", "'X' to reset", "'Menu' to pause"]
+            allControls = ["Use WASD/arrow keys to move", "'R' to reset", "'P' to pause"]
 
-            self.controlsView = Message(self.UILayer, "Controls", allControls, dimensions = (400, 270), layerIndex = 0)
+            self.controlsView = Message(self.UILayer, "Controls", allControls, dimensions = (400, 130), layerIndex = 0)
 
     def togglePause(self, userPaused = False):
         self.pause = not self.pause
@@ -1313,20 +1328,9 @@ class TrackRacing (Scene):
     def handleEvents(self, events):
         global running
 
-        self.controllers = [pygame.joystick.Joystick(i) for i in range(pygame.joystick.get_count())]
-
         self.accelerationInput = 0
         self.steeringInput = 0
 
-        #Get input from connected controller
-        if len(self.controllers) > 0:
-            self.steeringInput = pygame.joystick.Joystick(0).get_axis(0)
-            self.accelerationInput = ((pygame.joystick.Joystick(0).get_axis(5)) / 2) + 0.5
-            braking = ((pygame.joystick.Joystick(0).get_axis(4)) / 2) + 0.5
-            if braking > 0:
-                self.accelerationInput = -braking
-
-        #If arrow/WASD keys pressed, override controller input
         keys = pygame.key.get_pressed()
         if keys[pygame.K_UP] or keys[pygame.K_DOWN] or keys[pygame.K_RIGHT] or keys[pygame.K_LEFT] or keys[pygame.K_w] or keys[pygame.K_s] or keys[pygame.K_a] or keys[pygame.K_d]:
             self.accelerationInput = [0, 0]
@@ -1337,16 +1341,10 @@ class TrackRacing (Scene):
 
         self.events = events
         for event in events:
-            #Reset car position
-            if event.type == pygame.JOYBUTTONDOWN:
-                if pygame.joystick.Joystick(0).get_button(2): #X
-                    self.reset()
-                if pygame.joystick.Joystick(0).get_button(6): #Menu
-                    self.togglePause(True)
-
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_r:
-                    self.reset()
+                    if self.accelerationInput[0] + self.accelerationInput[1] == 0:
+                        self.reset()
                 if event.key == pygame.K_p:
                     self.togglePause(True)
                 if event.key == pygame.K_l:
@@ -1376,17 +1374,14 @@ class TrackRacing (Scene):
         if self.uniquenessToken != self.trackEditor.mainTrack.getUniquenessToken(): #Track has changed
             if len(self.trackEditor.mainTrack.points) >= 2:
                 self.reset()
+                self.getUserPreferences()
                 self.updateMiniMapPoints(200, 200, 6)
-                self.trackSurface, self.originOffset = self.trackEditor.mainTrack.renderToSurface(self.colours, self.zoom)
+                self.reloadTrackSurface()
                 if (len(self.getTimes(self.trackEditor.mainTrack.UUID)) > 0) and (self.uniquenessToken is not None) and (self.previousTrackUUID == self.trackEditor.mainTrack.UUID):
                     self.outdatedTimes()
 
             self.uniquenessToken = self.trackEditor.mainTrack.getUniquenessToken()
             self.previousTrackUUID = self.trackEditor.mainTrack.UUID
-
-        if self.previousZoom != self.zoom:
-            self.trackSurface, self.originOffset = self.trackEditor.mainTrack.renderToSurface(self.colours, self.zoom)
-            self.previousZoom = self.zoom
 
         if self.splitScreen:
             if not self.pause:
@@ -1467,17 +1462,20 @@ class TrackRacing (Scene):
             if self.car.timerStart is not None:
                 self.racePos.show = True
 
-            if self.winner is self.car:
-                if self.car2.nearestSplineIndex > self.car.nearestSplineIndex:
-                    self.winner = self.car2
-            else:
-                if self.car.nearestSplineIndex > self.car2.nearestSplineIndex:
-                    self.winner = self.car
+            if (self.car.timerStart is not None) and (self.car.timerEnd is None):
+                startIndex = self.trackEditor.mainTrack.getStartPos()[2]
+                numOfPoints = len(self.trackEditor.mainTrack.splinePoints)
+                if self.winner is self.car:
+                    if (self.car2.nearestSplineIndex - startIndex) % numOfPoints > (self.car.nearestSplineIndex - startIndex) % numOfPoints:
+                        self.winner = self.car2
+                else:
+                    if (self.car.nearestSplineIndex - startIndex) % numOfPoints > (self.car2.nearestSplineIndex - startIndex) % numOfPoints:
+                        self.winner = self.car
 
-            if self.winner is self.car:
-                self.racePos.posX = (self.screenWidth / 2) + 50
-            else:
-                self.racePos.posX = 50
+                if self.winner is self.car:
+                    self.racePos.posX = (self.screenWidth / 2) + 50
+                else:
+                    self.racePos.posX = 50
 
         else:
             self.speedometer2.show = False
