@@ -1572,7 +1572,8 @@ class TrackRacing (Scene):
 
         if len(controlPoints) >= 3 and self.speedWarnings:
             splinePoints = self.trackEditor.mainTrack.splinePoints
-            futureIndex = self.trackEditor.mainTrack.getIndexFromDistance(self.car.nearestSplineIndex, 400 * (self.car.velocity.x / 300), not self.trackEditor.mainTrack.finishDir)
+            distanceToBreak = ((100 ** 2) - (self.car.velocity.x ** 2)) / (-2 * self.car.brakeDeceleration)
+            futureIndex = self.trackEditor.mainTrack.getIndexFromDistance(self.car.nearestSplineIndex, 200 + distanceToBreak, not self.trackEditor.mainTrack.finishDir)
 
             carBearing = bearing(splinePoints[self.car.nearestSplineIndex], splinePoints[(self.car.nearestSplineIndex + 1) % len(splinePoints)])
             futureBearing = bearing(splinePoints[futureIndex], splinePoints[(futureIndex + 1) % len(splinePoints)])
