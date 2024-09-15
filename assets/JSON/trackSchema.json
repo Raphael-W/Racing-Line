@@ -22,14 +22,12 @@
           "minimum": 10,
           "maximum": 30
         },
-        "closed": {
-          "type": "boolean"
-        },
         "finishIndex": {
           "type": [
             "number",
             "null"
-          ]
+          ],
+          "minimum": 0
         },
         "finishDir": {
           "type": [
@@ -44,7 +42,6 @@
       },
       "required": [
         "width",
-        "closed",
         "finishIndex",
         "finishDir",
         "referenceImage",

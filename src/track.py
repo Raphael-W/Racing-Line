@@ -198,7 +198,6 @@ class Track:
 
         points = self.returnPointCoords()
         properties = {"width"      : self.width,
-                      "closed"     : self.closed,
                       "finishIndex": self.finishIndex,
                       "finishDir"  : self.finishDir,
                       "referenceImage": referenceImageData}

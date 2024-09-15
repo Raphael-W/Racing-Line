@@ -563,34 +563,45 @@ class TrackEditor (Scene):
         def loadTrack(directory):
             with open(directory) as loadFile:
                 trackData = json.load(loadFile)
-
-                pointCoords = trackData["points"]
-                self.mainTrack.loadTrackPoints(pointCoords)
-
                 trackProperties = trackData["properties"]
+                pointCoords = trackData["points"]
+
+                if pointCoords[0] == pointCoords[-1]:
+                    trackClosed = True
+                else:
+                    trackClosed = False
+
+                self.mainTrack.loadTrackPoints(pointCoords)
 
                 self.trackWidthSlider.updateValue(trackProperties["width"], update = False)
                 self.mainTrack.width = trackProperties["width"]
 
                 self.mainTrack.finishIndex = trackProperties["finishIndex"]
+                if self.mainTrack.finishIndex is not None:
+                    if self.mainTrack.finishIndex >= len(pointCoords):
+                        self.mainTrack.finishIndex = None
+
                 self.mainTrack.finishDir = trackProperties["finishDir"]
-                self.mainTrack.updateCloseStatus(trackProperties["closed"], update = False)
+                self.mainTrack.updateCloseStatus(trackClosed, update = False)
 
                 self.referenceImageScale = trackProperties["referenceImageScale"]
 
                 self.mainTrack.UUID = trackData["UUID"]
 
                 if trackProperties["referenceImage"] is not None:
-                    referenceImageData = PIL.Image.open(BytesIO(base64.b64decode(trackProperties["referenceImage"])))
-                    referenceImageSaveDir = os.path.normpath(os.path.join(executionDir, "temp"))
+                    try:
+                        referenceImageData = PIL.Image.open(BytesIO(base64.b64decode(trackProperties["referenceImage"])))
+                        referenceImageSaveDir = os.path.normpath(os.path.join(executionDir, "temp"))
 
-                    if not os.path.exists(referenceImageSaveDir):
-                        os.makedirs(referenceImageSaveDir)
+                        if not os.path.exists(referenceImageSaveDir):
+                            os.makedirs(referenceImageSaveDir)
 
-                    referenceImageSaveDir = os.path.normpath(os.path.join(executionDir, "temp/referenceImage.png"))
-                    referenceImageData.save(referenceImageSaveDir)
-                    self.mainTrack.referenceImageDir = referenceImageSaveDir
-                    self.setReferenceImage(referenceImageSaveDir, userPerformed = False)
+                        referenceImageSaveDir = os.path.normpath(os.path.join(executionDir, "temp/referenceImage.png"))
+                        referenceImageData.save(referenceImageSaveDir)
+                        self.mainTrack.referenceImageDir = referenceImageSaveDir
+                        self.setReferenceImage(referenceImageSaveDir, userPerformed = False)
+                    except:
+                        self.mainTrack.referenceImageDir = None
 
                 self.getUserPreferences()
 

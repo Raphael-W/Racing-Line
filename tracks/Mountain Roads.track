@@ -72,7 +72,6 @@
     "UUID": "d2130f9d-5c00-11ef-b020-004238cc4e20",
     "properties": {
         "width": 15.6,
-        "closed": true,
         "finishIndex": 0.05769230769230749,
         "finishDir": true,
         "referenceImage": null,

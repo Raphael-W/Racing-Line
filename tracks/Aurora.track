@@ -104,7 +104,6 @@
     "UUID": "cc232020-5c00-11ef-97b2-004238cc4e20",
     "properties": {
         "width": 17.4,
-        "closed": true,
         "finishIndex": 22.45,
         "finishDir": true,
         "referenceImage": null,
