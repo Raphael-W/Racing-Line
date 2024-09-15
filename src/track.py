@@ -694,11 +694,15 @@ class Track:
         maxCorneringSpeed = ((cornerAngle - yInt) / grad)
         return maxCorneringSpeed
 
-    def getIndexFromDistance(self, currentIndex, distance, reverse = False):
+    def getIndexFromDistance(self, currentIndex, distance, reverse = False, closed = True):
         totalDistance = 0
         index = currentIndex
+        if index is None: return None
         while totalDistance < distance:
             nextIndex = (index + 1) % len(self.splinePoints)
+            if not closed and abs(index - nextIndex) > 1:
+                return None
+
             if reverse:
                 nextIndex = (index - 1) % len(self.splinePoints)
             totalDistance += pointDistance(self.splinePoints[index], self.splinePoints[nextIndex])

@@ -1051,6 +1051,8 @@ class TrackRacing (Scene):
     def __init__(self, trackEditor):
         super().__init__()
         self.trackEditor = trackEditor
+        self.track = self.trackEditor.mainTrack
+        
         self.screenBorder = 5
         self.uniquenessToken = None
         self.previousTrackUUID = None
@@ -1170,8 +1172,8 @@ class TrackRacing (Scene):
         self.reloadTrackSurface()
 
     def reloadTrackSurface(self):
-        self.trackEditor.mainTrack.showRacingLine = self.racingLineSwitch.value
-        self.trackSurface, self.originOffset = self.trackEditor.mainTrack.renderToSurface(self.colours, self.zoom)
+        self.track.showRacingLine = self.racingLineSwitch.value
+        self.trackSurface, self.originOffset = self.track.renderToSurface(self.colours, self.zoom)
 
     def reset(self):
         self.car.reset(2 * int(self.splitScreen))
@@ -1187,7 +1189,7 @@ class TrackRacing (Scene):
 
     def deleteRaceTimes(self):
         def delete():
-            deleteTrackTimes(self.trackEditor.mainTrack.UUID)
+            deleteTrackTimes(self.track.UUID)
             message.close()
             self.viewLeaderboard()
 
@@ -1204,7 +1206,7 @@ class TrackRacing (Scene):
 
     def outdatedTimes(self):
         def delete():
-            deleteTrackTimes(self.trackEditor.mainTrack.UUID)
+            deleteTrackTimes(self.track.UUID)
             message.close()
 
         message = Message(self.UILayer, "Reset Times?", "The track has been modified since you last set a race time", "Ignore", "close",
@@ -1213,18 +1215,18 @@ class TrackRacing (Scene):
     def uploadTime(self, raceTime):
         conn = sqlite3.connect(directories["raceTimes"])
         cursor = conn.cursor()
-        cursor.execute(f'''INSERT INTO TIMES VALUES ('{self.trackEditor.mainTrack.UUID}', {raceTime}, datetime('now','localtime'))''')
+        cursor.execute(f'''INSERT INTO TIMES VALUES ('{self.track.UUID}', {raceTime}, datetime('now','localtime'))''')
         conn.commit()
         conn.close()
 
     def deleteSlowTimes(self):
-        times = self.getTimes(self.trackEditor.mainTrack.UUID)
+        times = self.getTimes(self.track.UUID)
         if len(times) > 10:
             slowestAcceptableTime = times[9]
 
             conn = sqlite3.connect(directories["raceTimes"])
             cursor = conn.cursor()
-            cursor.execute(f'''DELETE FROM TIMES WHERE UUID = "{self.trackEditor.mainTrack.UUID}" and (time > {slowestAcceptableTime[0]} or (time = {slowestAcceptableTime[0]} and date > "{slowestAcceptableTime[1]}"))''')
+            cursor.execute(f'''DELETE FROM TIMES WHERE UUID = "{self.track.UUID}" and (time > {slowestAcceptableTime[0]} or (time = {slowestAcceptableTime[0]} and date > "{slowestAcceptableTime[1]}"))''')
             conn.commit()
             conn.close()
 
@@ -1245,7 +1247,7 @@ class TrackRacing (Scene):
         self.updateUserPreferences()
 
     def toggleRacingLine(self, value):
-        self.trackEditor.mainTrack.showRacingLine = value
+        self.track.showRacingLine = value
         self.updateUserPreferences()
         self.reloadTrackSurface()
 
@@ -1259,7 +1261,7 @@ class TrackRacing (Scene):
         if self.leaderboardView in self.UILayer.elements:
             closeLeaderboard()
         else:
-            times = self.getTimes(self.trackEditor.mainTrack.UUID)
+            times = self.getTimes(self.track.UUID)
 
             leaderboardMessages = []
             if len(times) == 0:
@@ -1305,7 +1307,7 @@ class TrackRacing (Scene):
     def updateMiniMapPoints(self, width, height, thickness):
         self.miniMapThickness = thickness
         self.miniMapSurface = pygame.Surface((width, height), pygame.SRCALPHA)
-        trackPoints = self.trackEditor.mainTrack.splinePoints
+        trackPoints = self.track.splinePoints
         xPoints = [point[0] for point in trackPoints]
         yPoints = [point[1] for point in trackPoints]
         self.topLeftCornerMiniMap = (min(xPoints), min(yPoints))
@@ -1332,10 +1334,10 @@ class TrackRacing (Scene):
             leftSide.append(calculateSide(self.minimapPoints, pIndex, -(thickness / 2)))
             rightSide.append(calculateSide(self.minimapPoints, pIndex, (thickness / 2)))
 
-        polygon = formPolygon(leftSide, rightSide, close = self.trackEditor.mainTrack.closed)
+        polygon = formPolygon(leftSide, rightSide, close = self.track.closed)
 
-        pygame.draw.aalines(self.miniMapSurface, (200, 200, 200), self.trackEditor.mainTrack.closed, leftSide)
-        pygame.draw.aalines(self.miniMapSurface, (200, 200, 200), self.trackEditor.mainTrack.closed, rightSide)
+        pygame.draw.aalines(self.miniMapSurface, (200, 200, 200), self.track.closed, leftSide)
+        pygame.draw.aalines(self.miniMapSurface, (200, 200, 200), self.track.closed, rightSide)
         pygame.draw.polygon(self.miniMapSurface, (200, 200, 200), polygon)
 
     def displayMiniMap(self, pos, positions):
@@ -1398,17 +1400,17 @@ class TrackRacing (Scene):
 
         screen.fill(self.colours["background"])
 
-        if self.uniquenessToken != self.trackEditor.mainTrack.getUniquenessToken(): #Track has changed
-            if len(self.trackEditor.mainTrack.points) >= 2:
+        if self.uniquenessToken != self.track.getUniquenessToken(): #Track has changed
+            if len(self.track.points) >= 2:
                 self.reset()
                 self.getUserPreferences()
                 self.updateMiniMapPoints(200, 200, 6)
                 self.reloadTrackSurface()
-                if (len(self.getTimes(self.trackEditor.mainTrack.UUID)) > 0) and (self.uniquenessToken is not None) and (self.previousTrackUUID == self.trackEditor.mainTrack.UUID):
+                if (len(self.getTimes(self.track.UUID)) > 0) and (self.uniquenessToken is not None) and (self.previousTrackUUID == self.track.UUID):
                     self.outdatedTimes()
 
-            self.uniquenessToken = self.trackEditor.mainTrack.getUniquenessToken()
-            self.previousTrackUUID = self.trackEditor.mainTrack.UUID
+            self.uniquenessToken = self.track.getUniquenessToken()
+            self.previousTrackUUID = self.track.UUID
 
         if self.splitScreen:
             acceleration = self.accelerationInput[0]
@@ -1463,7 +1465,7 @@ class TrackRacing (Scene):
                     if validTime:
                         raceTime = float("{:.2f}".format(car.timerEnd - car.timerStart))
 
-                        times = self.getTimes(self.trackEditor.mainTrack.UUID)
+                        times = self.getTimes(self.track.UUID)
                         if len(times) > 0:
                             if times[0][0] > raceTime:
                                 timeDifference = float("{:.2f}".format(times[0][0] - raceTime))
@@ -1489,19 +1491,19 @@ class TrackRacing (Scene):
                 self.racePos.show = False
 
             if (self.car.timerStart is not None) and (self.car.timerEnd is None):
-                startIndex = self.trackEditor.mainTrack.getStartPos()[2]
-                numOfPoints = len(self.trackEditor.mainTrack.splinePoints)
+                startIndex = self.track.getStartPos()[2]
+                numOfPoints = len(self.track.splinePoints)
                 if self.car.nearestSplineIndex != self.car2.nearestSplineIndex:
                     if self.winner is self.car:
                         aheadCheck = (((self.car2.nearestSplineIndex - startIndex) % numOfPoints) > ((self.car.nearestSplineIndex - startIndex) % numOfPoints))
-                        if not self.trackEditor.mainTrack.finishDir:
+                        if not self.track.finishDir:
                             aheadCheck = not aheadCheck
 
                         if (aheadCheck and not self.car2.dead) or self.car.dead:
                             self.winner = self.car2
                     else:
                         aheadCheck = (((self.car.nearestSplineIndex - startIndex) % numOfPoints) > ((self.car2.nearestSplineIndex - startIndex) % numOfPoints))
-                        if not self.trackEditor.mainTrack.finishDir:
+                        if not self.track.finishDir:
                             aheadCheck = not aheadCheck
 
                         if (aheadCheck and not self.car.dead) or self.car2.dead:
@@ -1558,29 +1560,44 @@ class TrackRacing (Scene):
             self.deleteRaceTimesIcon.posX = self.deleteRaceTimesButton.posX - 1
             self.deleteRaceTimesIcon.posY = self.deleteRaceTimesButton.posY - 1
 
-        carPositions = [self.trackEditor.mainTrack.splinePoints[self.car.nearestSplineIndex]]
+        carPositions = [self.track.splinePoints[self.car.nearestSplineIndex]]
         if self.splitScreen:
-            carPositions.append(self.trackEditor.mainTrack.splinePoints[self.car2.nearestSplineIndex])
+            carPositions.append(self.track.splinePoints[self.car2.nearestSplineIndex])
 
         self.displayMiniMap((241, 320), carPositions)
         if self.splitScreen:
             self.displayMiniMap(((self.screenWidth / 2) + 241, 320), carPositions[::-1])
         self.UILayer.display(self.screenWidth, self.screenHeight, self.events)
-        controlPoints = self.trackEditor.mainTrack.returnPointCoords()
-        if self.trackEditor.mainTrack.closed:
+
+
+        controlPoints = self.track.returnPointCoords()
+        if self.track.closed:
             controlPoints = controlPoints[:-1]
 
-        if len(controlPoints) >= 3 and self.speedWarnings:
-            splinePoints = self.trackEditor.mainTrack.splinePoints
-            distanceToBreak = ((100 ** 2) - (self.car.velocity.x ** 2)) / (-2 * self.car.brakeDeceleration)
-            futureIndex = self.trackEditor.mainTrack.getIndexFromDistance(self.car.nearestSplineIndex, 200 + distanceToBreak, not self.trackEditor.mainTrack.finishDir)
+        cars = [self.car]
+        if self.splitScreen:
+            cars = [self.car, self.car2]
 
-            carBearing = bearing(splinePoints[self.car.nearestSplineIndex], splinePoints[(self.car.nearestSplineIndex + 1) % len(splinePoints)])
-            futureBearing = bearing(splinePoints[futureIndex], splinePoints[(futureIndex + 1) % len(splinePoints)])
-            bearingDifference = abs(futureBearing - carBearing)
+        for car in cars:
+            if len(controlPoints) >= 3 and self.speedWarnings:
+                splinePoints = self.track.splinePoints
+                distanceToBreak = ((100 ** 2) - (car.velocity.x ** 2)) / (-2 * car.brakeDeceleration)
+                futureIndex = self.track.getIndexFromDistance(car.nearestSplineIndex, 200 + distanceToBreak, not self.track.finishDir, self.track.closed)
 
-            if self.trackEditor.mainTrack.calculateMaxCorneringSpeed(180 - bearingDifference) < self.car.velocity.x:
-                screen.blit(self.slowSign, ((self.screenWidth / 2) - 25, self.screenHeight - 80))
+                if futureIndex is not None:
+                    carBearing = bearing(splinePoints[car.nearestSplineIndex], splinePoints[(car.nearestSplineIndex + 1) % len(splinePoints)])
+                    futureBearing = bearing(splinePoints[futureIndex], splinePoints[(futureIndex + 1) % len(splinePoints)])
+                    bearingDifference = abs(futureBearing - carBearing)
+
+                    if self.track.calculateMaxCorneringSpeed(180 - bearingDifference) < car.velocity.x:
+                        posX = (self.screenWidth / 2) - 25
+                        if self.splitScreen:
+                            if car is self.car:
+                                posX = (3 * (self.screenWidth / 4)) - 25
+                            if car is self.car2:
+                                posX = (1 * (self.screenWidth / 4)) - 25
+
+                        screen.blit(self.slowSign, (posX, self.screenHeight - 80))
 
 trackEditorScene = TrackEditor()
 trackRacingScene = TrackRacing(trackEditorScene)

@@ -69,6 +69,8 @@ class Car:
         self.startPos = (0, 0)
         self.crossedFinishLine = False
 
+        self.updateNearestSplineIndex()
+
     #Sets position of car
     def setPosition(self, posX, posY, facing = 0):
         self.position = Vector2(posX, posY)
