@@ -236,7 +236,6 @@ class Car:
                 angularVelocity = self.velocity.x / turningRadius
             else:
                 angularVelocity = 0
-
             self.position += self.velocity.rotate(-self.rotation) * deltaTime
             self.rotation += math.degrees(angularVelocity) * deltaTime
 

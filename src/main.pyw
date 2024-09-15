@@ -1,4 +1,5 @@
 import json
+import math
 import sqlite3
 import time
 
@@ -99,7 +100,7 @@ class SceneManager:
         self.scenes = []
         self.currentScene = 0
 
-        self.changeSceneDropdown = Dropdown(programUI, (30, 30), "", (200, 25), self.getSceneNames(), self.currentScene, action = self.setScene)
+        self.changeSceneDropdown = Dropdown(programUI, (30, 30), "", (200, 25), self.getSceneNames(), self.currentScene, colour = (80, 80, 80), action = self.setScene)
 
     def addScene(self, scene, name):
         scene.name = name
@@ -272,7 +273,7 @@ class TrackEditor (Scene):
         self.redoButton = Button(self.UILayer, (295, 95), "SE", (30, 30), "", 12, (100, 100, 100), action = self.redo)
         self.redoIcon = Image(self.UILayer, (self.redoButton.posX - 2, self.redoButton.posY - 2), "SE", directories["redo"], 0.8, colour = self.colours["white"])
 
-        self.viewModeDropdown = Dropdown(self.UILayer, (225, 240), "SE", (150, 25),["Track", "Skeleton", "Curve", "Spline Dots", "Display"], 0, action = self.setViewMode)
+        self.viewModeDropdown = Dropdown(self.UILayer, (225, 240), "SE", (150, 25),["Track", "Skeleton", "Curve", "Spline Dots"], 0, action = self.setViewMode)
         self.viewModeLabel = Label(self.UILayer, 15, (330, 235), "SE", "View Mode", (200, 200, 200))
 
         self.configAccordion = Accordion(self.UILayer, (50, 50), "SE", (305, 535), "Untitled Track",
@@ -314,7 +315,6 @@ class TrackEditor (Scene):
 
         preferenceData["trackRes"] = trackRes
         preferenceData["antialiasing"] = self.antialiasingSwitch.value
-        preferenceData["racingLine"] = self.racingLineSwitch.value
 
         with open(directories["preferences"], "w") as outputFile:
             json.dump(preferenceData, outputFile, indent = 4)
@@ -328,7 +328,6 @@ class TrackEditor (Scene):
                 self.trackResSlider.updateValue(preferenceData["trackRes"])
 
             self.antialiasingSwitch.updateValue(preferenceData["antialiasing"])
-            self.racingLineSwitch.updateValue(preferenceData["racingLine"])
 
     def returnUserValues(self):
         return [self.trackResSlider.value, self.autoResSwitch.value, self.antialiasingSwitch.value, self.racingLineSwitch.value]
@@ -1092,25 +1091,41 @@ class TrackRacing (Scene):
 
         self.racePos = Label(self.UILayer, 30, (0, 80), "NW", "1st", (215, 183, 64), True)
 
-        self.viewLeaderboardButton = Button(self.UILayer, (90, 250), "SW", (200, 40), "View Leaderboard", 15, (100, 100, 100), action = self.viewLeaderboard)
+        self.slowSign = pygame.Surface((150, 50), pygame.SRCALPHA)
+        pygame.draw.rect(self.slowSign, (130, 0, 0), (0, 0, 150, 50))
+        font = pygame.freetype.Font(directories["mainFont"], 30)
+        font.strong = True
+        textSize = font.get_rect("SLOW!")
+        font.render_to(self.slowSign, ((150 // 2) - (textSize.width // 2), (50 // 2) - (textSize.height // 2)), "SLOW!", (200, 200, 200))
+
+        self.viewLeaderboardButton = Button(self.UILayer, (90, 310), "SW", (200, 40), "View Leaderboard", 15, (100, 100, 100), action = self.viewLeaderboard)
         self.leaderboardView = None
 
-        self.viewControlsButton = Button(self.UILayer, (90, 200), "SW", (200, 40), "View Controls", 15, (100, 100, 100), action = self.viewControls)
+        self.viewControlsButton = Button(self.UILayer, (90, 260), "SW", (200, 40), "View Controls", 15, (100, 100, 100), action = self.viewControls)
         self.controlsView = None
 
         self.deleteRaceTimesButton = Button(self.UILayer, (105, 335), "SE", (30, 30), "", 12, (66, 41, 41), action = self.deleteRaceTimes, show = False)
         self.deleteRaceTimesIcon = Image(self.UILayer, (self.deleteRaceTimesButton.posX - 1, self.deleteRaceTimesButton.posY - 1), "SE", directories["bin"], 0.7, colour = (200, 200, 200), show = False)
 
-        self.zoomAdjustmentSlider = Slider(self.UILayer, 15, (200, 200, 200), self.colours["controlPoint"], (140, 130), "SW", 1, 105, (self.lowerZoomLimit, self.upperZoomLimit), 2.0001, precision = 1, increment = 0.1, action = self.updateZoom, suffix = 'x', finishedUpdatingAction = lambda x = None, y = None: self.updateUserPreferences())
-        self.zoomAdjustmentLabel = Label(self.UILayer, 15, (80, 132), "SW", "Zoom", (200, 200, 200))
+        self.zoomAdjustmentSlider = Slider(self.UILayer, 15, (200, 200, 200), self.colours["controlPoint"], (140, 190), "SW", 1, 105, (self.lowerZoomLimit, self.upperZoomLimit), 2.0001, precision = 1, increment = 0.1, action = self.updateZoom, suffix = 'x', finishedUpdatingAction = lambda x = None, y = None: self.updateUserPreferences())
+        self.zoomAdjustmentLabel = Label(self.UILayer, 15, (80, 192), "SW", "Zoom", (200, 200, 200))
 
-        self.multiplayerSwitch = Switch(self.UILayer, (220, 100), "SW", 0.8, value = False, action = self.toggleMultiplayer)
-        self.multiplayerLabel = Label(self.UILayer, 15, (80, 98), "SW", "Split-Screen", (200, 200, 200))
+        self.multiplayerSwitch = Switch(self.UILayer, (250, 160), "SW", 0.8, value = False, action = self.toggleMultiplayer)
+        self.multiplayerLabel = Label(self.UILayer, 15, (98, 158), "SW", "Split-screen", (200, 200, 200))
         self.multiplayerSwitch.trueColour = (38, 87, 38)
 
-        self.settingsAccordion = Accordion(self.UILayer, (50, 50), "SW", (280, 265), "Settings",
+        self.speedWarningSwitch = Switch(self.UILayer, (250, 130), "SW", 0.8, value = False, action = self.toggleSpeedWarnings)
+        self.speedWarningLabel = Label(self.UILayer, 15, (80, 128), "SW", "Speed Warnings", (200, 200, 200))
+        self.speedWarningSwitch.trueColour = (38, 87, 38)
+
+        self.racingLineSwitch = Switch(self.UILayer, (250, 100), "SW", 0.8, value = False, action = self.toggleRacingLine)
+        self.racingLineLabel = Label(self.UILayer, 15, (107, 98), "SW", "Racing Line", (200, 200, 200))
+        self.racingLineSwitch.trueColour = (38, 87, 38)
+
+        self.settingsAccordion = Accordion(self.UILayer, (50, 50), "SW", (280, 325), "Settings",
                                            [self.viewLeaderboardButton, self.viewControlsButton, self.zoomAdjustmentSlider,
-                                            self.zoomAdjustmentLabel, self.multiplayerSwitch, self.multiplayerLabel], openDir = "r")
+                                            self.zoomAdjustmentLabel, self.multiplayerSwitch, self.multiplayerLabel, self.speedWarningSwitch,
+                                            self.speedWarningLabel, self.racingLineSwitch, self.racingLineLabel], openDir = "r")
 
         self.car = Car(pygame, screen, directories, self.trackEditor.mainTrack)
         self.car2 = Car(pygame, screen, directories, self.trackEditor.mainTrack)
@@ -1137,6 +1152,8 @@ class TrackRacing (Scene):
             preferenceData = json.load(loadFile)
 
         preferenceData["racingZoom"] = self.zoom
+        preferenceData["racingLine"] = self.racingLineSwitch.value
+        preferenceData["speedWarnings"] = self.speedWarningSwitch.value
 
         with open(directories["preferences"], "w") as outputFile:
             json.dump(preferenceData, outputFile, indent = 4)
@@ -1145,12 +1162,15 @@ class TrackRacing (Scene):
         with open(directories["preferences"]) as loadFile:
             preferenceData = json.load(loadFile)
             self.zoomAdjustmentSlider.updateValue(preferenceData["racingZoom"])
+            self.racingLineSwitch.updateValue(preferenceData["racingLine"])
+            self.speedWarningSwitch.updateValue(preferenceData["speedWarnings"])
 
     def updateZoom(self, value):
         self.zoom = round(value, 1)
         self.reloadTrackSurface()
 
     def reloadTrackSurface(self):
+        self.trackEditor.mainTrack.showRacingLine = self.racingLineSwitch.value
         self.trackSurface, self.originOffset = self.trackEditor.mainTrack.renderToSurface(self.colours, self.zoom)
 
     def reset(self):
@@ -1220,8 +1240,16 @@ class TrackRacing (Scene):
         self.splitScreen = value
         self.reset()
 
+    def toggleSpeedWarnings(self, value):
+        self.speedWarnings = value
+        self.updateUserPreferences()
+
+    def toggleRacingLine(self, value):
+        self.trackEditor.mainTrack.showRacingLine = value
+        self.updateUserPreferences()
+        self.reloadTrackSurface()
+
     def viewLeaderboard(self):
-        self.settingsAccordion.setCollapseStatus(True)
         def closeLeaderboard():
             self.leaderboardView.close()
             self.deleteRaceTimesButton.show = False
@@ -1255,7 +1283,6 @@ class TrackRacing (Scene):
                 self.deleteRaceTimesIcon.show = True
 
     def viewControls(self):
-        self.settingsAccordion.setCollapseStatus(True)
         if self.controlsView in self.UILayer.elements:
             self.controlsView.close()
         else:
@@ -1456,7 +1483,7 @@ class TrackRacing (Scene):
         if self.splitScreen:
             self.speedometer2.show = True
             self.timer2.show = True
-            if self.car.timerStart is not None:
+            if self.car.timerStart is not None and (not self.car.dead or not self.car2.dead):
                 self.racePos.show = True
             else:
                 self.racePos.show = False
@@ -1464,12 +1491,21 @@ class TrackRacing (Scene):
             if (self.car.timerStart is not None) and (self.car.timerEnd is None):
                 startIndex = self.trackEditor.mainTrack.getStartPos()[2]
                 numOfPoints = len(self.trackEditor.mainTrack.splinePoints)
-                if self.winner is self.car:
-                    if (self.car2.nearestSplineIndex - startIndex) % numOfPoints > (self.car.nearestSplineIndex - startIndex) % numOfPoints:
-                        self.winner = self.car2
-                else:
-                    if (self.car.nearestSplineIndex - startIndex) % numOfPoints > (self.car2.nearestSplineIndex - startIndex) % numOfPoints:
-                        self.winner = self.car
+                if self.car.nearestSplineIndex != self.car2.nearestSplineIndex:
+                    if self.winner is self.car:
+                        aheadCheck = (((self.car2.nearestSplineIndex - startIndex) % numOfPoints) > ((self.car.nearestSplineIndex - startIndex) % numOfPoints))
+                        if not self.trackEditor.mainTrack.finishDir:
+                            aheadCheck = not aheadCheck
+
+                        if (aheadCheck and not self.car2.dead) or self.car.dead:
+                            self.winner = self.car2
+                    else:
+                        aheadCheck = (((self.car.nearestSplineIndex - startIndex) % numOfPoints) > ((self.car2.nearestSplineIndex - startIndex) % numOfPoints))
+                        if not self.trackEditor.mainTrack.finishDir:
+                            aheadCheck = not aheadCheck
+
+                        if (aheadCheck and not self.car.dead) or self.car2.dead:
+                            self.winner = self.car
 
                 if self.winner is self.car:
                     self.racePos.posX = (self.screenWidth / 2) + 50
@@ -1530,6 +1566,20 @@ class TrackRacing (Scene):
         if self.splitScreen:
             self.displayMiniMap(((self.screenWidth / 2) + 241, 320), carPositions[::-1])
         self.UILayer.display(self.screenWidth, self.screenHeight, self.events)
+        controlPoints = self.trackEditor.mainTrack.returnPointCoords()
+        if self.trackEditor.mainTrack.closed:
+            controlPoints = controlPoints[:-1]
+
+        if len(controlPoints) >= 3 and self.speedWarnings:
+            splinePoints = self.trackEditor.mainTrack.splinePoints
+            futureIndex = self.trackEditor.mainTrack.getIndexFromDistance(self.car.nearestSplineIndex, 400 * (self.car.velocity.x / 300), not self.trackEditor.mainTrack.finishDir)
+
+            carBearing = bearing(splinePoints[self.car.nearestSplineIndex], splinePoints[(self.car.nearestSplineIndex + 1) % len(splinePoints)])
+            futureBearing = bearing(splinePoints[futureIndex], splinePoints[(futureIndex + 1) % len(splinePoints)])
+            bearingDifference = abs(futureBearing - carBearing)
+
+            if self.trackEditor.mainTrack.calculateMaxCorneringSpeed(180 - bearingDifference) < self.car.velocity.x:
+                screen.blit(self.slowSign, ((self.screenWidth / 2) - 25, self.screenHeight - 80))
 
 trackEditorScene = TrackEditor()
 trackRacingScene = TrackRacing(trackEditorScene)

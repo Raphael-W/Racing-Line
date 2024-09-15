@@ -715,7 +715,7 @@ class Message(UIElement):
             self.xAction()
 
 class Dropdown(UIElement):
-    def __init__(self, layer, pos, stick, dimensions, values, itemIndex, disabledIndexes = [], action = None, show = True, layerIndex = -1):
+    def __init__(self, layer, pos, stick, dimensions, values, itemIndex, disabledIndexes = [], colour = (100, 100, 100), action = None, show = True, layerIndex = -1):
         super().__init__(layer, pos, stick, show, layerIndex)
         self.values = values
         self.index = itemIndex
@@ -724,7 +724,8 @@ class Dropdown(UIElement):
         self.action = action
 
         self.font = layer.pygame.freetype.Font(layer.fontName, 15)
-        self.colour = (200, 200, 200)
+        self.colour = colour
+        self.currentColour = self.colour
 
         self.width, self.height = dimensions
         self.boundingBox = self.layer.pygame.Rect(pos, dimensions)
@@ -752,9 +753,9 @@ class Dropdown(UIElement):
         self.boundingBox = self.layer.pygame.Rect((self.contextualPosX, self.contextualPosY), (self.width, totalHeight))
 
         if self.mouseHovering:
-            self.colour = (75, 75, 75)
+            self.currentColour = (self.colour[0] - 25, self.colour[1] - 25, self.colour[2] - 25)
         else:
-            self.colour = (100, 100, 100)
+            self.currentColour = self.colour
 
         self.pointSelected = self.mouseHovering and self.layer.pygame.mouse.get_pressed()[0]
         if self.pointSelected and self.stepBeforeClick:
@@ -812,7 +813,7 @@ class Dropdown(UIElement):
                 self.font.render_to(self.layer.screen, (self.contextualPosX + 10, self.contextualPosY + self.height + (22 * i) + 5), str(self.values[currentIndex]), colour)
                 currentIndex += 1
 
-        self.layer.pygame.draw.rect(self.layer.screen, self.colour, (self.contextualPosX, self.contextualPosY, self.width, self.height), border_radius = 10)
+        self.layer.pygame.draw.rect(self.layer.screen, self.currentColour, (self.contextualPosX, self.contextualPosY, self.width, self.height), border_radius = 10)
         self.font.render_to(self.layer.screen, (self.contextualPosX + 10, self.contextualPosY + (self.height / 2) - 6), str(self.values[self.index]), (200, 200, 200))
 
     def getCurrent(self):

@@ -687,6 +687,24 @@ class Track:
 
         self.offsetAllTrackPoints()
 
+    def calculateMaxCorneringSpeed(self, cornerAngle):
+        grad = 0.24 + (0.005 * (self.width - 12))
+        yInt = 165.3 - (grad * 680)
+
+        maxCorneringSpeed = ((cornerAngle - yInt) / grad)
+        return maxCorneringSpeed
+
+    def getIndexFromDistance(self, currentIndex, distance, reverse = False):
+        totalDistance = 0
+        index = currentIndex
+        while totalDistance < distance:
+            nextIndex = (index + 1) % len(self.splinePoints)
+            if reverse:
+                nextIndex = (index - 1) % len(self.splinePoints)
+            totalDistance += pointDistance(self.splinePoints[index], self.splinePoints[nextIndex])
+            index = nextIndex
+        return index
+
     #Checks whether track should be closed based off of whether end and start points are at the same positions
     def shouldTrackBeClosed(self):
         pointCoords = self.returnPointCoords()
