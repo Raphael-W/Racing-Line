@@ -46,22 +46,27 @@ class UIElement:
         #Apply stickiness to position
         vertValid = not (("n" in self.stick) and ("s" in self.stick))
         horValid = not (("e" in self.stick) and ("w" in self.stick))
-        charValid = all([True for char in self.stick if char in ["n", "e", "s", "w"]])
+        charValid = all([True for char in self.stick if char in ["n", "e", "s", "w", "c"]])
 
         horStick = None
         vertStick = None
         for char in self.stick:
-            if char in ["n", "s"]:
+            if char in ["n", "s", "c"]:
                 vertStick = char
-            elif char in ["e", "w"]:
+            if char in ["e", "w", "c"]:
                 horStick = char
+
 
         if vertValid and horValid and charValid and (len(self.stick) > 0):
             if horStick == "e":
                 contextualPosX = self.layer.screenWidth - self.posX
+            elif horStick == "c":
+                contextualPosX = (self.layer.screenWidth / 2) - self.posX
 
             if vertStick == "s":
                 contextualPosY = self.layer.screenHeight - self.posY
+            elif vertStick == "c":
+                contextualPosY = (self.layer.screenHeight / 2) - self.posY
 
         self.contextualPosX, self.contextualPosY = contextualPosX, contextualPosY
 
@@ -1063,6 +1068,26 @@ class FileSaver(UIElement):
         titleCenterX = self.boxCornerX + (self.width / 2) - (self.titleFont.get_rect("Save").size[0] / 2)
         self.titleFont.render_to(self.layer.screen, (titleCenterX, self.boxCornerY + 25), "Save", (200, 200, 200))
 
+class KeyboardKeyIcon(UIElement):
+    def __init__(self, layer, pos, stick, character, show = True):
+        super().__init__(layer, pos, stick, show, -1)
+
+        self.character = character
+        self.font = layer.pygame.freetype.Font(layer.fontName, 20)
+        self.surface = self.createKey()
+
+    def createKey(self):
+        surface = self.layer.pygame.Surface((30, 30), self.layer.pygame.SRCALPHA)
+        self.layer.pygame.draw.rect(surface, (120, 120, 120), (0, 0, 30, 30), border_radius = 8)
+
+        textSize = self.font.get_rect(self.character)
+        self.font.render_to(surface, (15 - (textSize.width / 2), 15 - (textSize.height / 2)), self.character, (200, 200, 200))
+
+        return surface
+
+    def display(self):
+        self.updateContextualPos()
+        self.layer.screen.blit(self.surface, (self.contextualPosX, self.contextualPosY))
 
 class Layer:
     def __init__(self, screen, pygame, fontName, directories):

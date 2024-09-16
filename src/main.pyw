@@ -1140,6 +1140,35 @@ class TrackRacing (Scene):
                                             self.zoomAdjustmentLabel, self.multiplayerSwitch, self.multiplayerLabel, self.speedWarningSwitch,
                                             self.speedWarningLabel, self.racingLineSwitch, self.racingLineLabel], openDir = "r")
 
+
+        self.controlsKeyW = KeyboardKeyIcon(self.UILayer, (0, 120), "c", "W", show = False)
+        self.controlsKeyA = KeyboardKeyIcon(self.UILayer, (32, 88), "c", "A", show = False)
+        self.controlsKeyS = KeyboardKeyIcon(self.UILayer, (0, 88), "c", "S", show = False)
+        self.controlsKeyD = KeyboardKeyIcon(self.UILayer, (-32, 88), "c", "D", show = False)
+
+        self.orLabel = Label(self.UILayer, 15, (-80, 98), "c", "OR", (200, 200, 200), bold = True, show = False)
+
+        self.controlsKeyUp = KeyboardKeyIcon(self.UILayer, (-150, 120), "c", "↑", show = False)
+        self.controlsKeyLeft = KeyboardKeyIcon(self.UILayer, (-118, 88), "c", "←", show = False)
+        self.controlsKeyDown = KeyboardKeyIcon(self.UILayer, (-150, 88), "c", "↓", show = False)
+        self.controlsKeyRight = KeyboardKeyIcon(self.UILayer, (-182, 88), "c", "→", show = False)
+
+        self.controlsKeyR = KeyboardKeyIcon(self.UILayer, (0, 26), "c", "R", show = False)
+        self.controlsKeyP = KeyboardKeyIcon(self.UILayer, (0, -24), "c", "P", show = False)
+        self.controlsKeyL = KeyboardKeyIcon(self.UILayer, (0, -74), "c", "L", show = False)
+        self.controlsKeyC = KeyboardKeyIcon(self.UILayer, (0, -124), "c", "C", show = False)
+
+        self.movementLabel = Label(self.UILayer, 20, (169, 90), "c", "Movement:", (200, 200, 200), show = False)
+        self.resetLabel = Label(self.UILayer, 20, (133, 20), "c", "Reset:", (200, 200, 200), show = False)
+        self.pauseLabel = Label(self.UILayer, 20, (133, -30), "c", "Pause:", (200, 200, 200), show = False)
+        self.viewLeaderboardLabel = Label(self.UILayer, 20, (205, -80), "c", "Leaderboard:", (200, 200, 200), show = False)
+        self.viewControlsLabel = Label(self.UILayer, 20, (169, -130), "c", "Controls:", (200, 200, 200), show = False)
+
+        self.controlsUI = [self.controlsKeyW, self.controlsKeyA, self.controlsKeyS, self.controlsKeyD,
+                           self.controlsKeyUp, self.controlsKeyLeft, self.controlsKeyDown, self.controlsKeyRight,
+                           self.controlsKeyP, self.controlsKeyL, self.controlsKeyR, self.controlsKeyC,
+                           self.orLabel, self.movementLabel, self.resetLabel, self.pauseLabel, self.viewLeaderboardLabel, self.viewControlsLabel]
+
         self.car = Car(pygame, screen, directories, self.trackEditor.mainTrack)
         self.car2 = Car(pygame, screen, directories, self.trackEditor.mainTrack)
 
@@ -1296,12 +1325,20 @@ class TrackRacing (Scene):
                 self.deleteRaceTimesIcon.show = True
 
     def viewControls(self):
-        if self.controlsView in self.UILayer.elements:
+        def closeMessage():
+            for element in self.controlsUI:
+                element.show = False
             self.controlsView.close()
-        else:
-            allControls = ["Use WASD/arrow keys to move", "'R' to reset", "'P' to pause"]
 
-            self.controlsView = Message(self.UILayer, "Controls", allControls, dimensions = (400, 130), layerIndex = 0)
+        if self.controlsView in self.UILayer.elements:
+            closeMessage()
+
+        else:
+            for element in self.controlsUI:
+                element.show = True
+            #allControls = ["Use WASD/arrow keys to move", "'R' to reset", "'P' to pause"]
+
+            self.controlsView = Message(self.UILayer, "Controls", "", dimensions = (500, 370), layerIndex = 0, closeAction = closeMessage)
 
     def togglePause(self, userPaused = False):
         self.pause = not self.pause
