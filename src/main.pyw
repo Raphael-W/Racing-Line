@@ -578,10 +578,13 @@ class TrackEditor (Scene):
 
                 self.mainTrack.finishIndex = trackProperties["finishIndex"]
                 if self.mainTrack.finishIndex is not None:
-                    if self.mainTrack.finishIndex >= len(pointCoords):
+                    if self.mainTrack.finishIndex >= (len(pointCoords) - 1):
                         self.mainTrack.finishIndex = None
 
                 self.mainTrack.finishDir = trackProperties["finishDir"]
+                if self.mainTrack.finishIndex is None:
+                    self.mainTrack.finishDir = True
+
                 self.mainTrack.updateCloseStatus(trackClosed, update = False)
 
                 self.referenceImageScale = trackProperties["referenceImageScale"]

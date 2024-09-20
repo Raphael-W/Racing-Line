@@ -172,6 +172,8 @@ class Track:
 
         self.slightBendLimit = 7000
 
+        self.curbPoints = []
+
     #Clear track, and any settings
     def clear(self):
         autoResValue = self.autoRes
@@ -919,3 +921,8 @@ class Track:
             if antialiasing:
                 self.pygame.gfxdraw.aapolygon(surface, racingLinePolygon, (140, 32, 32))
             self.pygame.gfxdraw.filled_polygon(surface, racingLinePolygon, (140, 32, 32))
+
+        curbCoords = [self.splinePoints[i] for i in self.curbPoints]
+        offsetCurbPoints = offsetPoints(curbCoords, self.offsetValue, self.zoomValue)
+        for i in offsetCurbPoints:
+            self.pygame.draw.circle(self.screen, (200, 0, 0), i, 3)

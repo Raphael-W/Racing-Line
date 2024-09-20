@@ -75,12 +75,16 @@ class UIElement:
             self.layer.elements.remove(self)
 
 class Button (UIElement):
-    def __init__(self, layer, pos, stick, dimensions, text, fontSize, colour, textOffset = (0, 0), roundedCorners = 10, action = None, show = True, disabled = False, layerIndex = -1):
+    def __init__(self, layer, pos, stick, dimensions, text, fontSize, colour, textOffset = (0, 0), roundedCorners = 10, surface = None, action = None, show = True, disabled = False, layerIndex = -1):
         super().__init__(layer, pos, stick, show, layerIndex)
         self.width = dimensions[0]
         self.height = dimensions[1]
         self.boundingBox = layer.pygame.Rect(self.posX, self.posY, self.width, self.height)
         self.roundedCorers = roundedCorners
+
+        self.surface = surface
+        if surface is None:
+            self.surface = self.layer.screen
 
         self.text = text
         self.textOffset = textOffset
@@ -136,15 +140,15 @@ class Button (UIElement):
 
     def display(self):
         self.boundingBox = self.layer.pygame.Rect(self.contextualPosX, self.contextualPosY, self.width, self.height)
-        self.layer.pygame.draw.rect(self.layer.screen, self.colour, self.boundingBox, 0, self.roundedCorers)
+        self.layer.pygame.draw.rect(self.surface, self.colour, self.boundingBox, 0, self.roundedCorers)
 
         text_rect = self.font.get_rect(self.text)
         text_rect.center = (self.boundingBox.center[0] - self.textOffset[0], self.boundingBox.center[1] - self.textOffset[1])
 
         if self.disabled:
-            self.font.render_to(self.layer.screen, text_rect, self.text, (160, 160, 160))
+            self.font.render_to(self.surface, text_rect, self.text, (160, 160, 160))
         else:
-            self.font.render_to(self.layer.screen, text_rect, self.text, (250, 250, 250))
+            self.font.render_to(self.surface, text_rect, self.text, (250, 250, 250))
 
 class Label (UIElement):
     def __init__(self, layer, fontSize, pos, stick, text, colour, bold = False, show = True, layerIndex = -1):
@@ -863,10 +867,14 @@ class FilePicker(UIElement):
         self.titleFont = layer.pygame.freetype.Font(layer.fontName, 25)
         self.titleFont.strong = True
 
+        self.trackListSurface = self.layer.pygame.Surface((self.width, self.height - 155), self.layer.pygame.SRCALPHA)
+
         self.openButton = Button(layer, (0, 0), "", (self.width - 40, 40), "Open", 18, (150, 150, 150), disabled = True, action = self.openTrack)
         self.closeButton = Button(layer, (0, 0), "", (30, 30), "", 10, (122, 43, 43), action = self.closeWindow)
         self.closeImage = Image(layer, (0, 0), "", self.layer.directories["cross"], 1, colour = (200, 200, 200))
         self.searchBar = TextInput(layer, (0, 0), "", (self.width - 90, 30), 18, "Search", bgColour = (70, 70, 70, 255), characterBlackList = ["\\", "/", ":", "*", "?", '"', "<", ">", "|"])
+
+        self.viewButton = Button(layer, (0, 0), "", (20, 20), "i", 12, (150, 150, 150), disabled = False, action = self.openPreview, show = False, surface = self.trackListSurface)
 
     def closeWindow(self):
         self.close()
@@ -880,7 +888,12 @@ class FilePicker(UIElement):
         self.openAction(self.fileDirectory)
         self.closeWindow()
 
+    def openPreview(self):
+        print("Preview")
+
     def update(self):
+        self.trackListSurface = self.layer.pygame.Surface((self.width, self.height - 155), self.layer.pygame.SRCALPHA)
+
         if self.fileList is None:
             self.fileList = []
 
@@ -907,6 +920,14 @@ class FilePicker(UIElement):
 
         self.openButton.posX = self.boxCornerX + 20
         self.openButton.posY = (self.boxCornerY + self.height) - 60
+
+        if self.itemIndexSelected is not None:
+            self.viewButton.show = True
+            self.viewButton.posX = self.boxCornerX + self.width - 110
+            self.viewButton.posY = self.boxCornerY + (30 * self.itemIndexSelected) - (self.scrollHeight * self.scrollExaggeration) + 8
+            print(self.viewButton.posY)
+        else:
+            self.viewButton.show = False
 
         self.closeButton.posX = self.boxCornerX + self.width - 45
         self.closeButton.posY = self.boxCornerY + 15
@@ -980,18 +1001,16 @@ class FilePicker(UIElement):
         titleCenterX = self.boxCornerX + (self.width / 2) - (self.titleFont.get_rect(self.title).size[0] / 2)
         self.titleFont.render_to(self.layer.screen, (titleCenterX, self.boxCornerY + 25), self.title, (200, 200, 200))
 
-        trackListSurface = self.layer.pygame.Surface((self.width, self.height - 155), self.layer.pygame.SRCALPHA)
-
         if self.itemHovering and 0 <= self.itemIndexHovering < len(self.limitedList):
-            self.layer.pygame.draw.rect(trackListSurface, (80, 80, 80), (20, (30 * self.itemIndexHovering) - (self.scrollHeight * self.scrollExaggeration) + 3, self.width - 90, 30), border_radius = 20)
+            self.layer.pygame.draw.rect(self.trackListSurface, (80, 80, 80), (20, (30 * self.itemIndexHovering) - (self.scrollHeight * self.scrollExaggeration) + 3, self.width - 90, 30), border_radius = 20)
 
         if self.selectedItem is not None and self.selectedItem in self.limitedList:
-            self.layer.pygame.draw.rect(trackListSurface, (60, 60, 60), (20, (30 * self.itemIndexSelected) - (self.scrollHeight * self.scrollExaggeration) + 3, self.width - 90, 30), border_radius = 20)
+            self.layer.pygame.draw.rect(self.trackListSurface, (60, 60, 60), (20, (30 * self.itemIndexSelected) - (self.scrollHeight * self.scrollExaggeration) + 3, self.width - 90, 30), border_radius = 20)
 
         for itemIndex in range(len(self.limitedList)):
-            self.messageFont.render_to(trackListSurface, (30, (30 * itemIndex) - (self.scrollHeight * self.scrollExaggeration) + 10), os.path.splitext(self.limitedList[itemIndex])[0], (200, 200, 200, 255))
+            self.messageFont.render_to(self.trackListSurface, (30, (30 * itemIndex) - (self.scrollHeight * self.scrollExaggeration) + 10), os.path.splitext(self.limitedList[itemIndex])[0], (200, 200, 200, 255))
 
-        self.layer.screen.blit(trackListSurface, (self.boxCornerX, self.boxCornerY + 90))
+        self.layer.screen.blit(self.trackListSurface, (self.boxCornerX, self.boxCornerY + 90))
 
         if abs(self.viewProportion) < 1:
             self.layer.pygame.draw.rect(self.layer.screen, self.scrollColour, ((self.boxCornerX + self.width) - 50, self.boxCornerY + 90 + self.scrollHeight, 15, 235 * self.viewProportion), border_radius = 5)
