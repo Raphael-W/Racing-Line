@@ -80,7 +80,7 @@ class Button (UIElement):
         self.width = dimensions[0]
         self.height = dimensions[1]
         self.boundingBox = layer.pygame.Rect(self.posX, self.posY, self.width, self.height)
-        self.roundedCorers = roundedCorners
+        self.roundedCorners = roundedCorners
 
         self.surface = surface
         if surface is None:
@@ -140,7 +140,7 @@ class Button (UIElement):
 
     def display(self):
         self.boundingBox = self.layer.pygame.Rect(self.contextualPosX, self.contextualPosY, self.width, self.height)
-        self.layer.pygame.draw.rect(self.surface, self.colour, self.boundingBox, 0, self.roundedCorers)
+        self.layer.pygame.draw.rect(self.surface, self.colour, self.boundingBox, 0, self.roundedCorners)
 
         text_rect = self.font.get_rect(self.text)
         text_rect.center = (self.boundingBox.center[0] - self.textOffset[0], self.boundingBox.center[1] - self.textOffset[1])
@@ -623,7 +623,7 @@ class Message(UIElement):
 
                 self.centreButton = Button(layer, (self.posX + 10, (self.posY + self.height) - 40), "",
                                            (self.width - 20, 30), button1Text, 15, centreButtonColour,
-                                           action = lambda: self.button1Action())
+                                           action = lambda: self.buttonAction(self.button1Action))
 
             else:
                 leftButtonColour = self.greyColour
@@ -636,10 +636,10 @@ class Message(UIElement):
 
                 self.leftButton = Button(layer, (self.posX + 10, (self.posY + self.height) - 40), "",
                                          ((self.width / 2) - 20, 30), button1Text, 15, leftButtonColour,
-                                         action = lambda: self.button1Action())
+                                         action = lambda: self.buttonAction(self.button1Action))
                 self.rightButton = Button(layer, (self.posX + 10 + (self.width / 2), (self.posY + self.height) - 40), "",
                                           ((self.width / 2) - 20, 30), button2Text, 15, rightButtonColour,
-                                          action = lambda: self.button2Action())
+                                          action = lambda: self.buttonAction(self.button2Action))
 
     def wrapText(self, text, padding):
         if isinstance(text, str):
@@ -722,6 +722,10 @@ class Message(UIElement):
             self.close()
         else:
             self.xAction()
+
+    def buttonAction(self, mainAction):
+        self.close()
+        mainAction()
 
 class Dropdown(UIElement):
     def __init__(self, layer, pos, stick, dimensions, values, itemIndex, disabledIndexes = [], colour = (100, 100, 100), action = None, show = True, layerIndex = -1):
@@ -829,16 +833,18 @@ class Dropdown(UIElement):
         return self.values[self.index]
 
 class FilePicker(UIElement):
-    def __init__(self, layer, title, directory, extensions, openAction, validateFile):
+    def __init__(self, layer, title, directory, extensions, openAction, validateFile, deleteTrackAction = None, renameTrackAction = None):
         super().__init__(layer, (0, 0), "", True, -1)
         self.directory = directory
         self.extensions = extensions
         self.title = title
         self.fileList = None
         self.limitedList = None
-        self.fileDirectory = None
         self.openAction = openAction
         self.validateFile = validateFile
+
+        self.deleteTrackAction = deleteTrackAction
+        self.renameTrackAction = renameTrackAction
 
         self.width = 350
         self.height = 400
@@ -869,12 +875,15 @@ class FilePicker(UIElement):
 
         self.trackListSurface = self.layer.pygame.Surface((self.width, self.height - 155), self.layer.pygame.SRCALPHA)
 
-        self.openButton = Button(layer, (0, 0), "", (self.width - 40, 40), "Open", 18, (150, 150, 150), disabled = True, action = self.openTrack)
+        self.openButton = Button(layer, (0, 0), "", (self.width - 145, 40), "Open", 18, (150, 150, 150), disabled = True, action = self.openTrack)
         self.closeButton = Button(layer, (0, 0), "", (30, 30), "", 10, (122, 43, 43), action = self.closeWindow)
         self.closeImage = Image(layer, (0, 0), "", self.layer.directories["cross"], 1, colour = (200, 200, 200))
         self.searchBar = TextInput(layer, (0, 0), "", (self.width - 90, 30), 18, "Search", bgColour = (70, 70, 70, 255), characterBlackList = ["\\", "/", ":", "*", "?", '"', "<", ">", "|"])
 
-        self.viewButton = Button(layer, (0, 0), "", (20, 20), "i", 12, (150, 150, 150), disabled = False, action = self.openPreview, show = False, surface = self.trackListSurface)
+        self.deleteTrackButton = Button(layer, (0, 0), "", (40, 40), "", 18, (122, 43, 43), disabled = True, action = self.deleteTrack)
+        self.deleteTrackIcon = Image(layer, (0, 0), "", self.layer.directories["bin"], 1, colour = (200, 200, 200))
+        self.renameTrackButton = Button(layer, (0, 0), "", (40, 40), "", 18, (150, 150, 150), disabled = True, action = self.renameTrack)
+        self.renameTrackIcon = Image(layer, (0, 0), "", self.layer.directories["rename"], 1, colour = (200, 200, 200))
 
     def closeWindow(self):
         self.close()
@@ -882,14 +891,33 @@ class FilePicker(UIElement):
         self.closeButton.close()
         self.closeImage.close()
         self.searchBar.close()
+        self.deleteTrackButton.close()
+        self.deleteTrackIcon.close()
+        self.renameTrackButton.close()
+        self.renameTrackIcon.close()
 
     def openTrack(self):
-        self.fileDirectory = os.path.join(self.directory, self.selectedItem)
-        self.openAction(self.fileDirectory)
+        fileDirectory = os.path.join(self.directory, self.selectedItem)
+        self.openAction(fileDirectory)
         self.closeWindow()
 
-    def openPreview(self):
-        print("Preview")
+    def deleteTrack(self):
+        def removeFile():
+            if self.deleteTrackAction is not None:
+                self.deleteTrackAction(fileDirectory)
+
+        fileDirectory = os.path.join(self.directory, self.selectedItem)
+        self.closeWindow()
+        Message(self.layer, "Delete Track", "Are you sure you want to delete this track?", "Cancel", "close", "grey", "Delete", removeFile, "red")
+
+    def renameTrack(self):
+        def rename(newFileDir):
+            if self.renameTrackAction is not None:
+                self.renameTrackAction(fileDirectory, newFileDir)
+
+        fileDirectory = os.path.join(self.directory, self.selectedItem)
+        self.closeWindow()
+        FileSaver(self.layer, self.directory, rename, actionText = "Rename")
 
     def update(self):
         self.trackListSurface = self.layer.pygame.Surface((self.width, self.height - 155), self.layer.pygame.SRCALPHA)
@@ -921,13 +949,15 @@ class FilePicker(UIElement):
         self.openButton.posX = self.boxCornerX + 20
         self.openButton.posY = (self.boxCornerY + self.height) - 60
 
-        if self.itemIndexSelected is not None:
-            self.viewButton.show = True
-            self.viewButton.posX = self.boxCornerX + self.width - 110
-            self.viewButton.posY = self.boxCornerY + (30 * self.itemIndexSelected) - (self.scrollHeight * self.scrollExaggeration) + 8
-            print(self.viewButton.posY)
-        else:
-            self.viewButton.show = False
+        self.deleteTrackButton.posX = self.boxCornerX + 275
+        self.deleteTrackButton.posY = (self.boxCornerY + self.height) - 60
+        self.deleteTrackIcon.posX = self.deleteTrackButton.posX + 7
+        self.deleteTrackIcon.posY = self.deleteTrackButton.posY + 6
+
+        self.renameTrackButton.posX = self.boxCornerX + 230
+        self.renameTrackButton.posY = (self.boxCornerY + self.height) - 60
+        self.renameTrackIcon.posX = self.renameTrackButton.posX + 7
+        self.renameTrackIcon.posY = self.renameTrackButton.posY + 6
 
         self.closeButton.posX = self.boxCornerX + self.width - 45
         self.closeButton.posY = self.boxCornerY + 15
@@ -981,8 +1011,12 @@ class FilePicker(UIElement):
 
         if self.selectedItem is not None:
             self.openButton.disabled = False
+            self.deleteTrackButton.disabled = False
+            self.renameTrackButton.disabled = False
         else:
             self.openButton.disabled = True
+            self.deleteTrackButton.disabled = True
+            self.renameTrackButton.disabled = True
 
         if self.selectedItem is not None:
             for event in self.layer.events:
@@ -1015,9 +1049,8 @@ class FilePicker(UIElement):
         if abs(self.viewProportion) < 1:
             self.layer.pygame.draw.rect(self.layer.screen, self.scrollColour, ((self.boxCornerX + self.width) - 50, self.boxCornerY + 90 + self.scrollHeight, 15, 235 * self.viewProportion), border_radius = 5)
 
-
 class FileSaver(UIElement):
-    def __init__(self, layer, directory, saveAction):
+    def __init__(self, layer, directory, saveAction, actionText = None):
         super().__init__(layer, (0, 0), "", True, -1)
 
         self.directory = directory
@@ -1025,7 +1058,12 @@ class FileSaver(UIElement):
         self.titleFont = layer.pygame.freetype.Font(layer.fontName, 25)
         self.titleFont.strong = True
 
+        self.actionText = actionText
+        if actionText is None:
+            self.actionText = "Save"
+
         self.fileDirectory = None
+        self.fileList = [name.lower() for name in os.listdir(self.directory)]
 
         self.width = 350
         self.height = 180
@@ -1033,7 +1071,7 @@ class FileSaver(UIElement):
         self.boxCornerX = 0
         self.boxCornerY = 0
 
-        self.saveButton = Button(layer, (0, 0), "", (self.width - 40, 40), "Save", 18, (150, 150, 150), disabled = True, action = self.saveTrack)
+        self.saveButton = Button(layer, (0, 0), "", (self.width - 40, 40), self.actionText, 18, (150, 150, 150), disabled = True, action = self.saveTrack)
         self.fileNameInput = TextInput(layer, (0, 0), "", (self.width - 40, 50), 18, "Filename", bgColour = (70, 70, 70, 255), characterBlackList = ["\\", "/", ":", "*", "?", '"', "<", ">", "|"])
         self.closeButton = Button(layer, (0, 0), "", (30, 30), "", 10, (122, 43, 43), action = self.closeWindow)
         self.closeImage = Image(layer, (0, 0), "", self.layer.directories["cross"], 1, colour = (200, 200, 200))
@@ -1065,15 +1103,14 @@ class FileSaver(UIElement):
         self.closeImage.posX = self.closeButton.posX + 2
         self.closeImage.posY = self.closeButton.posY + 3
 
-        fileList = [name.lower() for name in os.listdir(self.directory)]
-        if (self.fileNameInput.text != '') and not((self.fileNameInput.text.lower() + ".track") in fileList):
+        if (self.fileNameInput.text != '') and not((self.fileNameInput.text.lower() + ".track") in self.fileList):
             self.saveButton.disabled = False
         else:
             self.saveButton.disabled = True
 
         for event in self.layer.events:
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_RETURN:
+                if event.key == pygame.K_RETURN and not self.saveButton.disabled:
                     self.saveTrack()
 
     def display(self):
@@ -1084,8 +1121,8 @@ class FileSaver(UIElement):
         self.boundingBox = self.layer.pygame.Rect((self.boxCornerX, self.boxCornerY), (self.width, self.height))
         self.layer.pygame.draw.rect(self.layer.screen, (100, 100, 100), self.boundingBox, border_radius = 15)
 
-        titleCenterX = self.boxCornerX + (self.width / 2) - (self.titleFont.get_rect("Save").size[0] / 2)
-        self.titleFont.render_to(self.layer.screen, (titleCenterX, self.boxCornerY + 25), "Save", (200, 200, 200))
+        titleCenterX = self.boxCornerX + (self.width / 2) - (self.titleFont.get_rect(self.actionText).size[0] / 2)
+        self.titleFont.render_to(self.layer.screen, (titleCenterX, self.boxCornerY + 25), self.actionText, (200, 200, 200))
 
 class KeyboardKeyIcon(UIElement):
     def __init__(self, layer, pos, stick, character, show = True):

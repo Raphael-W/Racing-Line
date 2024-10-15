@@ -58,6 +58,7 @@ directories = {"mainFont": "assets/fonts/MonoFont.ttf",
                "show": "assets/icons/show.png",
                "pause": "assets/icons/pause.png",
                "play": "assets/icons/play.png",
+               "rename": "assets/icons/rename.png",
                "f1Car": "assets/sprites/f1_car.png",
                "f1Wheel": "assets/sprites/f1_wheel.png",
                "logo": "assets/icons/logo.png",
@@ -566,10 +567,13 @@ class TrackEditor (Scene):
                 trackProperties = trackData["properties"]
                 pointCoords = trackData["points"]
 
-                if pointCoords[0] == pointCoords[-1]:
-                    trackClosed = True
-                else:
+                if len(pointCoords) == 0:
                     trackClosed = False
+                else:
+                    if pointCoords[0] == pointCoords[-1]:
+                        trackClosed = True
+                    else:
+                        trackClosed = False
 
                 self.mainTrack.loadTrackPoints(pointCoords)
 
@@ -616,36 +620,32 @@ class TrackEditor (Scene):
 
         def directoryReceived(receivedDir):
             def saveTrackFirst():
-                message.close()
                 self.saveTrack()
                 loadTrack(receivedDir)
 
             def discardTrack():
-                message.close()
                 if self.saveDirectory is None:
                     deleteTrackTimes(self.mainTrack.UUID)
                 loadTrack(receivedDir)
 
             if receivedDir != '' and self.mainTrack.isSaved() == False:
-                message = Message(self.UILayer, "Sure?", "You currently have an unsaved track open", "Save", saveTrackFirst,
+                Message(self.UILayer, "Sure?", "You currently have an unsaved track open", "Save", saveTrackFirst,
                         "grey", "Discard", discardTrack, "red")
             else:
                 loadTrack(receivedDir)
 
         if tempDirectory is None:
-            filePicker = FilePicker(self.UILayer, "Tracks", directories["tracks"], [".track"], directoryReceived, self.validateTrackFile)
+            FilePicker(self.UILayer, "Tracks", directories["tracks"], [".track"], directoryReceived, self.validateTrackFile, deleteTrackAction = self.deleteTrack, renameTrackAction = self.renameTrack)
         else:
             directoryReceived(tempDirectory)
 
     #Clears current track, asks user before clearing
-    def newTrack(self):
+    def newTrack(self, force = False):
         def saveTrackFirst():
-            message.close()
             self.saveTrack()
             clearTrackSequence()
 
         def discardTrack():
-            message.close()
             if self.saveDirectory is None:
                 deleteTrackTimes(self.mainTrack.UUID)
             clearTrackSequence()
@@ -665,8 +665,8 @@ class TrackEditor (Scene):
 
             self.saveDirectory = None
 
-        if not self.mainTrack.isSaved():
-            message = Message(self.UILayer, "Sure?", "You currently have an unsaved track open", "Save", saveTrackFirst, "grey",
+        if not self.mainTrack.isSaved() and not force:
+            Message(self.UILayer, "Sure?", "You currently have an unsaved track open", "Save", saveTrackFirst, "grey",
                     "Discard", discardTrack, "red")
 
         elif self.saveDirectory is not None:
@@ -676,9 +676,18 @@ class TrackEditor (Scene):
         else:
             self.recentreFrame()
 
+    def deleteTrack(self, fileDir):
+        os.remove(fileDir)
+        if fileDir == self.saveDirectory:
+            self.newTrack(force = True)
+
+    def renameTrack(self, oldFileDir, newFileDir):
+        os.rename(oldFileDir, newFileDir)
+        if oldFileDir == self.saveDirectory:
+            self.saveDirectory = newFileDir
+
     def closeTrack(self):
         def closeError():
-            unsavedTrackError.close()
             self.closeCount = 0
 
         def saveTrackFirst():
@@ -693,7 +702,7 @@ class TrackEditor (Scene):
             running = False
 
         if self.closeCount == 0:
-            unsavedTrackError = Message(self.UILayer, "Sure?", "You currently have an unsaved track open", "Save",
+            Message(self.UILayer, "Sure?", "You currently have an unsaved track open", "Save",
                                         saveTrackFirst, "grey", "Discard", discardTrack, "red", closeError)
         self.closeCount += 1
 
@@ -1003,8 +1012,7 @@ class TrackEditor (Scene):
             newCaption = "Untitled Track" + saveCharacter
             self.configAccordion.titleText = "Untitled Track" + saveCharacter
         else:
-            newCaption = str(
-                os.path.splitext(os.path.basename(self.saveDirectory))[0] + saveCharacter + " - " + self.saveDirectory)
+            newCaption = str(os.path.splitext(os.path.basename(self.saveDirectory))[0] + saveCharacter + " - " + self.saveDirectory)
             self.configAccordion.titleText = str(os.path.splitext(os.path.basename(self.saveDirectory))[0] + saveCharacter)
 
         if self.lastCaption != newCaption:
@@ -1233,27 +1241,17 @@ class TrackRacing (Scene):
     def deleteRaceTimes(self):
         def delete():
             deleteTrackTimes(self.track.UUID)
-            message.close()
             self.viewLeaderboard()
 
         def cancel():
-            message.close()
             self.viewLeaderboard()
 
         self.leaderboardView.close()
         self.deleteRaceTimesButton.show = False
         self.deleteRaceTimesIcon.show = False
 
-        message = Message(self.UILayer, "Sure?", "You are about to delete the race times for this track", "Cancel", cancel,
+        Message(self.UILayer, "Sure?", "You are about to delete the race times for this track", "Cancel", cancel,
                         "grey", "Delete", delete, "red")
-
-    def outdatedTimes(self):
-        def delete():
-            deleteTrackTimes(self.track.UUID)
-            message.close()
-
-        message = Message(self.UILayer, "Reset Times?", "The track has been modified since you last set a race time", "Ignore", "close",
-                        "grey", "Reset times", delete, "red")
 
     def uploadTime(self, raceTime):
         conn = sqlite3.connect(directories["raceTimes"])
@@ -1296,7 +1294,6 @@ class TrackRacing (Scene):
 
     def viewLeaderboard(self):
         def closeLeaderboard():
-            self.leaderboardView.close()
             self.deleteRaceTimesButton.show = False
             self.deleteRaceTimesIcon.show = False
 
@@ -1331,7 +1328,6 @@ class TrackRacing (Scene):
         def closeMessage():
             for element in self.controlsUI:
                 element.show = False
-            self.controlsView.close()
 
         if self.controlsView in self.UILayer.elements:
             closeMessage()
@@ -1457,8 +1453,6 @@ class TrackRacing (Scene):
                 self.getUserPreferences()
                 self.updateMiniMapPoints(200, 200, 6)
                 self.reloadTrackSurface()
-                if (len(self.getTimes(self.track.UUID)) > 0) and (self.uniquenessToken is not None) and (self.previousTrackUUID == self.track.UUID):
-                    self.outdatedTimes()
 
             self.uniquenessToken = self.track.getUniquenessToken()
             self.previousTrackUUID = self.track.UUID
@@ -1505,7 +1499,6 @@ class TrackRacing (Scene):
             self.car.display(self.offsetPosition, self.zoom)
 
         def closeMessage():
-            message.close()
             self.togglePause()
 
         for car in [self.car, self.car2]:
@@ -1521,7 +1514,7 @@ class TrackRacing (Scene):
                             if times[0][0] > raceTime:
                                 timeDifference = float("{:.2f}".format(times[0][0] - raceTime))
                                 self.togglePause(True)
-                                message = Message(self.UILayer, "New Highscore!", f"You beat the current highscore ({secondToRaceTimer(times[0][0])}) by {timeDifference}s" , "Continue", closeMessage, (100, 100, 100), linePadding = 10, closeAction = closeMessage)
+                                Message(self.UILayer, "New Highscore!", f"You beat the current highscore ({secondToRaceTimer(times[0][0])}) by {timeDifference}s" , "Continue", closeMessage, (100, 100, 100), linePadding = 10, closeAction = closeMessage)
 
                         self.uploadTime(raceTime)
                         self.deleteSlowTimes()
