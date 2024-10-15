@@ -1344,7 +1344,8 @@ class TrackRacing (Scene):
                         leaderboardMessages.append(lineText)
                     else:
                         number = "{:>2}".format(i + 1)
-                        lineText = f"{"{:<15}".format(f"{number}.")}-          "
+                        formattedNumber = "{:<15}".format(f"{number}.")
+                        lineText = f"{formattedNumber}-          "
                         leaderboardMessages.append(lineText)
 
             self.leaderboardView = Message(self.UILayer, "Leaderboard", leaderboardMessages, dimensions = (400, 270), closeAction = closeLeaderboard, layerIndex = 0)

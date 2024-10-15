@@ -4,3 +4,4 @@ pillow
 numpy
 scipy
 tabulate
+requests
