@@ -1,19 +1,14 @@
 import os
-import platform
 import requests
 from datetime import datetime
 import threading
+import time
 
-def getCreationDate(fileDir):
+def getModifiedDate(fileDir):
     try:
-        if platform.system() == 'Windows':
-            return os.path.getctime(fileDir)
-        else:
-            stat = os.stat(fileDir)
-            try:
-                return stat.st_birthtime
-            except:
-                return stat.st_mtime
+         modifiedDate = os.path.getmtime(fileDir)
+         timezoneOffset = time.localtime().tm_gmtoff
+         return modifiedDate - timezoneOffset
     except:
         return -1
 def getDateOfLatestCommit():
@@ -35,10 +30,10 @@ def getDateOfLatestCommit():
 
 def isUpdateRequired(fileCheck, updateAction):
     def mainCheck():
-        creationDate = getCreationDate(fileCheck)
+        modifiedDate = getModifiedDate(fileCheck)
         latestCommitDate = getDateOfLatestCommit()
 
-        if not ((creationDate < 0) or (latestCommitDate < 0)) and (creationDate < latestCommitDate):
+        if not ((modifiedDate < 0) or (latestCommitDate < 0)) and (modifiedDate < latestCommitDate):
             updateAction()
 
     mainThread = threading.Thread(target = mainCheck)
