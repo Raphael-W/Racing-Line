@@ -665,7 +665,13 @@ class TrackEditor (Scene):
 
             self.saveDirectory = None
 
-        if not self.mainTrack.isSaved() and not force:
+        if force:
+            if self.saveDirectory is not None:
+                clearTrackSequence()
+            else:
+                self.recentreFrame()
+
+        if not self.mainTrack.isSaved():
             Message(self.UILayer, "Sure?", "You currently have an unsaved track open", "Save", saveTrackFirst, "grey",
                     "Discard", discardTrack, "red")
 
