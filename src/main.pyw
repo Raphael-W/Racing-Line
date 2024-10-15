@@ -13,6 +13,7 @@ from tkinter.filedialog import askopenfilename
 import tkinter as tk
 
 import sys
+import webbrowser
 
 import PIL.Image
 from io import BytesIO
@@ -20,6 +21,7 @@ from io import BytesIO
 from pygameUIElements import *
 from track import *
 from car import *
+from updateChecker import *
 
 if os.name == "nt":
     import ctypes
@@ -37,6 +39,8 @@ pygame.event.set_allowed([pygame.QUIT, pygame.KEYDOWN, pygame.MOUSEBUTTONDOWN])
 running = True
 
 deltaTime = 0
+
+githubRepoAddress = "https://github.com/Raphael-W/Racing-Line"
 
 executionDir = os.path.dirname(os.path.dirname(__file__))
 directories = {"mainFont": "assets/fonts/MonoFont.ttf",
@@ -303,8 +307,13 @@ class TrackEditor (Scene):
 
         self.checkForDeletedTracks()
 
+        self.checkedForUpdates = False
+
         if len(sys.argv) > 1:
             self.openTrack(sys.argv[1])
+
+    def askToUpdate(self):
+        Message(self.UILayer, "Update Available", "Download the latest version from GitHub now", "Not Now", "close", "grey", "View", lambda: webbrowser.open(githubRepoAddress), "grey")
 
     def updateUserPreferences(self):
         trackRes = self.mainTrack.perSegRes
@@ -880,6 +889,10 @@ class TrackEditor (Scene):
         self.mousePosY = pygame.mouse.get_pos()[1]
 
         screen.fill(self.colours["background"])
+
+        if not self.checkedForUpdates:
+            isUpdateRequired(__file__, self.askToUpdate)
+            self.checkedForUpdates = True
 
         if (self.previousScreenWidth != self.screenWidth) or (self.previousScreenHeight != self.screenHeight):
             widthDiff = abs(self.screenWidth - self.previousScreenWidth)

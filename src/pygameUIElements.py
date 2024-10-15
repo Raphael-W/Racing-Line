@@ -706,16 +706,20 @@ class Message(UIElement):
             self.messageFont.render_to(self.layer.screen, (self.messagesBoundingBox[lineIndex].centerx - (self.messagesSize[lineIndex][0] / 2), self.posY + 60 + (lineIndex * 20)), self.message[lineIndex], (200, 200, 200))
 
     def close(self):
-        if self.button1Text is not None:
-            if self.button2Text is None:
-                self.layer.elements.remove(self.centreButton)
-            else:
-                self.layer.elements.remove(self.leftButton)
-                self.layer.elements.remove(self.rightButton)
+        try:
+            if self.button1Text is not None:
+                if self.button2Text is None:
+                    self.layer.elements.remove(self.centreButton)
+                else:
+                    self.layer.elements.remove(self.leftButton)
+                    self.layer.elements.remove(self.rightButton)
 
-        self.layer.elements.remove(self.closeButton)
-        self.layer.elements.remove(self.closeImage)
-        self.layer.elements.remove(self)
+            self.layer.elements.remove(self.closeButton)
+            self.layer.elements.remove(self.closeImage)
+            self.layer.elements.remove(self)
+
+        except:
+            pass
 
     def closeButton(self):
         if self.xAction is None:
