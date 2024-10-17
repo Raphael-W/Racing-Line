@@ -11,17 +11,18 @@ def getModifiedDate(fileDir):
          return modifiedDate - timezoneOffset
     except:
         return -1
-def getDateOfLatestCommit():
+def getDataFromLatestCommit():
     url = "https://api.github.com/repos/Raphael-W/Racing-Line/branches/master"
     try:
         response = requests.get(url)
         if response.status_code == 200:
             data = response.json()
             lastCommitDate = data['commit']['commit']['committer']['date']
+            lastCommmitSHA = data['commit']['commit']['tree']['sha']
 
             dateTimeObject = datetime.strptime(lastCommitDate, "%Y-%m-%dT%H:%M:%SZ")
             unixTimestamp = float(dateTimeObject.timestamp())
-            return unixTimestamp
+            return unixTimestamp, lastCommmitSHA
         else:
             return -1
 
@@ -31,10 +32,10 @@ def getDateOfLatestCommit():
 def isUpdateRequired(fileCheck, updateAction):
     def mainCheck():
         modifiedDate = getModifiedDate(fileCheck)
-        latestCommitDate = getDateOfLatestCommit()
+        latestCommitDate, latestCommitSHA = getDataFromLatestCommit()
 
         if not ((modifiedDate < 0) or (latestCommitDate < 0)) and (modifiedDate < latestCommitDate):
-            updateAction()
+            updateAction(latestCommitSHA)
 
     mainThread = threading.Thread(target = mainCheck)
     mainThread.start()
