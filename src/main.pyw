@@ -309,15 +309,30 @@ class TrackEditor (Scene):
 
         self.checkedForUpdates = False
         self.updateNeeded = False
+        self.latestCommitSHA = None
 
         if len(sys.argv) > 1:
             self.openTrack(sys.argv[1])
 
     def askToUpdate(self):
-        Message(self.UILayer, "Update Available", "Download the latest version from GitHub now", "Not Now", "close", "grey", "View", lambda: webbrowser.open(githubRepoAddress), "grey")
+        def ignoreUpdate():
+            with open(directories["preferences"]) as loadFile:
+                preferenceData = json.load(loadFile)
 
-    def setUpdateNeeded(self):
-        self.updateNeeded = True
+            preferenceData["latestCommitSHA"] = self.latestCommitSHA
+
+            with open(directories["preferences"], "w") as outputFile:
+                json.dump(preferenceData, outputFile, indent = 4)
+        
+        Message(self.UILayer, "Update Available", "Download the latest version from GitHub now", "Ignore", ignoreUpdate, "grey", "View", lambda: webbrowser.open(githubRepoAddress), "grey")
+
+    def setUpdateNeeded(self, sha):
+        self.latestCommitSHA = sha
+        with open(directories["preferences"]) as loadFile:
+            preferenceData = json.load(loadFile)
+            savedCommitSHA = preferenceData["latestCommitSHA"]
+        if savedCommitSHA != sha:
+            self.updateNeeded = True
 
     def updateUserPreferences(self):
         trackRes = self.mainTrack.perSegRes
