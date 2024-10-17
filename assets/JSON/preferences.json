@@ -1,7 +1,8 @@
 {
-    "trackRes": 20,
-    "antialiasing": false,
+    "trackRes": "auto",
+    "antialiasing": true,
     "racingLine": false,
     "racingZoom": 2.0,
-    "speedWarnings": false
+    "speedWarnings": true,
+    "latestCommitSHA": ""
 }
