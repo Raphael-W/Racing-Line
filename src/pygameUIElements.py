@@ -722,10 +722,9 @@ class Message(UIElement):
             pass
 
     def closeButton(self):
-        if self.xAction is None:
-            self.close()
-        else:
+        if self.xAction is not None:
             self.xAction()
+        self.close()
 
     def buttonAction(self, mainAction):
         self.close()
