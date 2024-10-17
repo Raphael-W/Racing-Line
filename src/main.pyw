@@ -1319,15 +1319,18 @@ class TrackRacing (Scene):
         self.track.showRacingLine = value
         self.updateUserPreferences()
         self.reloadTrackSurface()
+    
+    def closeLeaderboard(self):
+        self.deleteRaceTimesButton.show = False
+        self.deleteRaceTimesIcon.show = False
+        self.leaderboardView.close()
 
-    def viewLeaderboard(self):
-        def closeLeaderboard():
-            self.deleteRaceTimesButton.show = False
-            self.deleteRaceTimesIcon.show = False
-
+    def viewLeaderboard(self):        
+        if self.controlsView in self.UILayer.elements:
+            self.closeControls()
 
         if self.leaderboardView in self.UILayer.elements:
-            closeLeaderboard()
+            self.closeLeaderboard()
         else:
             times = self.getTimes(self.track.UUID)
 
@@ -1348,25 +1351,27 @@ class TrackRacing (Scene):
                         lineText = f"{formattedNumber}-          "
                         leaderboardMessages.append(lineText)
 
-            self.leaderboardView = Message(self.UILayer, "Leaderboard", leaderboardMessages, dimensions = (400, 270), closeAction = closeLeaderboard, layerIndex = 0)
+            self.leaderboardView = Message(self.UILayer, "Leaderboard", leaderboardMessages, dimensions = (400, 270), closeAction = self.closeLeaderboard, layerIndex = 0)
             if len(times) > 0:
                 self.deleteRaceTimesButton.show = True
                 self.deleteRaceTimesIcon.show = True
 
+    def closeControls(self):
+        for element in self.controlsUI:
+            element.show = False
+        self.controlsView.close()
+
     def viewControls(self):
-        def closeMessage():
-            for element in self.controlsUI:
-                element.show = False
+        if self.leaderboardView in self.UILayer.elements:
+            self.closeLeaderboard()
 
         if self.controlsView in self.UILayer.elements:
-            closeMessage()
-
+            self.closeControls()
         else:
             for element in self.controlsUI:
                 element.show = True
-            #allControls = ["Use WASD/arrow keys to move", "'R' to reset", "'P' to pause"]
 
-            self.controlsView = Message(self.UILayer, "Controls", "", dimensions = (500, 370), layerIndex = 0, closeAction = closeMessage)
+            self.controlsView = Message(self.UILayer, "Controls", "", dimensions = (500, 370), layerIndex = 0, closeAction = self.closeControls)
 
     def togglePause(self, userPaused = False):
         self.pause = not self.pause
