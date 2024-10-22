@@ -87,8 +87,11 @@ class Button (UIElement):
             self.surface = self.layer.screen
 
         self.text = text
+        self.lastText = None
         self.textOffset = textOffset
         self.font = layer.pygame.freetype.Font(layer.fontName, fontSize)
+        self.textRect = self.font.get_rect(self.text)
+        self.textSurface = pygame.Surface(self.textRect.size, self.layer.pygame.SRCALPHA)
 
         self.action = action
 
@@ -108,9 +111,25 @@ class Button (UIElement):
                               colour[2] - (colour[2] * 0.4))
 
         self.disabled = disabled
+        self.lastDisabled = None
 
     def update(self):
         self.updateContextualPos()
+
+        if (self.lastText != self.text) or (self.lastDisabled != self.disabled):
+            self.boundingBox = self.layer.pygame.Rect(self.contextualPosX, self.contextualPosY, self.width, self.height)
+            self.textRect = self.font.get_rect(self.text)
+            self.textSurface = pygame.Surface(self.textRect.size, self.layer.pygame.SRCALPHA)
+
+            if self.disabled:
+                self.font.render_to(self.textSurface, (0, 0, self.textRect.width, self.textRect.height), self.text, (160, 160, 160))
+            else:
+                self.font.render_to(self.textSurface, (0, 0, self.textRect.width, self.textRect.height), self.text, (250, 250, 250))
+
+            self.lastText = self.text
+            self.lastDisabled = self.disabled
+
+        self.textRect.center = (self.boundingBox.center[0] - self.textOffset[0], self.boundingBox.center[1] - self.textOffset[1])
 
         if not self.disabled:
             mousePos = self.layer.pygame.mouse.get_pos()
@@ -141,34 +160,32 @@ class Button (UIElement):
     def display(self):
         self.boundingBox = self.layer.pygame.Rect(self.contextualPosX, self.contextualPosY, self.width, self.height)
         self.layer.pygame.draw.rect(self.surface, self.colour, self.boundingBox, 0, self.roundedCorners)
-
-        text_rect = self.font.get_rect(self.text)
-        text_rect.center = (self.boundingBox.center[0] - self.textOffset[0], self.boundingBox.center[1] - self.textOffset[1])
-
-        if self.disabled:
-            self.font.render_to(self.surface, text_rect, self.text, (160, 160, 160))
-        else:
-            self.font.render_to(self.surface, text_rect, self.text, (250, 250, 250))
+        self.surface.blit(self.textSurface, self.textRect)
 
 class Label (UIElement):
     def __init__(self, layer, fontSize, pos, stick, text, colour, bold = False, show = True, layerIndex = -1):
         super().__init__(layer, pos, stick, show, layerIndex)
         self.text = text
+        self.lastText = None
 
         self.font = layer.pygame.freetype.Font(layer.fontName, fontSize)
         self.font.strong = bold
 
         self.textSize = self.font.get_rect(self.text).size
+        self.textSurface = pygame.Surface(self.textSize, self.layer.pygame.SRCALPHA)
         self.colour = colour
 
     def update(self):
         self.updateContextualPos()
-
-        self.textSize = self.font.get_rect(self.text).size
+        if self.text != self.lastText:
+            self.textSize = self.font.get_rect(self.text).size
+            self.textSurface = pygame.Surface(self.textSize, self.layer.pygame.SRCALPHA)
+            self.font.render_to(self.textSurface, (0, 0), self.text, self.colour)
+            self.lastText = self.text
         self.boundingBox = self.layer.pygame.Rect((self.contextualPosX - 10, self.contextualPosY - 10), (self.textSize[0] + 20, self.textSize[1] + 20))
 
     def display(self):
-        self.font.render_to(self.layer.screen, (self.contextualPosX, self.contextualPosY), self.text, self.colour)
+        self.layer.screen.blit(self.textSurface, (self.contextualPosX, self.contextualPosY))
 
 class Slider (UIElement):
     def __init__(self, layer, fontSize, barColour, handleColour, pos, stick, size, length, valueRange, value = 0, action = None, increment = None, precision = None, suffix = None, finishedUpdatingAction = None, show = True, disabled = False, hideLabel = False, layerIndex = -1):
@@ -184,6 +201,8 @@ class Slider (UIElement):
         self.displayColour = handleColour
 
         self.font = layer.pygame.freetype.Font(layer.fontName, fontSize)
+        self.previousValue = None
+        self.valueLabelSurface = pygame.Surface((0, 0), pygame.SRCALPHA)
 
         self.size = size
         self.length = length
@@ -200,7 +219,6 @@ class Slider (UIElement):
         self.handleSelectedLast = False
         self.mouseDownLast = False
         self.handleSize = int(10 * self.size)
-
 
         self.initialValue = value
         self.action = action
@@ -273,7 +291,14 @@ class Slider (UIElement):
                 displayValue = str(round(self.value, self.precision))
             if self.suffix is not None:
                 displayValue += self.suffix
-            self.font.render_to(self.layer.screen, (self.contextualPosX + self.length + 17, self.contextualPosY - 3), displayValue, self.displayBarColour)
+
+            if self.value != self.previousValue:
+                textSize = self.font.get_rect(displayValue).size
+                self.valueLabelSurface = pygame.Surface(textSize, pygame.SRCALPHA)
+                self.font.render_to(self.valueLabelSurface, (0, 0), displayValue, (200, 200, 200))
+                self.previousValue = self.value
+
+            self.layer.screen.blit(self.valueLabelSurface, (self.contextualPosX + self.length + 17, self.contextualPosY - 3))
 
         self.layer.pygame.gfxdraw.aacircle(self.layer.screen, int(self.contextualPosX + self.handleX), int(self.contextualPosY + (int(7 * self.size)) / 2), self.handleSize, self.displayColour)
         self.layer.pygame.gfxdraw.filled_circle(self.layer.screen, int(self.contextualPosX + self.handleX), int(self.contextualPosY + (int(7 * self.size)) / 2), self.handleSize, self.displayColour)
@@ -568,11 +593,14 @@ class Accordion(UIElement):
         self.setCollapseStatus(not self.collapse)
 
 class Message(UIElement):
-    def __init__(self, layer, title, message, button1Text = None, button1Action = None, button1Colour = None, button2Text = None, button2Action = None, button2Colour = None, closeAction = None, dimensions = (400, 150), linePadding = 25, show = True, layerIndex = -1):
+    def __init__(self, layer, title, message, button1Text = None, button1Action = None, button1Colour = None, button2Text = None, button2Action = None, button2Colour = None, closeAction = None, dimensions = (400, 150), linePadding = 25, messageFontSize = 15, align = "centre", show = True, layerIndex = -1):
         super().__init__(layer, (0, 0), "", show, layerIndex)
 
         self.message = message
+        self.lastMessage = None
+
         self.title = title
+        self.lastTitle = None
 
         self.button1Text = button1Text
         self.button1Action = button1Action
@@ -595,13 +623,14 @@ class Message(UIElement):
 
         self.width, self.height = dimensions
         self.linePadding = linePadding
+        self.align = align
 
         self.posX = (self.layer.screenWidth / 2) - (self.width / 2)
         self.posY = (self.layer.screenHeight / 2) - (self.height / 2)
 
         self.boundingBox = self.layer.pygame.Rect(self.posX, self.posY, self.width, self.height)
 
-        self.messageFont = layer.pygame.freetype.Font(layer.fontName, 15)
+        self.messageFont = layer.pygame.freetype.Font(layer.fontName, messageFontSize)
         self.titleFont = layer.pygame.freetype.Font(layer.fontName, 25)
 
         self.messagesBoundingBox = []
@@ -610,6 +639,9 @@ class Message(UIElement):
         self.titleSize = self.titleFont.get_rect(self.title).size
         self.titleBoundingBox = self.layer.pygame.Rect((self.posX, self.posY), (self.titleSize[0], self.titleSize[1]))
         self.titleBoundingBox.center = self.boundingBox.center
+
+        self.titleSurface = pygame.Surface(self.titleBoundingBox.size, self.layer.pygame.SRCALPHA)
+        self.messageSurfaces = []
 
         self.closeButton = Button(layer, (self.posX + self.width - 40, self.posY + 10), "", (30, 30), "", 10,
                                   self.greyColour, action = self.closeButton)
@@ -668,22 +700,33 @@ class Message(UIElement):
             return text
 
     def update(self):
+        oldX = self.posX
+        oldY = self.posY
         self.posX = (self.layer.screenWidth / 2) - (self.width / 2)
         self.posY = (self.layer.screenHeight / 2) - (self.height / 2)
         self.boundingBox = self.layer.pygame.Rect(self.posX, self.posY, self.width, self.height)
+        posChanged = (oldX != self.posX) or (oldY != self.posY)
 
-        self.messagesBoundingBox = []
-        self.messagesSize = []
-        if isinstance(self.message, str):
-            self.message = self.wrapText(self.message, self.linePadding)
+        if (self.lastMessage != self.message) or posChanged:
+            if isinstance(self.message, str):
+                self.message = self.wrapText(self.message, self.linePadding)
 
-        for lineIndex in range(len(self.message)):
-            self.messagesSize.append(self.messageFont.get_rect(self.message[lineIndex]).size)
-            self.messagesBoundingBox.append(self.layer.pygame.Rect((self.posX, self.posY), (self.messagesSize[lineIndex][0], self.messagesSize[lineIndex][1])))
-            self.messagesBoundingBox[lineIndex].center = self.boundingBox.center
+            for lineIndex in range(len(self.message)):
+                self.messagesSize.append(self.messageFont.get_rect(self.message[lineIndex]).size)
+                self.messagesBoundingBox.append(self.layer.pygame.Rect((self.posX, self.posY), (self.messagesSize[lineIndex][0], self.messagesSize[lineIndex][1])))
+                self.messagesBoundingBox[lineIndex].center = self.boundingBox.center
 
-        self.titleBoundingBox = self.layer.pygame.Rect((self.posX, self.posY), (self.titleSize[0], self.titleSize[1]))
-        self.titleBoundingBox.center = self.boundingBox.center
+                if self.lastMessage != self.message:
+                    self.messageSurfaces.append(pygame.Surface(self.messagesBoundingBox[lineIndex].size, self.layer.pygame.SRCALPHA))
+                    self.messageFont.render_to(self.messageSurfaces[lineIndex], (0, 0), self.message[lineIndex], (200, 200, 200))
+
+            self.lastMessage = self.message
+
+        if (self.lastTitle != self.title) or posChanged:
+            self.titleBoundingBox = self.layer.pygame.Rect((self.posX, self.posY), (self.titleSize[0], self.titleSize[1]))
+            self.titleSurface = pygame.Surface(self.titleBoundingBox.size, self.layer.pygame.SRCALPHA)
+            self.titleFont.render_to(self.titleSurface, (0, 0), self.title, (200, 200, 200))
+            self.titleBoundingBox.center = self.boundingBox.center
 
         self.closeButton.posX, self.closeButton.posY = (self.posX + self.width - 40, self.posY + 10)
         self.closeImage.posX, self.closeImage.posY = (self.posX + self.width - 38, self.posY + 12)
@@ -701,9 +744,15 @@ class Message(UIElement):
         self.layer.screen.blit(transparentSurface, (0, 0))
 
         self.layer.pygame.draw.rect(self.layer.screen, (70, 70, 70), (self.posX, self.posY, self.width, self.height), border_radius = 15)
-        self.titleFont.render_to(self.layer.screen, (self.titleBoundingBox.centerx - (self.titleSize[0] / 2), self.posY + 20), self.title, (200, 200, 200))
+        self.layer.screen.blit(self.titleSurface, (self.titleBoundingBox.centerx - (self.titleSize[0] / 2), self.posY + 20))
+
         for lineIndex in range(len(self.message)):
-            self.messageFont.render_to(self.layer.screen, (self.messagesBoundingBox[lineIndex].centerx - (self.messagesSize[lineIndex][0] / 2), self.posY + 60 + (lineIndex * 20)), self.message[lineIndex], (200, 200, 200))
+            if self.align == "left":
+                position = (self.posX + 25, self.posY + 60 + (lineIndex * self.linePadding))
+            else:
+                position = (self.messagesBoundingBox[lineIndex].centerx - (self.messagesSize[lineIndex][0] / 2), self.posY + 60 + (lineIndex * self.linePadding))
+
+            self.layer.screen.blit(self.messageSurfaces[lineIndex], position)
 
     def close(self):
         try:
@@ -748,6 +797,9 @@ class Dropdown(UIElement):
 
         self.dropdownIcon = Image(layer, (0, 0), "", self.layer.directories["down"], 1, (30, 30, 30), show)
         self.displayMenu = False
+
+        self.currentlySelectedSurface = pygame.Surface(self.boundingBox.size, self.layer.pygame.SRCALPHA)
+        self.lastSelectedValue = None
 
         self.mouseHovering = False
         self.hoveringItemIndex = None
@@ -829,8 +881,13 @@ class Dropdown(UIElement):
                 self.font.render_to(self.layer.screen, (self.contextualPosX + 10, self.contextualPosY + self.height + (22 * i) + 5), str(self.values[currentIndex]), colour)
                 currentIndex += 1
 
+        if self.lastSelectedValue != str(self.values[self.index]):
+            self.currentlySelectedSurface = pygame.Surface(self.boundingBox.size, self.layer.pygame.SRCALPHA)
+            self.font.render_to(self.currentlySelectedSurface, (0, 0), str(self.values[self.index]), (200, 200, 200))
+            self.lastSelectedValue = str(self.values[self.index])
+
         self.layer.pygame.draw.rect(self.layer.screen, self.currentColour, (self.contextualPosX, self.contextualPosY, self.width, self.height), border_radius = 10)
-        self.font.render_to(self.layer.screen, (self.contextualPosX + 10, self.contextualPosY + (self.height / 2) - 6), str(self.values[self.index]), (200, 200, 200))
+        self.layer.screen.blit(self.currentlySelectedSurface, (self.contextualPosX + 10, self.contextualPosY + (self.height / 2) - 6))
 
     def getCurrent(self):
         return self.values[self.index]
@@ -1185,11 +1242,11 @@ class Layer:
         self.events = events
 
         for element in self.elements:
+            element.alwaysUpdate()
             if element.show:
                 if (self.overrideUpdateElements is not None and element in self.overrideUpdateElements) or (self.overrideUpdateElements is None):
                     element.update()
                 element.display()
-            element.alwaysUpdate()
 
     def mouseOnLayer(self, mousePos):
         boundingBoxes = [element.returnBoundingBox() for element in self.elements if element.show]

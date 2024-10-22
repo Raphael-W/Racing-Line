@@ -31,7 +31,7 @@ if os.name == "nt":
 
 pygame.init()
 pygame.display.set_caption("Racing Line Finder")
-screen = pygame.display.set_mode((1280, 720), pygame.RESIZABLE)
+screen = pygame.display.set_mode((1280, 720), pygame.RESIZABLE, pygame.SCALED, vsync=1)
 clock = pygame.time.Clock()
 
 pygame.event.set_allowed([pygame.QUIT, pygame.KEYDOWN, pygame.MOUSEBUTTONDOWN])
@@ -264,10 +264,10 @@ class TrackEditor (Scene):
         self.racingLineLabel = Label(self.UILayer, 15, (290, 203), "SE", "Racing Line", self.colours["white"])
 
         self.antialiasingSwitch = Switch(self.UILayer, (130, 177), "SE", 0.8, value = False)
-        self.antialiasingLabel = Label(self.UILayer, 15, (300, 175), "SE", "Antialiasing", self.colours["white"])
+        self.antialiasingLabel = Label(self.UILayer, 15, (299, 175), "SE", "Antialiasing", self.colours["white"])
 
         self.switchEndsSwitch = Switch(self.UILayer, (130, 147), "SE", 0.8, value = False)
-        self.switchEndsLabel = Label(self.UILayer, 15, (299, 145), "SE", "Switch front", self.colours["white"])
+        self.switchEndsLabel = Label(self.UILayer, 15, (298, 145), "SE", "Switch Front", self.colours["white"])
 
         self.autoResSwitch = Switch(self.UILayer, (130, 117), "SE", 0.8, value = False, action = self.setAutoRes)
         self.autoResLabel = Label(self.UILayer, 15, (263, 115), "SE", "Auto Res", self.colours["white"])
@@ -291,7 +291,7 @@ class TrackEditor (Scene):
                                           self.trackResLabel, self.trackWidthSlider, self.trackWidthLabel,
                                           self.viewModeDropdown, self.viewModeLabel, self.racingLineSwitch, self.racingLineLabel,
                                           self.antialiasingSwitch, self.antialiasingLabel, self.switchEndsSwitch,
-                                          self.switchEndsLabel, self.undoButton, self.undoIcon,
+                                          self.switchEndsLabel, self.autoResSwitch, self.autoResLabel, self.undoButton, self.undoIcon,
                                           self.redoButton, self.redoIcon])
 
         self.trackScaleLabel = Label(self.UILayer, 15, (180, 30), "S", "", self.colours["white"])
@@ -304,6 +304,9 @@ class TrackEditor (Scene):
         self.scalingHelpLabel = Label(self.UILayer, 14, (0, 70), "NW", "Select two points in space, then type their real-world distance. ESC to exit", (150, 150, 150), show = False)
         self.finishHelpLabel = Label(self.UILayer, 14, (0, 70), "NW", "Select a point on the track, then click in the direction the track should go. ESC to exit", (150, 150, 150), show = False)
 
+        self.helpButton = Button(self.UILayer, (240, 30), "NW", (25, 25), "?", 16, (80, 80, 80), action = self.showHelp)
+        self.helpWindow = None
+
         self.getUserPreferences()
         self.userValues = self.returnUserValues()
 
@@ -315,6 +318,21 @@ class TrackEditor (Scene):
 
         if len(sys.argv) > 1:
             self.openTrack(sys.argv[1])
+
+    def showHelp(self):
+        if self.helpWindow in self.UILayer.elements:
+            self.helpWindow.close()
+        else:
+            self.helpWindow = Message(self.UILayer, "Help", ["Click to add a point to the track",
+                                                         "Clicking on the track will insert a point at that location",
+                                                         "Right-click on a point to remove it",
+                                                         "Drag points to reposition them as needed",
+                                                         "",
+                                                         "“Switch Front” changes which end new points are added to",
+                                                         "“Auto Res” selects the best resolution for the track",
+                                                         "“Racing Line” displays the fastest path around the track",
+                                                         "Select “Set Finish” to place the finish line",
+                                                         "“Set Scale” scales the track using a real-world distance"], dimensions = (550, 315), messageFontSize = 13, align = "left", linePadding = 23)
 
     def askToUpdate(self):
         def ignoreUpdate():
@@ -1252,6 +1270,8 @@ class TrackRacing (Scene):
         self.pause = False
         self.pauseStart = None
         self.userPaused = False
+        self.lastStartTimeCar = None
+        self.lastStartTimeCar2 = None
 
         self.minimapPoints = []
         self.miniMapSurface = pygame.Surface((0, 0))
@@ -1349,7 +1369,6 @@ class TrackRacing (Scene):
         self.reset()
 
     def toggleSpeedWarnings(self, value):
-        self.settingsAccordion.setCollapseStatus(True)
         self.speedWarnings = value
         self.updateUserPreferences()
 
@@ -1524,15 +1543,20 @@ class TrackRacing (Scene):
                 self.reset()
                 self.getUserPreferences()
                 self.updateMiniMapPoints(200, 200, 6)
+
                 self.reloadTrackSurface()
 
             self.uniquenessToken = self.track.getUniquenessToken()
             self.previousTrackUUID = self.track.UUID
 
-        if (self.car.timerStart is not None) or (self.car2.timerStart is not None):
-            self.settingsAccordion.setCollapseStatus(True)
-        else:
-            self.settingsAccordion.setCollapseStatus(False)
+        if (self.lastStartTimeCar != self.car.timerStart) or (self.lastStartTimeCar2 != self.car2.timerStart):
+            if (self.car.timerStart is not None) or (self.car2.timerStart is not None):
+                self.settingsAccordion.setCollapseStatus(True)
+            else:
+                self.settingsAccordion.setCollapseStatus(False)
+
+            self.lastStartTimeCar = self.car.timerStart
+            self.lastStartTimeCar2 = self.car2.timerStart
 
         if self.splitScreen:
             acceleration = self.accelerationInput[0]

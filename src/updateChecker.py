@@ -24,10 +24,10 @@ def getDataFromLatestCommit():
             unixTimestamp = float(dateTimeObject.timestamp())
             return unixTimestamp, lastCommmitSHA
         else:
-            return -1
+            return -1, -1
 
     except:
-        return -1
+        return -1, -1
 
 def isUpdateRequired(fileCheck, updateAction):
     def mainCheck():
