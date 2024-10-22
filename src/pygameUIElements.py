@@ -539,9 +539,9 @@ class Accordion(UIElement):
             self.expandImage.posX, self.expandImage.posY = (self.posX + self.displayWidth - 38, (self.posY + self.displayHeight) - 12)
             self.collapseButton.posX, self.collapseButton.posY = (self.posX + self.displayWidth - 40, (self.posY + self.displayHeight) - 10)
 
-        self.titleLabel.text = self.titleText[:15]
-        if len(self.titleText) > 15:
-            self.titleLabel.text += "..."
+        self.titleLabel.text = self.titleText[:18]
+        if self.titleText[:18] != self.titleText:
+            self.titleLabel.text = self.titleText[:15] + "..."
 
         if self.openDir == "l":
             self.titleLabel.posX, self.titleLabel.posY = ((self.displayWidth / 2) + (self.titleLabel.textSize[0] / 2) + self.posX, self.displayHeight - 25 + self.posY)
@@ -1045,7 +1045,10 @@ class FilePicker(UIElement):
             self.layer.pygame.draw.rect(self.trackListSurface, (60, 60, 60), (20, (30 * self.itemIndexSelected) - (self.scrollHeight * self.scrollExaggeration) + 3, self.width - 90, 30), border_radius = 20)
 
         for itemIndex in range(len(self.limitedList)):
-            self.messageFont.render_to(self.trackListSurface, (30, (30 * itemIndex) - (self.scrollHeight * self.scrollExaggeration) + 10), os.path.splitext(self.limitedList[itemIndex])[0], (200, 200, 200, 255))
+            trackName = os.path.splitext(self.limitedList[itemIndex])[0]
+            if trackName[:22] != trackName:
+                trackName = trackName[:19] + "..."
+            self.messageFont.render_to(self.trackListSurface, (30, (30 * itemIndex) - (self.scrollHeight * self.scrollExaggeration) + 10), trackName, (200, 200, 200, 255))
 
         self.layer.screen.blit(self.trackListSurface, (self.boxCornerX, self.boxCornerY + 90))
 

@@ -849,8 +849,8 @@ class Track:
                     mainTrackPolygon = formPolygon(self.__offset_leftBorderInnerEdge, self.__offset_rightBorderInnerEdge, slice((point * self.perSegRes), ((point + 1) * self.perSegRes) + 1), ((point == len(self.points) - 2) and self.closed))
 
                     if antialiasing:
-                        self.pygame.gfxdraw.aapolygon(surface, mainTrackPolygon, programColours["mainTrack"])
-                    self.pygame.gfxdraw.filled_polygon(surface, mainTrackPolygon, programColours["mainTrack"])
+                        self.pygame.gfxdraw.aapolygon(surface, mainTrackPolygon, programColours["track"])
+                    self.pygame.gfxdraw.filled_polygon(surface, mainTrackPolygon, programColours["track"])
 
             if viewMode in ["Track", "Skeleton", "Curve"]:
                 for point in range(len(self.points) - 1):
