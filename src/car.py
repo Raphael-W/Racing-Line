@@ -225,7 +225,7 @@ class Car:
             if self.offTrack and self.velocity.x > self.grassMaxSpeed:
                 self.acceleration = -self.grassDeceleration
 
-            self.steering = self.steeringInput * self.maxTurningAngle * deltaTime * 10
+            self.steering = self.steeringInput * self.maxTurningAngle * (10/60)
 
             self.velocity += (self.acceleration * deltaTime, 0)
             self.velocity.x = max(min(self.velocity.x, self.maxSpeed), 0)

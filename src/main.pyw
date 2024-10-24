@@ -38,8 +38,6 @@ pygame.event.set_allowed([pygame.QUIT, pygame.KEYDOWN, pygame.MOUSEBUTTONDOWN])
 
 running = True
 
-deltaTime = 0
-
 githubRepoAddress = "https://github.com/Raphael-W/Racing-Line"
 
 executionDir = os.path.dirname(os.path.dirname(__file__))
@@ -332,7 +330,7 @@ class TrackEditor (Scene):
                                                          "“Auto Res” selects the best resolution for the track",
                                                          "“Racing Line” displays the fastest path around the track",
                                                          "Select “Set Finish” to place the finish line",
-                                                         "“Set Scale” scales the track using a real-world distance"], dimensions = (550, 315), messageFontSize = 13, align = "left", linePadding = 23)
+                                                         "“Set Scale” scales the track using a real-world distance"], dimensions = (550, 315), messageFontSize = 13, align = "left", lineSpacing = 23)
 
     def askToUpdate(self):
         def ignoreUpdate():
@@ -980,7 +978,7 @@ class TrackEditor (Scene):
             self.removeReferenceImageButton.disabled = False
 
         if not (self.userSettingScale or self.userSettingFinish) and (not self.UIClick):
-            self.track.update((self.mousePosX - self.offsetPosition[0]) / self.zoom, (self.mousePosY - self.offsetPosition[1]) / self.zoom, self.zoom, self.screenWidth, self.screenHeight, self.screenBorder, self.offsetPosition, screenRect, directories)
+            self.track.update((self.mousePosX - self.offsetPosition[0]) / self.zoom, (self.mousePosY - self.offsetPosition[1]) / self.zoom, self.zoom, self.screenWidth, self.screenHeight, self.screenBorder, self.offsetPosition, screenRect)
         self.track.draw(self.colours, self.switchEndsSwitch.value, self.viewMode, self.antialiasingSwitch.value)
 
         #Algorithm for setting track scale - draw line between 2 mouse positions
@@ -1053,8 +1051,7 @@ class TrackEditor (Scene):
         #Sets visuals for track finish line setup - drawing direction arrow, finish line icon
         if self.finishIndex is not None:
             finishPointCoords = (self.track.splinePoints[int(self.finishIndex * self.track.perSegRes)])
-            finishPointNeighbourCoords = (
-            extendPointsBack(self.track.splinePoints)[int(self.finishIndex * self.track.perSegRes) + 1])
+            finishPointNeighbourCoords = (extendPointsBack(self.track.splinePoints)[int(self.finishIndex * self.track.perSegRes) + 1])
             finishPointNeighboursDistance = pointDistance(finishPointNeighbourCoords, finishPointCoords)
 
             arrowEndExtX = ((finishPointNeighbourCoords[0] - finishPointCoords[
@@ -1503,8 +1500,13 @@ class TrackRacing (Scene):
             self.accelerationInput = [0, 0]
             self.steeringInput = [0, 0]
 
-        self.accelerationInput = [int(keys[pygame.K_UP]) - 2 * int(keys[pygame.K_DOWN]), int(keys[pygame.K_w]) - 2 * int(keys[pygame.K_s])]
-        self.steeringInput = [int(keys[pygame.K_RIGHT]) - 2 * int(keys[pygame.K_LEFT]), int(keys[pygame.K_d]) - 2 * int(keys[pygame.K_a])]
+        self.accelerationInput = [int(keys[pygame.K_UP]) - int(keys[pygame.K_DOWN]), int(keys[pygame.K_w]) - 2 * int(keys[pygame.K_s])]
+        self.steeringInput = [int(keys[pygame.K_RIGHT]) - int(keys[pygame.K_LEFT]), int(keys[pygame.K_d]) - int(keys[pygame.K_a])]
+
+        if bool(keys[pygame.K_DOWN]):
+            self.accelerationInput[0] = -1
+        if bool(keys[pygame.K_s]):
+            self.accelerationInput[1] = -1
 
         self.events = events
         for event in events:
@@ -1766,4 +1768,5 @@ while running:
 
     pygame.display.flip()
     deltaTime = clock.tick(60) / 1000 #Refresh Rate
+
 pygame.quit()

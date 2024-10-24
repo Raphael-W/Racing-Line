@@ -593,7 +593,7 @@ class Accordion(UIElement):
         self.setCollapseStatus(not self.collapse)
 
 class Message(UIElement):
-    def __init__(self, layer, title, message, button1Text = None, button1Action = None, button1Colour = None, button2Text = None, button2Action = None, button2Colour = None, closeAction = None, dimensions = (400, 150), linePadding = 25, messageFontSize = 15, align = "centre", show = True, layerIndex = -1):
+    def __init__(self, layer, title, message, button1Text = None, button1Action = None, button1Colour = None, button2Text = None, button2Action = None, button2Colour = None, closeAction = None, dimensions = (400, 150), linePadding = 25, lineSpacing = 20, messageFontSize = 15, align = "centre", show = True, layerIndex = -1):
         super().__init__(layer, (0, 0), "", show, layerIndex)
 
         self.message = message
@@ -623,6 +623,7 @@ class Message(UIElement):
 
         self.width, self.height = dimensions
         self.linePadding = linePadding
+        self.lineSpacing = lineSpacing
         self.align = align
 
         self.posX = (self.layer.screenWidth / 2) - (self.width / 2)
@@ -748,9 +749,9 @@ class Message(UIElement):
 
         for lineIndex in range(len(self.message)):
             if self.align == "left":
-                position = (self.posX + 25, self.posY + 60 + (lineIndex * self.linePadding))
+                position = (self.posX + 25, self.posY + 60 + (lineIndex * self.lineSpacing))
             else:
-                position = (self.messagesBoundingBox[lineIndex].centerx - (self.messagesSize[lineIndex][0] / 2), self.posY + 60 + (lineIndex * self.linePadding))
+                position = (self.messagesBoundingBox[lineIndex].centerx - (self.messagesSize[lineIndex][0] / 2), self.posY + 60 + (lineIndex * self.lineSpacing))
 
             self.layer.screen.blit(self.messageSurfaces[lineIndex], position)
 
@@ -900,6 +901,7 @@ class FilePicker(UIElement):
         self.title = title
         self.fileList = None
         self.limitedList = None
+        self.lastLimitedList = None
         self.openAction = openAction
         self.validateFile = validateFile
 
@@ -934,6 +936,11 @@ class FilePicker(UIElement):
         self.titleFont.strong = True
 
         self.trackListSurface = self.layer.pygame.Surface((self.width, self.height - 155), self.layer.pygame.SRCALPHA)
+        self.trackListTextSurface = self.layer.pygame.Surface((self.width, self.height - 155), self.layer.pygame.SRCALPHA)
+        self.titleCenterX = 0
+        self.titleRect = self.titleFont.get_rect(self.title)
+        self.titleSurface = pygame.Surface(self.titleRect.size, pygame.SRCALPHA)
+        self.titleFont.render_to(self.titleSurface, (0, 0), self.title, (200, 200, 200))
 
         self.openButton = Button(layer, (0, 0), "", (self.width - 145, 40), "Open", 18, (150, 150, 150), disabled = True, action = self.openTrack)
         self.closeButton = Button(layer, (0, 0), "", (30, 30), "", 10, (122, 43, 43), action = self.closeWindow)
@@ -956,6 +963,17 @@ class FilePicker(UIElement):
         self.renameTrackButton.close()
         self.renameTrackIcon.close()
 
+    def setView(self, view):
+        self.show = view
+        self.openButton.show = view
+        self.closeButton.show = view
+        self.closeImage.show = view
+        self.searchBar.show = view
+        self.deleteTrackButton.show = view
+        self.deleteTrackIcon.show = view
+        self.renameTrackButton.show = view
+        self.renameTrackIcon.show = view
+
     def openTrack(self):
         fileDirectory = os.path.join(self.directory, self.selectedItem)
         self.openAction(fileDirectory)
@@ -965,18 +983,23 @@ class FilePicker(UIElement):
         def removeFile():
             if self.deleteTrackAction is not None:
                 self.deleteTrackAction(fileDirectory)
+                self.setView(True)
+                self.fileList = None
 
         fileDirectory = os.path.join(self.directory, self.selectedItem)
-        self.closeWindow()
+        self.setView(False)
         Message(self.layer, "Delete Track", "Are you sure you want to delete this track?", "Cancel", "close", "grey", "Delete", removeFile, "red")
+
 
     def renameTrack(self):
         def rename(newFileDir):
             if self.renameTrackAction is not None:
                 self.renameTrackAction(fileDirectory, newFileDir)
+                self.setView(True)
+                self.fileList = None
 
         fileDirectory = os.path.join(self.directory, self.selectedItem)
-        self.closeWindow()
+        self.setView(False)
         FileSaver(self.layer, self.directory, rename, actionText = "Rename")
 
     def update(self):
@@ -1092,8 +1115,8 @@ class FilePicker(UIElement):
         self.boundingBox = self.layer.pygame.Rect((self.boxCornerX, self.boxCornerY), (self.width, self.height))
         self.layer.pygame.draw.rect(self.layer.screen, (100, 100, 100), self.boundingBox, border_radius = 15)
 
-        titleCenterX = self.boxCornerX + (self.width / 2) - (self.titleFont.get_rect(self.title).size[0] / 2)
-        self.titleFont.render_to(self.layer.screen, (titleCenterX, self.boxCornerY + 25), self.title, (200, 200, 200))
+        self.titleCenterX = self.boxCornerX + (self.width / 2) - (self.titleRect.size[0] / 2)
+        self.layer.screen.blit(self.titleSurface, (self.titleCenterX, self.boxCornerY + 25))
 
         if self.itemHovering and 0 <= self.itemIndexHovering < len(self.limitedList):
             self.layer.pygame.draw.rect(self.trackListSurface, (80, 80, 80), (20, (30 * self.itemIndexHovering) - (self.scrollHeight * self.scrollExaggeration) + 3, self.width - 90, 30), border_radius = 20)
@@ -1101,12 +1124,16 @@ class FilePicker(UIElement):
         if self.selectedItem is not None and self.selectedItem in self.limitedList:
             self.layer.pygame.draw.rect(self.trackListSurface, (60, 60, 60), (20, (30 * self.itemIndexSelected) - (self.scrollHeight * self.scrollExaggeration) + 3, self.width - 90, 30), border_radius = 20)
 
-        for itemIndex in range(len(self.limitedList)):
-            trackName = os.path.splitext(self.limitedList[itemIndex])[0]
-            if trackName[:22] != trackName:
-                trackName = trackName[:19] + "..."
-            self.messageFont.render_to(self.trackListSurface, (30, (30 * itemIndex) - (self.scrollHeight * self.scrollExaggeration) + 10), trackName, (200, 200, 200, 255))
+        if self.lastLimitedList != self.limitedList:
+            self.trackListTextSurface = self.layer.pygame.Surface((self.width, max((30 * (len(self.limitedList))) - (self.scrollHeight * self.scrollExaggeration) + 10, 10)), self.layer.pygame.SRCALPHA)
+            for itemIndex in range(len(self.limitedList)):
+                trackName = os.path.splitext(self.limitedList[itemIndex])[0]
+                if trackName[:22] != trackName:
+                    trackName = trackName[:19] + "..."
+                self.messageFont.render_to(self.trackListTextSurface, (30, (30 * itemIndex) + 10), trackName, (200, 200, 200, 255))
+            self.lastLimitedList = self.limitedList
 
+        self.trackListSurface.blit(self.trackListTextSurface, (0, -(self.scrollHeight * self.scrollExaggeration)))
         self.layer.screen.blit(self.trackListSurface, (self.boxCornerX, self.boxCornerY + 90))
 
         if abs(self.viewProportion) < 1:
